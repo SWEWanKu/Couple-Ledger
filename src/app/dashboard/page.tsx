@@ -4,11 +4,14 @@ import {
   ChartPie,
   Clock3,
   Home,
+  PlusCircle,
+  ReceiptText,
   Tags,
   UsersRound,
   WalletCards,
   type LucideIcon
 } from "lucide-react";
+import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
@@ -69,6 +72,8 @@ export default async function DashboardPage() {
           </div>
         </section>
 
+        <DashboardLedgerActions />
+
         <DashboardHouseholdSummaryCard summary={householdSummary} warning={householdSummaryWarning} />
 
         {ledgerSummaryWarning ? (
@@ -92,6 +97,38 @@ export default async function DashboardPage() {
         <SettlementPlaceholder />
       </div>
     </AppShell>
+  );
+}
+
+function DashboardLedgerActions() {
+  return (
+    <section className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-ledger-teal">小岛流水</p>
+          <h2 className="mt-2 text-lg font-semibold text-ledger-ink">从这里继续整理账本</h2>
+          <p className="mt-1 text-sm leading-6 text-ledger-muted">
+            看看这个月已经记下的流水，或者把刚发生的一笔支出放进同一本小账本。
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
+          <IslandLink
+            href="/records"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-[#fffdf3] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+          >
+            <ReceiptText aria-hidden="true" size={18} />
+            查看流水
+          </IslandLink>
+          <IslandLink
+            href="/records/new"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+          >
+            <PlusCircle aria-hidden="true" size={18} />
+            记一笔支出
+          </IslandLink>
+        </div>
+      </div>
+    </section>
   );
 }
 
