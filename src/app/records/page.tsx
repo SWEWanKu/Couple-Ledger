@@ -3,6 +3,8 @@ import {
   AlertCircle,
   ArrowLeft,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   Plus,
   ReceiptText,
@@ -22,12 +24,20 @@ import {
 } from "@/lib/ledger/list-records";
 import { createClient } from "@/lib/supabase/server";
 
+type RecordsPageProps = {
+  searchParams?: Promise<{
+    month?: string | string[];
+  }>;
+};
+
 type HouseholdMembershipRow = {
   household_id: string;
   role: string;
 };
 
-export default async function RecordsPage() {
+export default async function RecordsPage({ searchParams }: RecordsPageProps) {
+  const params = searchParams ? await searchParams : {};
+  const selectedMonth = getSingleParam(params.month);
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary: householdSummary, warning: householdWarning } =
     await getDashboardHouseholdSummary(supabase, {
@@ -42,7 +52,8 @@ export default async function RecordsPage() {
     householdId: membership.household_id,
     currentUserId: user.id,
     categories: householdSummary.categories,
-    members: householdSummary.members
+    members: householdSummary.members,
+    month: selectedMonth
   });
 
   return (
@@ -81,7 +92,7 @@ export default async function RecordsPage() {
                   </Title>
                 </div>
                 <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
-                  这里只读本月真实账本记录，最多显示 50 条。分摊明细、结算、编辑和删除会在后续功能里单独接入。
+                  这里只读 {range.monthLabel} 的真实账本记录，最多显示 50 条。分摊明细、结算、编辑和删除会在后续功能里单独接入。
                 </p>
               </div>
               <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_7px_0_#5fb89f]">
@@ -90,6 +101,8 @@ export default async function RecordsPage() {
             </div>
 
             <Divider type="wave-yellow" className="my-6" />
+
+            <MonthNavigator range={range} />
 
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div className="flex flex-wrap gap-3">
@@ -106,12 +119,43 @@ export default async function RecordsPage() {
             {recordsWarning ? <PageNotice message={recordsWarning} /> : null}
 
             <div className="mt-6">
-              {records.length > 0 ? <RecordsList records={records} /> : <EmptyRecordsState />}
+              {records.length > 0 ? (
+                <RecordsList records={records} />
+              ) : (
+                <EmptyRecordsState monthLabel={range.monthLabel} />
+              )}
             </div>
           </Card>
         </div>
       </AppShell>
     </Cursor>
+  );
+}
+
+function MonthNavigator({ range }: { range: RecordsMonthRange }) {
+  return (
+    <div className="mb-5 grid gap-3 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+      <IslandLink
+        href={getRecordsMonthHref(range.previousMonth)}
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+      >
+        <ChevronLeft aria-hidden="true" size={17} />
+        上个月
+      </IslandLink>
+      <div className="rounded-[22px] bg-white px-4 py-3 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+          Selected Month
+        </p>
+        <p className="mt-1 text-xl font-black text-[#794f27]">{range.monthLabel}</p>
+      </div>
+      <IslandLink
+        href={getRecordsMonthHref(range.nextMonth)}
+        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+      >
+        下个月
+        <ChevronRight aria-hidden="true" size={17} />
+      </IslandLink>
+    </div>
   );
 }
 
@@ -209,7 +253,7 @@ function RecordsList({ records }: { records: LedgerRecord[] }) {
   );
 }
 
-function EmptyRecordsState() {
+function EmptyRecordsState({ monthLabel }: { monthLabel: string }) {
   return (
     <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-8 text-center">
       <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
@@ -217,7 +261,7 @@ function EmptyRecordsState() {
       </span>
       <h2 className="mt-5 text-2xl font-black text-[#794f27]">这个月还没有记录</h2>
       <p className="mx-auto mt-3 max-w-lg text-sm font-bold leading-7 text-[#725d42]">
-        账本列表已经接上 Supabase。等有支出写入后，这里会按日期把最近的流水排出来。
+        {monthLabel} 还没有支出流水。等有支出写入后，这里会按日期把最近的记录排出来。
       </p>
       <IslandLink
         href="/records/new"
@@ -274,6 +318,18 @@ function PageNotice({ message }: { message: string }) {
 
 function formatRangeLabel(range: RecordsMonthRange) {
   return `${range.monthStart} 至 ${range.nextMonthStart}`;
+}
+
+function getRecordsMonthHref(month: string) {
+  return `/records?month=${month}`;
+}
+
+function getSingleParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value ?? null;
 }
 
 function formatEntryType(entryType: LedgerRecord["entryType"]) {

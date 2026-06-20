@@ -22,8 +22,12 @@ export type LedgerRecord = {
 };
 
 export type RecordsMonthRange = {
+  month: string;
+  monthLabel: string;
   monthStart: string;
   nextMonthStart: string;
+  previousMonth: string;
+  nextMonth: string;
 };
 
 export type LedgerRecordsResult = {
@@ -37,6 +41,7 @@ type LedgerRecordsInput = {
   currentUserId: string;
   categories: DashboardCategory[];
   members: DashboardHouseholdMember[];
+  month?: string | null;
   now?: Date;
 };
 
@@ -57,9 +62,9 @@ const uncategorizedName = "未分类";
 
 export async function getLedgerRecords(
   supabase: SupabaseClient,
-  { householdId, currentUserId, categories, members, now = new Date() }: LedgerRecordsInput
+  { householdId, currentUserId, categories, members, month, now = new Date() }: LedgerRecordsInput
 ): Promise<LedgerRecordsResult> {
-  const range = getCurrentMonthRange(now);
+  const range = getRecordsMonthRange(month, now);
   const { data, error } = await supabase
     .from("ledger_entries")
     .select("id, amount, entry_type, category_id, paid_by, split_mode, occurred_on, note, created_at")
@@ -90,13 +95,41 @@ export async function getLedgerRecords(
 }
 
 export function getCurrentMonthRange(now: Date = new Date()): RecordsMonthRange {
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return getRecordsMonthRange(null, now);
+}
+
+export function getRecordsMonthRange(
+  month: string | null | undefined,
+  now: Date = new Date()
+): RecordsMonthRange {
+  const monthKey = normalizeRecordsMonth(month) ?? formatMonthKey(now);
+  const [year, monthNumber] = monthKey.split("-").map(Number);
+  const monthStart = createLocalMonthDate(year, monthNumber - 1);
+  const nextMonthStart = createLocalMonthDate(year, monthNumber);
+  const previousMonthStart = createLocalMonthDate(year, monthNumber - 2);
 
   return {
+    month: monthKey,
+    monthLabel: `${year}年${monthNumber}月`,
     monthStart: formatDateOnly(monthStart),
-    nextMonthStart: formatDateOnly(nextMonthStart)
+    nextMonthStart: formatDateOnly(nextMonthStart),
+    previousMonth: formatMonthKey(previousMonthStart),
+    nextMonth: formatMonthKey(nextMonthStart)
   };
+}
+
+export function normalizeRecordsMonth(month: string | null | undefined) {
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return null;
+  }
+
+  const [year, monthNumber] = month.split("-").map(Number);
+
+  if (year < 1 || year > 9999 || monthNumber < 1 || monthNumber > 12) {
+    return null;
+  }
+
+  return `${String(year).padStart(4, "0")}-${String(monthNumber).padStart(2, "0")}`;
 }
 
 export function getSplitModeLabel(splitMode: LedgerRecordSplitMode) {
@@ -165,9 +198,24 @@ function toAmount(value: number | string) {
 }
 
 function formatDateOnly(date: Date) {
-  const year = date.getFullYear();
+  const year = String(date.getFullYear()).padStart(4, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function formatMonthKey(date: Date) {
+  const year = String(date.getFullYear()).padStart(4, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${year}-${month}`;
+}
+
+function createLocalMonthDate(year: number, monthIndex: number) {
+  const date = new Date(0, 0, 1);
+  date.setFullYear(year, monthIndex, 1);
+  date.setHours(0, 0, 0, 0);
+
+  return date;
 }
