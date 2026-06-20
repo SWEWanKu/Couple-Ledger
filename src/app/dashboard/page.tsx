@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, Clock3, LockKeyhole } from "lucide-react";
+import { AlertCircle, Clock3 } from "lucide-react";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatCard } from "@/components/StatCard";
 import { dashboardStats, mockDataNotice, pendingBills, recentBills } from "@/lib/dashboard-mock";
@@ -24,7 +23,7 @@ export default async function DashboardPage() {
     .maybeSingle();
 
   if (membershipError || !membership) {
-    return <DashboardBlockedState />;
+    redirect("/not-invited");
   }
 
   return (
@@ -101,41 +100,6 @@ export default async function DashboardPage() {
           </div>
         </section>
       </div>
-    </AppShell>
-  );
-}
-
-function DashboardBlockedState() {
-  return (
-    <AppShell title="共同账本看板" subtitle="需要先成为共同小岛成员，才能查看看板。">
-      <section className="rounded-md border border-ledger-line bg-ledger-panel p-6 shadow-panel">
-        <div className="grid gap-5 md:grid-cols-[auto_1fr] md:items-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full border border-ledger-line bg-ledger-paper text-ledger-teal shadow-panel">
-            <LockKeyhole aria-hidden="true" size={30} />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-ledger-teal">Island Notice</p>
-            <h1 className="mt-2 text-2xl font-bold text-ledger-ink">还没有登上共同小岛</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-ledger-muted">
-              这个账号还没有被加入 99岛，请确认邮箱是否正确，或让管理员完成初始化。
-            </p>
-          </div>
-        </div>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            href="/login"
-            className="rounded-md bg-ledger-teal px-4 py-2 text-sm font-semibold text-white shadow-panel transition hover:-translate-y-0.5"
-          >
-            返回登录页
-          </Link>
-          <Link
-            href="/"
-            className="rounded-md border border-ledger-line bg-ledger-paper px-4 py-2 text-sm font-semibold text-ledger-ink transition hover:-translate-y-0.5"
-          >
-            回到首页
-          </Link>
-        </div>
-      </section>
     </AppShell>
   );
 }
