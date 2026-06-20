@@ -30,6 +30,26 @@ function isEmailLike(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function getSafeErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    const message = error.message.trim();
+
+    if (message && message !== "{}") {
+      return message;
+    }
+  }
+
+  if (typeof error === "string") {
+    const message = error.trim();
+
+    if (message && message !== "{}") {
+      return message;
+    }
+  }
+
+  return fallback;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -110,7 +130,7 @@ export default function LoginPage() {
     } catch (error) {
       setStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "验证码寄送失败，请稍后再试。"
+        message: getSafeErrorMessage(error, "验证码寄送失败，请稍后再试。")
       });
     } finally {
       setIsSendingOtp(false);
@@ -157,7 +177,7 @@ export default function LoginPage() {
     } catch (error) {
       setStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "验证码验证失败，请检查后再试。"
+        message: getSafeErrorMessage(error, "验证码验证失败，请检查后再试。")
       });
     } finally {
       setIsVerifyingOtp(false);
