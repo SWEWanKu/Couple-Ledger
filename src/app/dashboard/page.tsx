@@ -1,0 +1,83 @@
+import { AlertCircle, Clock3 } from "lucide-react";
+import { AppShell } from "@/components/layout/AppShell";
+import { StatCard } from "@/components/StatCard";
+import { dashboardStats, mockDataNotice, pendingBills, recentBills } from "@/lib/dashboard-mock";
+
+export default function DashboardPage() {
+  return (
+    <AppShell title="共同账本看板" subtitle="电脑端优先布局：左侧导航、顶部栏和主内容区已就位。">
+      <div className="grid gap-6">
+        <section className="rounded-md border border-ledger-line bg-ledger-panel px-4 py-3 text-sm text-ledger-muted">
+          <div className="flex items-center gap-2">
+            <AlertCircle aria-hidden="true" size={17} className="text-ledger-coral" />
+            <span>{mockDataNotice}</span>
+          </div>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
+          {dashboardStats.map((stat) => (
+            <StatCard key={stat.label} stat={stat} />
+          ))}
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-ledger-ink">待确认账单</h2>
+                <p className="mt-1 text-sm text-ledger-muted">Mock/fallback 列表，仅展示状态区域。</p>
+              </div>
+              <span className="rounded-md bg-ledger-paper px-3 py-1 text-sm font-semibold text-ledger-coral">{pendingBills.length} 条</span>
+            </div>
+
+            <div className="mt-5 grid gap-3">
+              {pendingBills.map((bill) => (
+                <article key={bill.id} className="grid grid-cols-[1fr_auto] gap-4 rounded-md border border-ledger-line bg-ledger-paper p-4">
+                  <div>
+                    <p className="font-semibold text-ledger-ink">{bill.title}</p>
+                    <p className="mt-1 text-sm text-ledger-muted">
+                      {bill.payer} · {bill.date}
+                    </p>
+                  </div>
+                  <p className="text-right text-base font-semibold text-ledger-ink">{bill.amount}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-ledger-ink">最近账单</h2>
+                <p className="mt-1 text-sm text-ledger-muted">后续接入真实账单后替换这里的数据源。</p>
+              </div>
+              <Clock3 aria-hidden="true" className="text-ledger-teal" size={20} />
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-md border border-ledger-line">
+              <div className="grid grid-cols-[1.3fr_0.8fr_0.7fr_0.8fr_0.5fr] bg-ledger-paper px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-ledger-muted">
+                <span>项目</span>
+                <span>付款人</span>
+                <span>归属</span>
+                <span className="text-right">金额</span>
+                <span className="text-right">日期</span>
+              </div>
+              {recentBills.map((bill) => (
+                <div
+                  key={bill.id}
+                  className="grid grid-cols-[1.3fr_0.8fr_0.7fr_0.8fr_0.5fr] border-t border-ledger-line px-4 py-3 text-sm text-ledger-ink"
+                >
+                  <span className="font-medium">{bill.title}</span>
+                  <span className="text-ledger-muted">{bill.payer}</span>
+                  <span className="text-ledger-muted">{bill.share}</span>
+                  <span className="text-right font-semibold">{bill.amount}</span>
+                  <span className="text-right text-ledger-muted">{bill.date}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </AppShell>
+  );
+}
