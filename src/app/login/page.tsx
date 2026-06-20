@@ -1,6 +1,10 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowLeft, HeartHandshake, LockKeyhole, Mail, Send, Sparkles } from "lucide-react";
 import { Button, Card, Divider, Footer, Icon, Title, Wallet } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
+import { createClient } from "@/lib/supabase/client";
 
 const leaves = [
   "left-[8%] top-[17%] rotate-[-24deg] bg-[#6fba2c]/45",
@@ -11,7 +15,79 @@ const leaves = [
 
 const accessNotes = ["约定邮箱", "双人小岛", "不开放注册"] as const;
 
+type FormStatus = {
+  type: "idle" | "success" | "error";
+  message: string;
+};
+
+const initialStatus: FormStatus = {
+  type: "idle",
+  message: "输入约定好的邮箱，我们会寄出一封小岛通行信。"
+};
+
+function isEmailLike(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [status, setStatus] = useState<FormStatus>(initialStatus);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get("error") === "auth_callback_failed") {
+      setStatus({
+        type: "error",
+        message: "通行信验证失败，请重新发送一封新的通行信。"
+      });
+    }
+  }, []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail) {
+      setStatus({ type: "error", message: "请输入约定邮箱。" });
+      return;
+    }
+
+    if (!isEmailLike(normalizedEmail)) {
+      setStatus({ type: "error", message: "请输入有效的邮箱地址。" });
+      return;
+    }
+
+    setIsSending(true);
+    setStatus(initialStatus);
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
+          shouldCreateUser: false
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setStatus({ type: "success", message: "通行信已经寄出，请去邮箱查收" });
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "通行信寄送失败，请稍后再试。"
+      });
+    } finally {
+      setIsSending(false);
+    }
+  }
+
   return (
     <main
       className="relative min-h-screen overflow-hidden bg-[#7DC395] px-3 py-4 text-[#794f27] sm:px-6 lg:px-8"
@@ -85,7 +161,7 @@ export default function LoginPage() {
 
                   <Divider type="wave-yellow" className="my-5" />
 
-                  <form className="grid gap-4" aria-label="小岛账本登录占位表单">
+                  <form className="grid gap-4" aria-label="小岛账本登录表单" onSubmit={handleSubmit} noValidate>
                     <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-email">
                       邮箱
                     </label>
@@ -98,18 +174,42 @@ export default function LoginPage() {
                       <input
                         id="login-email"
                         type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
                         placeholder="you@example.com"
+                        disabled={isSending}
+                        aria-invalid={status.type === "error"}
+                        aria-describedby="login-email-status"
                         className="h-14 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] pl-12 pr-4 text-sm font-bold text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25"
                       />
                     </div>
 
-                    <Button type="primary" size="large" htmlType="button" block icon={<Send aria-hidden="true" size={18} />}>
-                      发送小岛通行信
+                    <Button
+                      type="primary"
+                      size="large"
+                      htmlType="submit"
+                      block
+                      loading={isSending}
+                      disabled={isSending}
+                      icon={<Send aria-hidden="true" size={18} />}
+                    >
+                      {isSending ? "正在寄出通行信..." : "发送小岛通行信"}
                     </Button>
                   </form>
 
-                  <div className="mt-5 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/75 px-4 py-3 text-xs font-black leading-6 text-[#9f927d]">
-                    真正登录功能将在接入 Supabase 后启用
+                  <div
+                    id="login-email-status"
+                    role={status.type === "error" ? "alert" : "status"}
+                    aria-live="polite"
+                    className={`mt-5 rounded-[24px] border-2 border-dashed px-4 py-3 text-xs font-black leading-6 ${
+                      status.type === "success"
+                        ? "border-[#82d5bb] bg-[#e6f6ee] text-[#2f7a5a]"
+                        : status.type === "error"
+                          ? "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+                          : "border-[#d9c49b] bg-white/75 text-[#9f927d]"
+                    }`}
+                  >
+                    {status.message}
                   </div>
                 </Card>
 
