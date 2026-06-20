@@ -30,20 +30,57 @@ function isEmailLike(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function getSafeErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) {
-    const message = error.message.trim();
+function getErrorText(error: unknown, key: "code" | "message") {
+  if (typeof error !== "object" || error === null || !(key in error)) {
+    return "";
+  }
 
-    if (message && message !== "{}") {
-      return message;
-    }
+  const value = (error as Record<string, unknown>)[key];
+
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function getErrorStatus(error: unknown) {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return 0;
+  }
+
+  const value = (error as Record<string, unknown>).status;
+
+  return typeof value === "number" ? value : 0;
+}
+
+function getSafeErrorMessage(error: unknown, fallback: string, serverErrorMessage = "认证服务暂时不可用，请稍后再试。") {
+  const code = getErrorText(error, "code");
+  const message = error instanceof Error ? error.message.trim() : getErrorText(error, "message");
+  const normalizedMessage = message.toLowerCase();
+  const status = getErrorStatus(error);
+
+  if (
+    status >= 500 ||
+    code === "unexpected_failure" ||
+    normalizedMessage.includes("error sending magic link email")
+  ) {
+    return serverErrorMessage;
+  }
+
+  if (code === "signup_disabled" || normalizedMessage.includes("signups not allowed")) {
+    return "这个邮箱还没有创建为可登录用户，请先在 Supabase Auth 用户列表中加入它。";
+  }
+
+  if (normalizedMessage.includes("rate limit") || normalizedMessage.includes("too many")) {
+    return "验证码发送太频繁，请稍等一分钟后再试。";
+  }
+
+  if (message && message !== "{}") {
+    return message;
   }
 
   if (typeof error === "string") {
-    const message = error.trim();
+    const text = error.trim();
 
-    if (message && message !== "{}") {
-      return message;
+    if (text && text !== "{}") {
+      return text;
     }
   }
 
@@ -130,7 +167,11 @@ export default function LoginPage() {
     } catch (error) {
       setStatus({
         type: "error",
-        message: getSafeErrorMessage(error, "验证码寄送失败，请稍后再试。")
+        message: getSafeErrorMessage(
+          error,
+          "验证码寄送失败，请稍后再试。",
+          "邮件服务暂时不可用，请检查 Supabase 的 SMTP、邮件模板或默认邮件额度。"
+        )
       });
     } finally {
       setIsSendingOtp(false);
