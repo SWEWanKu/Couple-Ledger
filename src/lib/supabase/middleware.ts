@@ -1,22 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-function getSupabaseConfig() {
+export async function updateSession(request: NextRequest): Promise<NextResponse> {
+  let response = NextResponse.next({ request });
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabasePublishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!supabaseUrl || !supabasePublishableKey) {
-    throw new Error(
-      "Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-    );
+    // Allow public pages to render during local setup before Supabase env vars exist.
+    return response;
   }
-
-  return { supabaseUrl, supabasePublishableKey };
-}
-
-export async function updateSession(request: NextRequest): Promise<NextResponse> {
-  let response = NextResponse.next({ request });
-  const { supabaseUrl, supabasePublishableKey } = getSupabaseConfig();
 
   const supabase = createServerClient(supabaseUrl, supabasePublishableKey, {
     cookies: {
