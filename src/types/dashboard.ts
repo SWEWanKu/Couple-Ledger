@@ -26,3 +26,43 @@ export type DashboardHouseholdSummaryResult = {
   summary: DashboardHouseholdSummary;
   warning: string | null;
 };
+
+export type DashboardLedgerEntryType = "expense" | "income";
+
+export type DashboardRecentRecord = {
+  id: string;
+  entryType: DashboardLedgerEntryType;
+  amount: number;
+  note: string | null;
+  categoryId: string | null;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  paidBy: string;
+  occurredOn: string;
+};
+
+export type DashboardCategoryBreakdownItem = {
+  categoryId: string | null;
+  categoryName: string;
+  categoryIcon: string | null;
+  categoryColor: string | null;
+  expenseTotal: number;
+  recordCount: number;
+};
+
+export type DashboardLedgerSummary = {
+  monthStart: string;
+  nextMonthStart: string;
+  expenseTotal: number;
+  incomeTotal: number;
+  balance: number;
+  entryCount: number;
+  recentRecords: DashboardRecentRecord[];
+  categoryBreakdown: DashboardCategoryBreakdownItem[];
+};
+
+export type DashboardLedgerSummaryResult = {
+  summary: DashboardLedgerSummary;
+  warning: string | null;
+};
