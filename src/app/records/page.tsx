@@ -134,27 +134,58 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
 
 function MonthNavigator({ range }: { range: RecordsMonthRange }) {
   return (
-    <div className="mb-5 grid gap-3 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
-      <IslandLink
-        href={getRecordsMonthHref(range.previousMonth)}
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-      >
-        <ChevronLeft aria-hidden="true" size={17} />
-        上个月
-      </IslandLink>
-      <div className="rounded-[22px] bg-white px-4 py-3 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
-        <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-          Selected Month
-        </p>
-        <p className="mt-1 text-xl font-black text-[#794f27]">{range.monthLabel}</p>
+    <div className="mb-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3">
+      <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+        <IslandLink
+          href={getRecordsMonthHref(range.previousMonth)}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          <ChevronLeft aria-hidden="true" size={17} />
+          上个月
+        </IslandLink>
+        <div className="rounded-[22px] bg-white px-4 py-3 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            Selected Month
+          </p>
+          <p className="mt-1 text-xl font-black text-[#794f27]">{range.monthLabel}</p>
+        </div>
+        <IslandLink
+          href={getRecordsMonthHref(range.nextMonth)}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+        >
+          下个月
+          <ChevronRight aria-hidden="true" size={17} />
+        </IslandLink>
       </div>
-      <IslandLink
-        href={getRecordsMonthHref(range.nextMonth)}
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-      >
-        下个月
-        <ChevronRight aria-hidden="true" size={17} />
-      </IslandLink>
+      <div className="mt-3 grid gap-3 rounded-[22px] bg-white px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)] md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+        <p className="text-center text-xs font-black uppercase tracking-[0.14em] text-[#9f927d] md:text-left">
+          按月份查看
+        </p>
+        <form action="/records" method="get" className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <label className="sr-only" htmlFor="records-month">
+            按月份查看
+          </label>
+          <input
+            id="records-month"
+            name="month"
+            type="month"
+            defaultValue={range.month}
+            className="min-h-11 min-w-0 flex-1 rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[inset_0_2px_0_rgba(121,79,39,0.08)] outline-none focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/20"
+          />
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+          >
+            查看月份
+          </button>
+        </form>
+        <IslandLink
+          href="/records"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          本月
+        </IslandLink>
+      </div>
     </div>
   );
 }
