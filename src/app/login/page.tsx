@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, HeartHandshake, LockKeyhole, Mail, Send, Sparkles } from "lucide-react";
 import { Button, Card, Divider, Footer, Icon, Title, Wallet } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
@@ -22,7 +23,7 @@ type FormStatus = {
 
 const initialStatus: FormStatus = {
   type: "idle",
-  message: "输入约定好的邮箱，我们会寄出一封小岛通行信。"
+  message: "输入约定好的邮箱，我们会寄出邮箱验证码。"
 };
 
 function isEmailLike(value: string) {
@@ -30,9 +31,15 @@ function isEmailLike(value: string) {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [sentEmail, setSentEmail] = useState("");
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [status, setStatus] = useState<FormStatus>(initialStatus);
+  const isBusy = isSendingOtp || isVerifyingOtp;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -40,27 +47,47 @@ export default function LoginPage() {
     if (params.get("error") === "auth_callback_failed") {
       setStatus({
         type: "error",
-        message: "通行信验证失败，请重新发送一封新的通行信。"
+        message: "验证码验证失败，请重新发送一封新的验证码。"
       });
     }
   }, []);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function handleEmailChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextEmail = event.target.value;
+    setEmail(nextEmail);
 
+    if (isOtpSent && nextEmail.trim() !== sentEmail) {
+      setOtp("");
+      setIsOtpSent(false);
+      setSentEmail("");
+      setStatus(initialStatus);
+    }
+  }
+
+  function validateEmail() {
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail) {
       setStatus({ type: "error", message: "请输入约定邮箱。" });
-      return;
+      return null;
     }
 
     if (!isEmailLike(normalizedEmail)) {
       setStatus({ type: "error", message: "请输入有效的邮箱地址。" });
+      return null;
+    }
+
+    return normalizedEmail;
+  }
+
+  async function handleSendOtp() {
+    const normalizedEmail = validateEmail();
+
+    if (!normalizedEmail) {
       return;
     }
 
-    setIsSending(true);
+    setIsSendingOtp(true);
     setStatus(initialStatus);
 
     try {
@@ -68,7 +95,6 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email: normalizedEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
           shouldCreateUser: false
         }
       });
@@ -77,15 +103,76 @@ export default function LoginPage() {
         throw error;
       }
 
-      setStatus({ type: "success", message: "通行信已经寄出，请去邮箱查收" });
+      setSentEmail(normalizedEmail);
+      setIsOtpSent(true);
+      setOtp("");
+      setStatus({ type: "success", message: "验证码已经寄出，请去邮箱查收" });
     } catch (error) {
       setStatus({
         type: "error",
-        message: error instanceof Error ? error.message : "通行信寄送失败，请稍后再试。"
+        message: error instanceof Error ? error.message : "验证码寄送失败，请稍后再试。"
       });
     } finally {
-      setIsSending(false);
+      setIsSendingOtp(false);
     }
+  }
+
+  async function handleVerifyOtp() {
+    const normalizedEmail = validateEmail();
+    const normalizedOtp = otp.replace(/\s+/g, "");
+
+    if (!normalizedEmail) {
+      return;
+    }
+
+    if (!normalizedOtp) {
+      setStatus({ type: "error", message: "请输入邮箱验证码。" });
+      return;
+    }
+
+    if (sentEmail && normalizedEmail !== sentEmail) {
+      setStatus({ type: "error", message: "邮箱已修改，请重新发送验证码。" });
+      setIsOtpSent(false);
+      setOtp("");
+      return;
+    }
+
+    setIsVerifyingOtp(true);
+    setStatus({ type: "idle", message: "正在验证邮箱验证码..." });
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.verifyOtp({
+        email: normalizedEmail,
+        token: normalizedOtp,
+        type: "email"
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setStatus({ type: "success", message: "验证成功，正在进入小岛..." });
+      router.push("/dashboard");
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: error instanceof Error ? error.message : "验证码验证失败，请检查后再试。"
+      });
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isOtpSent) {
+      void handleVerifyOtp();
+      return;
+    }
+
+    void handleSendOtp();
   }
 
   return (
@@ -141,7 +228,7 @@ export default function LoginPage() {
                 </Title>
                 <p className="text-xl font-black leading-tight text-[#794f27] sm:text-2xl">小岛账本</p>
                 <p className="max-w-2xl text-sm font-bold leading-7 text-[#725d42] sm:text-base">
-                  输入约定好的邮箱，回到只属于两个人的小岛
+                  输入邮箱验证码，回到只属于两个人的小岛
                 </p>
               </div>
 
@@ -154,7 +241,7 @@ export default function LoginPage() {
                     <div>
                       <p className="text-lg font-black text-[#794f27]">仅限两个人使用，不开放注册</p>
                       <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-                        这里先放一封小岛通行信的样子，真正登录功能将在接入 Supabase 后启用
+                        QQ 邮箱可能会在不同页面打开链接，复制邮件里的验证码回来填写会更稳。
                       </p>
                     </div>
                   </div>
@@ -175,26 +262,74 @@ export default function LoginPage() {
                         id="login-email"
                         type="email"
                         value={email}
-                        onChange={(event) => setEmail(event.target.value)}
+                        onChange={handleEmailChange}
                         placeholder="you@example.com"
-                        disabled={isSending}
+                        disabled={isBusy}
                         aria-invalid={status.type === "error"}
                         aria-describedby="login-email-status"
                         className="h-14 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] pl-12 pr-4 text-sm font-bold text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25"
                       />
                     </div>
 
+                    {isOtpSent ? (
+                      <div className="grid gap-2">
+                        <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-otp">
+                          邮箱验证码
+                        </label>
+                        <div className="relative">
+                          <LockKeyhole
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#9f927d]"
+                            size={18}
+                          />
+                          <input
+                            id="login-otp"
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            value={otp}
+                            onChange={(event) => setOtp(event.target.value)}
+                            placeholder="123456"
+                            disabled={isBusy}
+                            aria-invalid={status.type === "error"}
+                            aria-describedby="login-email-status"
+                            className="h-14 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] pl-12 pr-4 text-center text-lg font-black tracking-[0.24em] text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
                     <Button
                       type="primary"
                       size="large"
                       htmlType="submit"
                       block
-                      loading={isSending}
-                      disabled={isSending}
+                      loading={isOtpSent ? isVerifyingOtp : isSendingOtp}
+                      disabled={isBusy}
                       icon={<Send aria-hidden="true" size={18} />}
                     >
-                      {isSending ? "正在寄出通行信..." : "发送小岛通行信"}
+                      {isOtpSent
+                        ? isVerifyingOtp
+                          ? "正在验证邮箱验证码..."
+                          : "验证并进入小岛"
+                        : isSendingOtp
+                          ? "正在发送邮箱验证码..."
+                          : "发送邮箱验证码"}
                     </Button>
+
+                    {isOtpSent ? (
+                      <Button
+                        type="dashed"
+                        size="middle"
+                        htmlType="button"
+                        block
+                        loading={isSendingOtp}
+                        disabled={isBusy}
+                        onClick={() => void handleSendOtp()}
+                      >
+                        重新发送验证码
+                      </Button>
+                    ) : null}
                   </form>
 
                   <div
@@ -210,6 +345,11 @@ export default function LoginPage() {
                     }`}
                   >
                     {status.message}
+                    {isOtpSent ? (
+                      <span className="mt-2 block text-[#725d42]">
+                        如果 QQ 邮箱没有自动跳回浏览器，请复制验证码回到这里填写。
+                      </span>
+                    ) : null}
                   </div>
                 </Card>
 
@@ -217,9 +357,9 @@ export default function LoginPage() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#9f927d]">Private Dock</p>
-                      <h2 className="mt-2 text-3xl font-black text-[#794f27]">小岛通行证</h2>
+                      <h2 className="mt-2 text-3xl font-black text-[#794f27]">邮箱验证码</h2>
                       <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-                        像一张放在码头边的便签，只提醒入口规则，不展示真实账本。
+                        像一张放在码头边的便签，只验证邮箱暗号，不展示真实账本。
                       </p>
                     </div>
                     <Wallet value="2 人" size="small" />
