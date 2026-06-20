@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "animal-island-ui/style";
 import "./globals.css";
+import { IslandTransitionProvider } from "@/components/IslandTransitionProvider";
 
 export const metadata: Metadata = {
   title: "Couple Ledger",
@@ -14,7 +15,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <IslandTransitionProvider>{children}</IslandTransitionProvider>
+      </body>
     </html>
   );
 }

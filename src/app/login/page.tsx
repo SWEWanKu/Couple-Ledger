@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { ArrowLeft, HeartHandshake, LockKeyhole, Mail, Send, Sparkles } from "lucide-react";
 import { Button, Card, Divider, Footer, Icon, Title, Wallet } from "animal-island-ui";
+import { IslandLink } from "@/components/IslandLink";
 
 const leaves = [
   "left-[8%] top-[17%] rotate-[-24deg] bg-[#6fba2c]/45",
@@ -45,13 +45,13 @@ export default function LoginPage() {
             <div aria-hidden="true" className="absolute -right-3 bottom-24 h-10 w-10 rounded-full bg-[#82d5bb] shadow-[0_5px_0_rgba(121,79,39,0.12)] sm:-right-6 sm:h-14 sm:w-14" />
 
             <div className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[rgb(247,243,223)] px-4 py-6 shadow-[inset_0_0_0_6px_rgba(255,255,255,0.42)] sm:rounded-[38px] sm:px-7 lg:px-10">
-              <Link
+              <IslandLink
                 href="/"
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm font-black text-[#9f927d] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:text-[#794f27] hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
               >
                 <ArrowLeft aria-hidden="true" size={17} />
                 返回首页
-              </Link>
+              </IslandLink>
 
               <div className="mt-5 flex flex-col items-center gap-3 text-center">
                 <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#9f927d] shadow-[0_5px_0_rgba(121,79,39,0.12)]">

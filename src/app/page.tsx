@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   ArrowRight,
   Coffee,
@@ -12,6 +11,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { Card, Cursor, Divider, Footer, Icon, Title, Wallet } from "animal-island-ui";
+import { IslandLink } from "@/components/IslandLink";
 
 const features = [
   {
@@ -133,13 +133,13 @@ export default function HomePage() {
                     <Divider type="wave-yellow" className="my-5" />
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <Link
+                      <IslandLink
                         href="/login"
                         className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#19c8b9] px-6 py-3 text-sm font-black text-white shadow-[0_7px_0_#0d9d92] transition hover:-translate-y-0.5 hover:shadow-[0_9px_0_#0d9d92] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/30"
                       >
                         进入登录页
                         <ArrowRight aria-hidden="true" size={18} />
-                      </Link>
+                      </IslandLink>
                       <span className="inline-flex -rotate-1 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-white/80 px-4 py-3 text-xs font-black text-[#9f927d] sm:justify-start">
                         <LockKeyhole aria-hidden="true" size={16} />
                         仅限两个人使用，不开放注册
