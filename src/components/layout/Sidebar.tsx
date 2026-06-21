@@ -18,8 +18,8 @@ export function Sidebar() {
             <HeartHandshake aria-hidden="true" size={22} />
           </span>
           <span>
-            <span className="block text-base font-semibold tracking-normal">Couple Ledger</span>
-            <span className="mt-1 block text-xs text-white/58">共同账本骨架</span>
+            <span className="block text-base font-semibold tracking-normal">小岛账本</span>
+            <span className="mt-1 block text-xs text-white/58">只给两个人的小岛流水</span>
           </span>
         </Link>
       </div>
@@ -42,7 +42,7 @@ export function Sidebar() {
 
       <div className="m-4 rounded-md border border-white/12 bg-white/[0.06] p-4">
         <p className="text-xs font-semibold uppercase tracking-[0.08em] text-white/48">Status</p>
-        <p className="mt-2 text-sm text-white/78">Supabase 仅预留环境变量，当前页面使用 mock/fallback 数据。</p>
+        <p className="mt-2 text-sm text-white/78">Supabase Auth/RLS 已接入，页面按当前小岛读取账本数据。</p>
       </div>
     </aside>
   );

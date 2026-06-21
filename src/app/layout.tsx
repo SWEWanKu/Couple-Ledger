@@ -4,8 +4,8 @@ import "./globals.css";
 import { IslandTransitionProvider } from "@/components/IslandTransitionProvider";
 
 export const metadata: Metadata = {
-  title: "Couple Ledger",
-  description: "A desktop-first shared ledger skeleton for couples."
+  title: "小岛账本",
+  description: "只属于两个人的私密小岛账本。"
 };
 
 export default function RootLayout({

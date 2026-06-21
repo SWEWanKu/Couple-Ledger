@@ -240,7 +240,7 @@ function RecordsList({ records }: { records: LedgerRecord[] }) {
       <div className="grid grid-cols-[1fr_auto] gap-4 border-b-2 border-[#ead9b8] px-5 py-4 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d] sm:grid-cols-[1.2fr_0.6fr_0.8fr_0.7fr]">
         <span>账单</span>
         <span className="hidden sm:block">分类</span>
-        <span className="hidden sm:block">经手</span>
+        <span className="hidden sm:block">经手人</span>
         <span className="text-right">金额</span>
       </div>
       <div className="divide-y-2 divide-[#ead9b8]">
