@@ -10,6 +10,7 @@ import {
   ReceiptText,
   Split,
   Tags,
+  Trash2,
   UserRound
 } from "lucide-react";
 import { Card, Cursor, Divider, Icon, Title } from "animal-island-ui";
@@ -34,6 +35,10 @@ type HouseholdMembershipRow = {
   household_id: string;
   role: string;
 };
+
+function isDevCleanupEnabled() {
+  return process.env.NODE_ENV !== "production" && process.env.ENABLE_DEV_LOGIN === "true";
+}
 
 export default async function RecordsPage({ searchParams }: RecordsPageProps) {
   const params = searchParams ? await searchParams : {};
@@ -71,13 +76,24 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
               <ArrowLeft aria-hidden="true" size={17} />
               回到看板
             </IslandLink>
-            <IslandLink
-              href="/records/new"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-            >
-              <Plus aria-hidden="true" size={18} />
-              记一笔账
-            </IslandLink>
+            <div className="flex flex-wrap items-center gap-3">
+              {isDevCleanupEnabled() ? (
+                <IslandLink
+                  href="/dev-clean-test-records"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d46a5b] bg-[#fff1ed] px-4 py-2 text-sm font-black text-[#9f4f43] shadow-[0_5px_0_rgba(159,79,67,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(159,79,67,0.14)] focus:outline-none focus:ring-4 focus:ring-[#d46a5b]/20"
+                >
+                  <Trash2 aria-hidden="true" size={17} />
+                  清理 Codex 测试记录
+                </IslandLink>
+              ) : null}
+              <IslandLink
+                href="/records/new"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+              >
+                <Plus aria-hidden="true" size={18} />
+                记一笔账
+              </IslandLink>
+            </div>
           </div>
 
           <Card color="default" pattern="app-teal" className="p-5 sm:p-7">
