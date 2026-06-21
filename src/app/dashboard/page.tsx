@@ -108,7 +108,7 @@ function DashboardLedgerActions() {
           <p className="text-sm font-semibold text-ledger-teal">小岛流水</p>
           <h2 className="mt-2 text-lg font-semibold text-ledger-ink">从这里继续整理账本</h2>
           <p className="mt-1 text-sm leading-6 text-ledger-muted">
-            看看这个月已经记下的流水，或者把刚发生的一笔支出放进同一本小账本。
+            看看这个月已经记下的流水，或者把刚发生的一笔账放进同一本小账本。
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
@@ -124,7 +124,7 @@ function DashboardLedgerActions() {
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
           >
             <PlusCircle aria-hidden="true" size={18} />
-            记一笔支出
+            记一笔账
           </IslandLink>
         </div>
       </div>

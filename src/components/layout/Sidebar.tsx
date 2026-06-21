@@ -5,7 +5,7 @@ const navItems = [
   { href: "/", label: "首页", icon: Home },
   { href: "/dashboard", label: "共同看板", icon: LayoutDashboard },
   { href: "/records", label: "流水记录", icon: ReceiptText },
-  { href: "/records/new", label: "记一笔", icon: PlusCircle },
+  { href: "/records/new", label: "记一笔账", icon: PlusCircle },
   { href: "/login", label: "登录", icon: LogIn }
 ];
 

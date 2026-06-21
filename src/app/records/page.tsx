@@ -60,7 +60,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     <Cursor>
       <AppShell
         title={`${householdSummary.householdName} 小岛流水`}
-        subtitle="看看这个月一起记下的支出"
+        subtitle="看看这个月一起记下的账"
       >
         <div className="mx-auto grid max-w-6xl gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -76,7 +76,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
             >
               <Plus aria-hidden="true" size={18} />
-              记一笔支出
+              记一笔账
             </IslandLink>
           </div>
 
@@ -297,14 +297,14 @@ function EmptyRecordsState({ monthLabel }: { monthLabel: string }) {
       </span>
       <h2 className="mt-5 text-2xl font-black text-[#794f27]">这个月还没有记录</h2>
       <p className="mx-auto mt-3 max-w-lg text-sm font-bold leading-7 text-[#725d42]">
-        {monthLabel} 还没有支出流水。等有支出写入后，这里会按日期把最近的记录排出来。
+        {monthLabel} 还没有账单流水。等有记录写入后，这里会按日期把最近的记录排出来。
       </p>
       <IslandLink
         href="/records/new"
         className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
       >
         <Plus aria-hidden="true" size={18} />
-        记第一笔支出
+        记第一笔账
       </IslandLink>
     </div>
   );

@@ -203,7 +203,7 @@ function DetailNav() {
         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
       >
         <Plus aria-hidden="true" size={18} />
-        记一笔支出
+        记一笔账
       </IslandLink>
     </div>
   );
