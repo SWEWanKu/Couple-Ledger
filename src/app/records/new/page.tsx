@@ -14,11 +14,11 @@ import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
-  createExpenseRecord,
-  getCreateExpenseErrorMessage,
-  type ExpenseCategoryOption,
-  type ExpenseMemberOption
-} from "@/lib/ledger/create-expense";
+  createRecord,
+  getCreateRecordErrorMessage,
+  type RecordCategoryOption,
+  type RecordMemberOption
+} from "@/lib/ledger/create-record";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 
@@ -35,18 +35,18 @@ type HouseholdMembershipRow = {
 
 export default async function NewRecordPage({ searchParams }: NewRecordPageProps) {
   const params = searchParams ? await searchParams : {};
-  const errorMessage = getCreateExpenseErrorMessage(getSingleParam(params.error));
+  const errorMessage = getCreateRecordErrorMessage(getSingleParam(params.error));
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary, warning } = await getDashboardHouseholdSummary(supabase, {
     householdId: membership.household_id,
     currentUserId: user.id
   });
   const today = getTodayDateOnly();
-  const canCreateExpense = summary.categories.length > 0 && summary.members.length > 0;
+  const canCreateRecord = summary.categories.length > 0 && summary.members.length > 0;
 
   return (
     <Cursor>
-      <AppShell title={`${summary.householdName} 新增支出`} subtitle="把今天的小岛流水记下来">
+      <AppShell title={`${summary.householdName} 记一笔账`} subtitle="把今天的小岛流水记下来">
         <div className="mx-auto grid max-w-6xl gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <IslandLink
@@ -58,7 +58,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
             </IslandLink>
             <span className="inline-flex items-center gap-2 rounded-full bg-[#e6f6ee] px-4 py-2 text-sm font-black text-[#2f7a5a] shadow-[0_4px_0_rgba(47,122,90,0.12)]">
               <Icon name="icon-map" size={22} bounce />
-              只记录支出
+              支出 / 收入
             </span>
           </div>
 
@@ -71,11 +71,11 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                   </p>
                   <div className="mt-3">
                     <Title size="large" color="app-yellow" style={{ fontSize: 34 }}>
-                      记一笔支出
+                      记一笔账
                     </Title>
                   </div>
                   <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
-                    把今天的小岛流水记下来。当前只开放支出、等分和个人承担，收入和编辑删除会单独接入。
+                    把今天的小岛流水记下来。现在可以记录支出和收入，先保持等分和个人承担这两种分摊方式。
                   </p>
                 </div>
                 <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_7px_0_#5fb89f]">
@@ -88,16 +88,58 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
               {warning ? <FormNotice tone="warning" message={warning} /> : null}
               {errorMessage ? <FormNotice tone="error" message={errorMessage} /> : null}
 
-              {canCreateExpense ? (
-                <form action={saveExpenseAction} className="mt-5 grid gap-5" noValidate>
+              {canCreateRecord ? (
+                <form action={saveRecordAction} className="mt-5 grid gap-5" noValidate>
+                  <fieldset className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4">
+                    <legend className="px-2 text-sm font-black text-[#794f27]">账单类型</legend>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className={radioCardClassName}>
+                        <input
+                          type="radio"
+                          name="entry_type"
+                          value="expense"
+                          defaultChecked
+                          className="h-4 w-4 accent-[#19c8b9]"
+                        />
+                        <span>
+                          <span className="flex items-center gap-2 font-black text-[#794f27]">
+                            <ReceiptText aria-hidden="true" size={17} />
+                            支出
+                          </span>
+                          <span className="mt-1 block text-xs font-bold leading-5 text-[#725d42]">
+                            吃饭、通勤、日常小花费，记成从账本里流出去的钱。
+                          </span>
+                        </span>
+                      </label>
+
+                      <label className={radioCardClassName}>
+                        <input
+                          type="radio"
+                          name="entry_type"
+                          value="income"
+                          className="h-4 w-4 accent-[#19c8b9]"
+                        />
+                        <span>
+                          <span className="flex items-center gap-2 font-black text-[#794f27]">
+                            <Coins aria-hidden="true" size={17} />
+                            收入
+                          </span>
+                          <span className="mt-1 block text-xs font-bold leading-5 text-[#725d42]">
+                            报销、补贴、礼金或其他进账，记成回到小岛的钱。
+                          </span>
+                        </span>
+                      </label>
+                    </div>
+                  </fieldset>
+
                   <div className="grid gap-5 md:grid-cols-2">
                     <FormField
-                      id="expense-amount"
+                      id="record-amount"
                       label="金额"
                       icon={<Coins aria-hidden="true" size={18} />}
                     >
                       <input
-                        id="expense-amount"
+                        id="record-amount"
                         name="amount"
                         type="number"
                         inputMode="decimal"
@@ -110,12 +152,12 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                     </FormField>
 
                     <FormField
-                      id="expense-occurred-on"
+                      id="record-occurred-on"
                       label="日期"
                       icon={<CalendarDays aria-hidden="true" size={18} />}
                     >
                       <input
-                        id="expense-occurred-on"
+                        id="record-occurred-on"
                         name="occurred_on"
                         type="date"
                         required
@@ -125,12 +167,12 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                     </FormField>
 
                     <FormField
-                      id="expense-category"
+                      id="record-category"
                       label="分类"
                       icon={<Tags aria-hidden="true" size={18} />}
                     >
                       <select
-                        id="expense-category"
+                        id="record-category"
                         name="category_id"
                         required
                         defaultValue={summary.categories[0]?.id}
@@ -145,12 +187,12 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                     </FormField>
 
                     <FormField
-                      id="expense-paid-by"
-                      label="付款人"
+                      id="record-paid-by"
+                      label="经手人"
                       icon={<UserRound aria-hidden="true" size={18} />}
                     >
                       <select
-                        id="expense-paid-by"
+                        id="record-paid-by"
                         name="paid_by"
                         required
                         defaultValue={getDefaultPaidBy(summary.members, user.id)}
@@ -194,26 +236,26 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                         <span>
                           <span className="block font-black text-[#794f27]">个人承担</span>
                           <span className="mt-1 block text-xs font-bold leading-5 text-[#725d42]">
-                            只给付款人生成一条分摊记录。
+                            只给经手人生成一条分摊记录。
                           </span>
                         </span>
                       </label>
                     </div>
                   </fieldset>
 
-                  <FormField id="expense-note" label="备注" optional>
+                  <FormField id="record-note" label="备注" optional>
                     <input
-                      id="expense-note"
+                      id="record-note"
                       name="note"
                       type="text"
                       maxLength={80}
-                      placeholder="手动测试支出"
+                      placeholder="手动测试收入"
                       className={inputClassName}
                     />
                   </FormField>
 
                   <Button type="primary" size="large" htmlType="submit" block>
-                    保存这笔支出
+                    保存这笔记录
                   </Button>
                 </form>
               ) : (
@@ -247,7 +289,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                 <div className="mt-4 grid gap-3">
                   <MiniMetric label="成员" value={`${summary.members.length} 人`} />
                   <MiniMetric label="分类" value={`${summary.categories.length} 个`} />
-                  <MiniMetric label="本轮类型" value="支出" />
+                  <MiniMetric label="可记类型" value="支出 / 收入" />
                 </div>
               </Card>
             </aside>
@@ -258,7 +300,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
   );
 }
 
-async function saveExpenseAction(formData: FormData) {
+async function saveRecordAction(formData: FormData) {
   "use server";
 
   const { supabase, user, membership } = await requireHouseholdAccess();
@@ -266,15 +308,15 @@ async function saveExpenseAction(formData: FormData) {
     householdId: membership.household_id,
     currentUserId: user.id
   });
-  const result = await createExpenseRecord(
+  const result = await createRecord(
     supabase,
     {
       householdId: membership.household_id,
       currentUserId: user.id,
-      categories: summary.categories.map<ExpenseCategoryOption>((category) => ({
+      categories: summary.categories.map<RecordCategoryOption>((category) => ({
         id: category.id
       })),
-      members: summary.members.map<ExpenseMemberOption>((member) => ({
+      members: summary.members.map<RecordMemberOption>((member) => ({
         userId: member.userId
       }))
     },
@@ -372,7 +414,7 @@ function BlockedSetupState({
         {hasMembers ? "小岛成员已经准备好。" : "还没有读取到小岛成员。"}
         {hasCategories ? " 分类已经准备好。" : " 还没有读取到分类。"}
       </p>
-      <p className="mt-2">等成员和分类都准备好后，再回来记录第一笔支出。</p>
+      <p className="mt-2">等成员和分类都准备好后，再回来记录第一笔账。</p>
     </div>
   );
 }
