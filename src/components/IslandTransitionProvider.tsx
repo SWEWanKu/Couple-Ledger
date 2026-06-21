@@ -26,6 +26,7 @@ type IslandTransitionContextValue = {
 type TransitionRequest = {
   href: string;
   id: number;
+  sourcePath: string;
   targetPath: string;
 };
 
@@ -99,7 +100,7 @@ export function IslandTransitionProvider({ children }: { children: ReactNode }) 
 
       isTransitioningRef.current = true;
       requestIdRef.current += 1;
-      setRequest({ href, id: requestIdRef.current, targetPath });
+      setRequest({ href, id: requestIdRef.current, sourcePath: pathname, targetPath });
     },
     [pathname]
   );
@@ -115,7 +116,7 @@ export function IslandTransitionProvider({ children }: { children: ReactNode }) 
           href={request.href}
           onDone={finishTransition}
           onNavigate={navigate}
-          routeReady={pathname === request.targetPath}
+          routeReady={pathname === request.targetPath || pathname !== request.sourcePath}
         />
       ) : null}
     </IslandTransitionContext.Provider>

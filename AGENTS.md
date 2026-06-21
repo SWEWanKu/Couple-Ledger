@@ -26,6 +26,27 @@ Tone:
 Main Chinese product name:
 - 小岛账本
 
+## Product layout direction
+
+The private app must not use a RuoYi/admin-dashboard style layout.
+
+Avoid:
+- enterprise admin shell
+- rigid left sidebar + topbar + table panel feel
+- generic SaaS finance dashboard
+- corporate cards and grid-only layout
+
+Prefer:
+- couple scrapbook
+- island notebook
+- handwritten ledger feeling
+- sticker tabs
+- parchment pages
+- washi tape / memo / stamp details
+- soft asymmetric composition
+- playful Animal-Island navigation
+- pages that feel like a shared life journal, not a management system
+
 ## Strict animal-island-ui design contract
 
 For all visible product UI, `animal-island-ui` is the primary and mandatory UI foundation.

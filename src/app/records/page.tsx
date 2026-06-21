@@ -13,7 +13,7 @@ import {
   Trash2,
   UserRound
 } from "lucide-react";
-import { Button, Card, Cursor, Divider, Icon, Title } from "animal-island-ui";
+import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
@@ -62,11 +62,10 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
   });
 
   return (
-    <Cursor>
-      <AppShell
-        title={`${householdSummary.householdName} 小岛流水`}
-        subtitle="看看这个月一起记下的账"
-      >
+    <AppShell
+      title={`${householdSummary.householdName} 小岛流水`}
+      subtitle="看看这个月一起记下的账"
+    >
         <div className="mx-auto grid max-w-6xl gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <IslandLink
@@ -143,8 +142,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
             </div>
           </Card>
         </div>
-      </AppShell>
-    </Cursor>
+    </AppShell>
   );
 }
 

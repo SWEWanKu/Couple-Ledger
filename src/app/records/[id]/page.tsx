@@ -11,7 +11,7 @@ import {
   UserRound,
   WalletCards
 } from "lucide-react";
-import { Card, Cursor, Divider, Icon, Title } from "animal-island-ui";
+import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
@@ -50,27 +50,24 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
 
   if (detail.status === "error") {
     return (
-      <Cursor>
-        <AppShell title={`${summary.householdName} 账单详情`} subtitle="这张账单暂时没有读完整">
+      <AppShell title={`${summary.householdName} 账单详情`} subtitle="这张账单暂时没有读完整">
           <div className="mx-auto grid max-w-4xl gap-6">
             <DetailNav />
             <Card color="default" pattern="app-yellow" className="p-5 sm:p-7">
               <PageNotice message={detail.warning} tone="error" />
             </Card>
           </div>
-        </AppShell>
-      </Cursor>
+      </AppShell>
     );
   }
 
   const record = detail.record;
 
   return (
-    <Cursor>
-      <AppShell
-        title={`${summary.householdName} 账单详情`}
-        subtitle="只读查看这张小岛流水，不会修改任何账本数据。"
-      >
+    <AppShell
+      title={`${summary.householdName} 账单详情`}
+      subtitle="只读查看这张小岛流水，不会修改任何账本数据。"
+    >
         <div className="mx-auto grid max-w-6xl gap-6">
           <DetailNav />
 
@@ -155,8 +152,7 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
 
           <SplitBreakdown record={record} />
         </div>
-      </AppShell>
-    </Cursor>
+    </AppShell>
   );
 }
 

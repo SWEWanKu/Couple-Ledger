@@ -11,9 +11,9 @@ import {
   WalletCards,
   type LucideIcon
 } from "lucide-react";
+import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
-import { StatCard } from "@/components/StatCard";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +25,20 @@ import type {
   DashboardRecentRecord
 } from "@/types/dashboard";
 import type { LedgerStat } from "@/types/ledger";
+
+const statToneClasses: Record<LedgerStat["tone"], string> = {
+  teal: "border-[#82d5bb] bg-[#e9fbf4]",
+  coral: "border-[#f8a6b2] bg-[#fff1ed]",
+  amber: "border-[#f7cd67] bg-[#fff8da]",
+  ink: "border-[#d9c49b] bg-[#fffdf3]"
+};
+
+const statToneIcons: Record<LedgerStat["tone"], "icon-miles" | "icon-shopping" | "icon-chat" | "icon-diy"> = {
+  teal: "icon-shopping",
+  coral: "icon-miles",
+  amber: "icon-chat",
+  ink: "icon-diy"
+};
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -64,28 +78,30 @@ export default async function DashboardPage() {
       title={`${householdSummary.householdName} 账本看板`}
       subtitle={`已通过 ${householdSummary.householdName} 成员检查，当前角色：${formatMemberRole(membership.role)}。`}
     >
-      <div className="grid gap-6">
-        <section className="rounded-md border border-ledger-line bg-ledger-panel px-4 py-3 text-sm text-ledger-muted">
-          <div className="flex items-center gap-2">
-            <WalletCards aria-hidden="true" size={17} className="text-ledger-teal" />
+      <div className="mx-auto grid max-w-6xl gap-6">
+        <Card type="dashed" color="default" className="p-4">
+          <div className="flex flex-wrap items-center gap-3 text-sm font-bold leading-6 text-[#725d42]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_5px_0_#5fb89f]">
+              <WalletCards aria-hidden="true" size={20} />
+            </span>
             <span>账本流水已连接 Supabase，本页只读取本月流水；新增记录和结算会在后续开启。</span>
           </div>
-        </section>
+        </Card>
 
         <DashboardLedgerActions />
 
         <DashboardHouseholdSummaryCard summary={householdSummary} warning={householdSummaryWarning} />
 
         {ledgerSummaryWarning ? (
-          <div className="flex items-center gap-2 rounded-md border border-ledger-line bg-ledger-panel px-4 py-3 text-sm text-ledger-muted">
-            <AlertCircle aria-hidden="true" size={17} className="shrink-0 text-ledger-amber" />
+          <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
+            <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
             <span>{ledgerSummaryWarning}</span>
           </div>
         ) : null}
 
-        <section className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {ledgerStats.map((stat) => (
-            <StatCard key={stat.label} stat={stat} />
+            <LedgerStatSticker key={stat.label} stat={stat} />
           ))}
         </section>
 
@@ -102,12 +118,19 @@ export default async function DashboardPage() {
 
 function DashboardLedgerActions() {
   return (
-    <section className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <Card color="default" pattern="app-teal" className="p-5 sm:p-6">
+      <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-semibold text-ledger-teal">小岛流水</p>
-          <h2 className="mt-2 text-lg font-semibold text-ledger-ink">从这里继续整理账本</h2>
-          <p className="mt-1 text-sm leading-6 text-ledger-muted">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Icon name="icon-chat" size={18} bounce />
+            Island Memo
+          </p>
+          <div className="mt-3">
+            <Title size="middle" color="app-yellow" style={{ fontSize: 22 }}>
+              从这里继续整理账本
+            </Title>
+          </div>
+          <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
             看看这个月已经记下的流水，或者把刚发生的一笔账放进同一本小账本。
           </p>
         </div>
@@ -128,7 +151,7 @@ function DashboardLedgerActions() {
           </IslandLink>
         </div>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -140,15 +163,20 @@ function DashboardHouseholdSummaryCard({
   warning: string | null;
 }) {
   return (
-    <section className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
+    <Card color="default" pattern="app-yellow" className="p-5 sm:p-6">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <p className="text-sm font-semibold text-ledger-teal">小岛资料已连接</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-normal text-ledger-ink">
-            {summary.householdName}
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-ledger-muted">
-            小岛身份资料来自 Supabase；本月流水会按真实账本记录汇总。
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Icon name="icon-map" size={18} bounce />
+            Current Island
+          </p>
+          <div className="mt-3">
+            <Title size="middle" color="app-yellow" style={{ fontSize: 24 }}>
+              {summary.householdName}
+            </Title>
+          </div>
+          <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
+            小岛身份资料来自 Supabase，本月流水会按真实账本记录汇总。
           </p>
         </div>
 
@@ -160,74 +188,87 @@ function DashboardHouseholdSummaryCard({
       </div>
 
       {warning ? (
-        <div className="mt-4 flex items-center gap-2 rounded-md border border-ledger-line bg-ledger-paper px-4 py-3 text-sm text-ledger-muted">
-          <AlertCircle aria-hidden="true" size={17} className="shrink-0 text-ledger-amber" />
+        <div className="mt-4 flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
+          <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
           <span>{warning}</span>
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
-        <div className="rounded-md border border-ledger-line bg-ledger-paper p-4">
-          <p className="text-sm font-semibold text-ledger-ink">岛民</p>
+      <Divider type="dashed-brown" className="my-5" />
+
+      <div className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+        <div className="rounded-[26px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+          <p className="text-sm font-black text-[#794f27]">岛民</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {summary.members.length > 0 ? (
               summary.members.map((member, index) => (
                 <span
                   key={member.userId}
-                  className="rounded-full border border-ledger-line bg-ledger-panel px-3 py-1 text-xs font-semibold text-ledger-muted"
+                  className="rounded-full border border-[#d9c49b] bg-white px-3 py-1 text-xs font-black text-[#725d42]"
                 >
                   {formatMemberLabel(member, index)}
                 </span>
               ))
             ) : (
-              <span className="text-sm text-ledger-muted">暂时没有读取到成员资料。</span>
+              <span className="text-sm font-bold text-[#9f927d]">暂时没有读取到成员资料。</span>
             )}
           </div>
         </div>
 
-        <div className="rounded-md border border-ledger-line bg-ledger-paper p-4">
-          <p className="text-sm font-semibold text-ledger-ink">分类</p>
+        <div className="rounded-[26px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+          <p className="text-sm font-black text-[#794f27]">分类</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {summary.categories.length > 0 ? (
               summary.categories.map((category) => (
                 <CategoryChip key={category.id} category={category} />
               ))
             ) : (
-              <span className="text-sm text-ledger-muted">还没有分类，后续可以再整理小岛账本。</span>
+              <span className="text-sm font-bold text-[#9f927d]">还没有分类，后续可以再整理小岛账本。</span>
             )}
           </div>
         </div>
       </div>
-    </section>
+    </Card>
   );
 }
 
 function CategoryBreakdownCard({ items }: { items: DashboardCategoryBreakdownItem[] }) {
   return (
-    <section className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
-      <div className="flex items-center justify-between gap-4">
+    <Card color="default" pattern="app-orange" className="p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-ledger-ink">分类复盘</h2>
-          <p className="mt-1 text-sm text-ledger-muted">只统计本月真实支出流水。</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            Category Notes
+          </p>
+          <div className="mt-3">
+            <Title size="small" color="app-yellow" style={{ fontSize: 20 }}>
+              分类复盘
+            </Title>
+          </div>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">只统计本月真实支出流水。</p>
         </div>
-        <ChartPie aria-hidden="true" className="text-ledger-teal" size={20} />
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_5px_0_#5fb89f]">
+          <ChartPie aria-hidden="true" size={23} />
+        </span>
       </div>
 
+      <Divider type="dashed-brown" className="my-5" />
+
       {items.length > 0 ? (
-        <div className="mt-5 grid gap-3">
+        <div className="grid gap-3">
           {items.map((item) => (
             <article
               key={item.categoryId ?? "uncategorized"}
-              className="grid grid-cols-[1fr_auto] gap-4 rounded-md border border-ledger-line bg-ledger-paper p-4"
+              className="grid grid-cols-[1fr_auto] gap-4 rounded-[24px] bg-[#fffdf3] px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]"
             >
               <div>
-                <p className="font-semibold text-ledger-ink">
+                <p className="font-black text-[#794f27]">
                   {item.categoryIcon ? `${item.categoryIcon} ` : ""}
                   {item.categoryName}
                 </p>
-                <p className="mt-1 text-sm text-ledger-muted">{item.recordCount} 条支出记录</p>
+                <p className="mt-1 text-sm font-bold text-[#9f927d]">{item.recordCount} 条支出记录</p>
               </div>
-              <p className="text-right text-base font-semibold text-ledger-ink">
+              <p className="text-right text-base font-black text-[#794f27]">
                 {formatMoney(item.expenseTotal)}
               </p>
             </article>
@@ -236,85 +277,94 @@ function CategoryBreakdownCard({ items }: { items: DashboardCategoryBreakdownIte
       ) : (
         <EmptyLedgerState title="这个月还没有分类支出" />
       )}
-    </section>
+    </Card>
   );
 }
 
 function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
   return (
-    <section className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
-      <div className="flex items-center justify-between gap-4">
+    <Card color="default" pattern="app-teal" className="p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-ledger-ink">最近账单</h2>
-          <p className="mt-1 text-sm text-ledger-muted">按本月真实流水日期展示最近 5 条。</p>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            Receipt Stickers
+          </p>
+          <div className="mt-3">
+            <Title size="small" color="app-yellow" style={{ fontSize: 20 }}>
+              最近账单
+            </Title>
+          </div>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">按本月真实流水日期展示最近 5 条。</p>
         </div>
-        <Clock3 aria-hidden="true" className="text-ledger-teal" size={20} />
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f7cd67] text-[#794f27] shadow-[0_5px_0_#d9a43e]">
+          <Clock3 aria-hidden="true" size={23} />
+        </span>
       </div>
 
+      <Divider type="dashed-brown" className="my-5" />
+
       {records.length > 0 ? (
-        <div className="mt-5 overflow-hidden rounded-md border border-ledger-line">
-          <div className="grid grid-cols-[1.3fr_0.7fr_0.8fr_0.8fr_0.6fr] bg-ledger-paper px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-ledger-muted">
-            <span>项目</span>
-            <span>类型</span>
-            <span>分类</span>
-            <span className="text-right">金额</span>
-            <span className="text-right">日期</span>
-          </div>
+        <div className="grid gap-3">
           {records.map((record) => (
-            <div
+            <article
               key={record.id}
-              className="grid grid-cols-[1.3fr_0.7fr_0.8fr_0.8fr_0.6fr] border-t border-ledger-line px-4 py-3 text-sm text-ledger-ink"
+              className="rounded-[24px] bg-[#fffdf3] px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]"
             >
-              <span className="font-medium">{record.note?.trim() || "未命名账单"}</span>
-              <span className="text-ledger-muted">{formatEntryType(record.entryType)}</span>
-              <span className="text-ledger-muted">
-                {record.categoryIcon ? `${record.categoryIcon} ` : ""}
-                {record.categoryName}
-              </span>
-              <span className="text-right font-semibold">{formatMoney(record.amount)}</span>
-              <span className="text-right text-ledger-muted">{formatShortDate(record.occurredOn)}</span>
-            </div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-black text-[#794f27]">
+                    {record.note?.trim() || "未命名账单"}
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-[#9f927d]">
+                    {formatEntryType(record.entryType)} · {record.categoryIcon ? `${record.categoryIcon} ` : ""}
+                    {record.categoryName} · {formatShortDate(record.occurredOn)}
+                  </p>
+                </div>
+                <p className="shrink-0 text-base font-black text-[#794f27]">{formatMoney(record.amount)}</p>
+              </div>
+            </article>
           ))}
         </div>
       ) : (
         <EmptyLedgerState title="这个月还没有记录" />
       )}
-    </section>
+    </Card>
   );
 }
 
 function SettlementPlaceholder() {
   return (
-    <section className="rounded-md border border-ledger-line bg-ledger-panel p-5 shadow-panel">
+    <Card type="dashed" color="default" className="p-5 sm:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-sm font-semibold text-ledger-teal">结算预览</p>
-          <h2 className="mt-2 text-lg font-semibold text-ledger-ink">本轮暂不计算谁该还谁</h2>
-          <p className="mt-1 text-sm leading-6 text-ledger-muted">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Icon name="icon-diy" size={18} bounce />
+            Settlement Preview
+          </p>
+          <h2 className="mt-2 text-lg font-black text-[#794f27]">本轮暂不计算谁该还谁</h2>
+          <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
             这次只验证本月账本流水的只读汇总；结算需要分摊明细，后续单独接入。
           </p>
         </div>
-        <span className="w-fit rounded-md bg-ledger-paper px-3 py-1 text-sm font-semibold text-ledger-muted">
+        <span className="w-fit rounded-full bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#9f927d] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
           暂未开启
         </span>
       </div>
-    </section>
+    </Card>
   );
 }
 
 function EmptyLedgerState({ title }: { title: string }) {
   return (
-    <div className="mt-5 rounded-md border border-dashed border-ledger-line bg-ledger-paper px-4 py-6 text-sm text-ledger-muted">
-      <p className="font-semibold text-ledger-ink">{title}</p>
-      <p className="mt-2 leading-6">
-        下一步可以从新增记录开始，把第一笔小岛流水记下来。
-      </p>
+    <div className="mt-5 rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-6 text-sm font-bold leading-7 text-[#725d42]">
+      <p className="font-black text-[#794f27]">{title}</p>
+      <p className="mt-2">下一步可以从新增记录开始，把第一笔小岛流水记下来。</p>
     </div>
   );
 }
 
 function SummaryMetric({
-  icon: Icon,
+  icon: MetricIcon,
   label,
   value
 }: {
@@ -323,22 +373,38 @@ function SummaryMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-md border border-ledger-line bg-ledger-paper p-4">
-      <div className="flex items-center gap-2 text-sm font-medium text-ledger-muted">
-        <Icon aria-hidden="true" size={17} className="text-ledger-teal" />
+    <div className="rounded-[24px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+      <div className="flex items-center gap-2 text-sm font-black text-[#9f927d]">
+        <MetricIcon aria-hidden="true" size={17} className="text-[#1f7a70]" />
         <span>{label}</span>
       </div>
-      <p className="mt-2 text-lg font-semibold tracking-normal text-ledger-ink">{value}</p>
+      <p className="mt-2 text-lg font-black tracking-normal text-[#794f27]">{value}</p>
     </div>
   );
 }
 
 function CategoryChip({ category }: { category: DashboardCategory }) {
   return (
-    <span className="rounded-full border border-ledger-line bg-ledger-panel px-3 py-1 text-xs font-semibold text-ledger-muted">
+    <span className="rounded-full border border-[#d9c49b] bg-white px-3 py-1 text-xs font-black text-[#725d42]">
       {category.icon ? `${category.icon} ` : ""}
       {category.name}
     </span>
+  );
+}
+
+function LedgerStatSticker({ stat }: { stat: LedgerStat }) {
+  return (
+    <article
+      className={`relative min-h-[156px] rounded-[28px] border-2 p-5 shadow-[0_8px_0_rgba(121,79,39,0.08)] ${statToneClasses[stat.tone]}`}
+    >
+      <span className="absolute -top-3 right-5 h-6 w-16 rotate-2 rounded-[8px] bg-[#f7cd67]/75 shadow-[0_4px_0_rgba(121,79,39,0.08)]" />
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">{stat.label}</p>
+        <Icon name={statToneIcons[stat.tone]} size={24} bounce />
+      </div>
+      <p className="mt-4 text-3xl font-black tracking-normal text-[#794f27]">{stat.value}</p>
+      <p className="mt-3 text-sm font-bold leading-6 text-[#725d42]">{stat.helper}</p>
+    </article>
   );
 }
 

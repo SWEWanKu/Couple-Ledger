@@ -9,7 +9,7 @@ import {
   Tags,
   UserRound
 } from "lucide-react";
-import { Button, Card, Cursor, Divider, Icon, Title } from "animal-island-ui";
+import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
@@ -45,8 +45,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
   const canCreateRecord = summary.categories.length > 0 && summary.members.length > 0;
 
   return (
-    <Cursor>
-      <AppShell title={`${summary.householdName} 记一笔账`} subtitle="把今天的小岛流水记下来">
+    <AppShell title={`${summary.householdName} 记一笔账`} subtitle="把今天的小岛流水记下来">
         <div className="mx-auto grid max-w-6xl gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <IslandLink
@@ -301,8 +300,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
             </aside>
           </section>
         </div>
-      </AppShell>
-    </Cursor>
+    </AppShell>
   );
 }
 
