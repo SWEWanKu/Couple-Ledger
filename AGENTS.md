@@ -13,7 +13,7 @@
 
 ## Product direction
 
-This project is a private couple ledger web app for exactly two people.
+This project is 小岛账本, a private two-person couple ledger web app for the user and partner only.
 
 Tone:
 - warm
@@ -24,7 +24,7 @@ Tone:
 - not generic finance dashboard
 
 Main Chinese product name:
-- 灏忓矝璐︽湰
+- 小岛账本
 
 ## animal-island-ui is the UI foundation
 
@@ -78,6 +78,7 @@ Avoid:
 ## Security and data rules
 
 - Supabase Auth and RLS will be the real security boundary later.
+- Do not use a service role key in app code.
 - Do not implement ledger persistence with `localStorage`.
 - Do not add Supabase clients, migrations, or auth logic unless the task specifically asks for that step.
 - Do not expose or commit secrets.
