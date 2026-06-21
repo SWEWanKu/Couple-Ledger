@@ -229,10 +229,15 @@ function RecordsList({ records }: { records: LedgerRecord[] }) {
       </div>
       <div className="divide-y-2 divide-[#ead9b8]">
         {records.map((record) => (
-          <article key={record.id} className="grid gap-4 px-5 py-4 sm:grid-cols-[1.2fr_0.6fr_0.8fr_0.7fr] sm:items-center">
+          <IslandLink
+            key={record.id}
+            href={`/records/${record.id}`}
+            ariaLabel={`查看账单 ${record.note?.trim() || record.categoryName}`}
+            className="group grid gap-4 px-5 py-4 transition hover:bg-white/55 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 sm:grid-cols-[1.2fr_0.6fr_0.8fr_0.7fr] sm:items-center"
+          >
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72)]">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72)] transition group-hover:-translate-y-0.5">
                   {record.entryType === "income" ? (
                     <CircleDollarSign aria-hidden="true" size={18} />
                   ) : (
@@ -277,7 +282,7 @@ function RecordsList({ records }: { records: LedgerRecord[] }) {
             >
               {formatRecordAmount(record)}
             </p>
-          </article>
+          </IslandLink>
         ))}
       </div>
     </div>
