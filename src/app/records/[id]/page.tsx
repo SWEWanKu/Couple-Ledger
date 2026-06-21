@@ -217,7 +217,11 @@ function SplitBreakdown({ record }: { record: RecordDetail }) {
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
             Split Note
           </p>
-          <h2 className="mt-2 text-2xl font-black text-[#794f27]">分摊明细</h2>
+          <div className="mt-2">
+            <Title size="middle" color="app-yellow" style={{ fontSize: 22 }}>
+              分摊明细
+            </Title>
+          </div>
           <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
             这里只读 `ledger_entry_splits`，用于确认每个人承担的金额。
           </p>

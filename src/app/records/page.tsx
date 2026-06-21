@@ -13,7 +13,7 @@ import {
   Trash2,
   UserRound
 } from "lucide-react";
-import { Card, Cursor, Divider, Icon, Title } from "animal-island-ui";
+import { Button, Card, Cursor, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
@@ -188,12 +188,9 @@ function MonthNavigator({ range }: { range: RecordsMonthRange }) {
             defaultValue={range.month}
             className="min-h-11 min-w-0 flex-1 rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[inset_0_2px_0_rgba(121,79,39,0.08)] outline-none focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/20"
           />
-          <button
-            type="submit"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-          >
+          <Button type="primary" htmlType="submit" size="middle">
             查看月份
-          </button>
+          </Button>
         </form>
         <IslandLink
           href="/records"
@@ -236,43 +233,43 @@ async function requireHouseholdAccess() {
 
 function RecordsList({ records }: { records: LedgerRecord[] }) {
   return (
-    <div className="overflow-hidden rounded-[28px] border-2 border-[#d9c49b] bg-[#fffdf3]">
-      <div className="grid grid-cols-[1fr_auto] gap-4 border-b-2 border-[#ead9b8] px-5 py-4 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d] sm:grid-cols-[1.2fr_0.6fr_0.8fr_0.7fr]">
-        <span>账单</span>
-        <span className="hidden sm:block">分类</span>
-        <span className="hidden sm:block">经手人</span>
-        <span className="text-right">金额</span>
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
+        <span className="inline-flex items-center gap-2">
+          <Icon name="icon-chat" size={18} bounce />
+          账单便签
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <Icon name="icon-shopping" size={18} bounce />
+          分类 / 经手人 / 金额
+        </span>
       </div>
-      <div className="divide-y-2 divide-[#ead9b8]">
-        {records.map((record) => (
-          <IslandLink
-            key={record.id}
-            href={`/records/${record.id}`}
-            ariaLabel={`查看账单 ${record.note?.trim() || record.categoryName}`}
-            className="group grid gap-4 px-5 py-4 transition hover:bg-white/55 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 sm:grid-cols-[1.2fr_0.6fr_0.8fr_0.7fr] sm:items-center"
-          >
+
+      {records.map((record) => (
+        <IslandLink
+          key={record.id}
+          href={`/records/${record.id}`}
+          ariaLabel={`查看账单 ${record.note?.trim() || record.categoryName}`}
+          className="group block rounded-[28px] border-2 border-[#ead9b8] bg-[#fffdf3] px-5 py-4 shadow-[0_6px_0_rgba(121,79,39,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_0_rgba(121,79,39,0.1)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          <div className="grid gap-4 sm:grid-cols-[1.25fr_0.7fr_0.8fr_0.7fr] sm:items-center">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72)] transition group-hover:-translate-y-0.5">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72)] transition group-hover:-translate-y-0.5">
                   {record.entryType === "income" ? (
-                    <CircleDollarSign aria-hidden="true" size={18} />
+                    <CircleDollarSign aria-hidden="true" size={19} />
                   ) : (
-                    <ReceiptText aria-hidden="true" size={18} />
+                    <ReceiptText aria-hidden="true" size={19} />
                   )}
                 </span>
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-black text-[#794f27]">
-                    {record.note?.trim() || "未命名账单"}
-                  </h2>
-                  <p className="mt-1 text-xs font-bold text-[#9f927d]">
+                  <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#9f927d]">
                     {formatLongDate(record.occurredOn)} · {formatEntryType(record.entryType)}
                   </p>
+                  <h2 className="mt-1 truncate text-base font-black text-[#794f27]">
+                    {record.note?.trim() || "未命名账单"}
+                  </h2>
                 </div>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 sm:hidden">
-                <CategoryPill record={record} />
-                <MetaPill icon={<UserRound aria-hidden="true" size={14} />} label={record.paidByLabel} />
-                <MetaPill icon={<Split aria-hidden="true" size={14} />} label={record.splitModeLabel} />
               </div>
             </div>
 
@@ -292,15 +289,21 @@ function RecordsList({ records }: { records: LedgerRecord[] }) {
             </div>
 
             <p
-              className={`text-right text-lg font-black ${
+              className={`text-left text-lg font-black sm:text-right ${
                 record.entryType === "income" ? "text-[#1f7a70]" : "text-[#d46a5b]"
               }`}
             >
               {formatRecordAmount(record)}
             </p>
-          </IslandLink>
-        ))}
-      </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2 sm:hidden">
+            <CategoryPill record={record} />
+            <MetaPill icon={<UserRound aria-hidden="true" size={14} />} label={record.paidByLabel} />
+            <MetaPill icon={<Split aria-hidden="true" size={14} />} label={record.splitModeLabel} />
+          </div>
+        </IslandLink>
+      ))}
     </div>
   );
 }

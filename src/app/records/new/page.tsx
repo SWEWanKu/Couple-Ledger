@@ -273,7 +273,9 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                     <Split aria-hidden="true" size={24} />
                   </span>
                   <div>
-                    <h2 className="text-lg font-black text-[#794f27]">写入规则</h2>
+                    <Title size="small" color="app-yellow" style={{ fontSize: 18 }}>
+                      写入规则
+                    </Title>
                     <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
                       先保存主账单，再保存分摊行；如果分摊失败，会尝试撤回刚写入的主账单。
                     </p>
@@ -285,7 +287,11 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
                   Current Island
                 </p>
-                <h2 className="mt-2 text-2xl font-black text-[#794f27]">{summary.householdName}</h2>
+                <div className="mt-2 flex items-center gap-2">
+                  <Icon name="icon-map" size={24} bounce />
+                  <h2 className="text-2xl font-black text-[#794f27]">{summary.householdName}</h2>
+                </div>
+                <Divider type="dashed-brown" className="my-4" />
                 <div className="mt-4 grid gap-3">
                   <MiniMetric label="成员" value={`${summary.members.length} 人`} />
                   <MiniMetric label="分类" value={`${summary.categories.length} 个`} />
