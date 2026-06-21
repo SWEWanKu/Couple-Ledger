@@ -33,6 +33,13 @@ const statToneClasses: Record<LedgerStat["tone"], string> = {
   ink: "border-[#d9c49b] bg-[#fffdf3]"
 };
 
+const statToneTapeClasses: Record<LedgerStat["tone"], string> = {
+  teal: "bg-[#82d5bb]/70",
+  coral: "bg-[#f8a6b2]/70",
+  amber: "bg-[#f7cd67]/75",
+  ink: "bg-white/70"
+};
+
 const statToneIcons: Record<LedgerStat["tone"], "icon-miles" | "icon-shopping" | "icon-chat" | "icon-diy"> = {
   teal: "icon-shopping",
   coral: "icon-miles",
@@ -100,7 +107,7 @@ export default async function DashboardPage() {
           ))}
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <CategoryBreakdownCard items={ledgerSummary.categoryBreakdown} />
           <RecentRecordsCard records={ledgerSummary.recentRecords} />
         </section>
@@ -122,6 +129,14 @@ function DashboardMonthHero({
 }) {
   const hasNoRecords = summary.entryCount === 0;
   const isLowData = summary.entryCount > 0 && summary.entryCount < 3;
+  const memoTitle = hasNoRecords
+    ? "这个月还没有记录"
+    : isLowData
+      ? "这个月刚刚长出账本贴纸"
+      : "这个月的小岛账本正在慢慢成形";
+  const memoBody = hasNoRecords
+    ? "从一笔小小的日常开始，给小岛留下今天的生活痕迹。"
+    : "这些数字只来自本月真实流水，后面继续记账时会自动更新这张月记。";
 
   return (
     <Card color="default" pattern="app-teal" className="relative overflow-visible px-4 py-6 sm:px-7 sm:py-8">
@@ -134,11 +149,11 @@ function DashboardMonthHero({
         className="absolute -bottom-3 right-10 h-7 w-24 rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
 
-      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_290px] lg:items-stretch">
+      <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:items-stretch">
         <div className="min-w-0">
-          <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/80 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
+          <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
             <Icon name="icon-map" size={22} bounce />
-            <span className="truncate">99岛月报</span>
+            <span className="truncate">小岛月报</span>
           </p>
 
           <div className="mt-5">
@@ -158,19 +173,27 @@ function DashboardMonthHero({
             {householdName} 的本月账本已经接上 Supabase，只展示真实读取到的流水和小岛资料。
           </p>
 
-          <div className="mt-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3]/90 px-4 py-4 text-sm font-bold leading-7 text-[#725d42] shadow-[0_6px_0_rgba(121,79,39,0.08)]">
-            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-              <Icon name="icon-chat" size={18} bounce />
-              Month Memo
-            </p>
-            <p className="mt-2 font-black text-[#794f27]">
-              {hasNoRecords ? "这个月还没有记录" : isLowData ? "这个月刚刚长出账本贴纸" : "这个月的小岛账本正在慢慢成形"}
-            </p>
-            <p className="mt-1">
-              {hasNoRecords
-                ? "从一笔小小的日常开始，给 99岛 留下今天的生活痕迹。"
-                : "这些数字只来自本月真实流水，后面继续记账时会自动更新这张月记。"}
-            </p>
+          <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_190px]">
+            <div className="relative rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3]/95 px-4 py-4 text-sm font-bold leading-7 text-[#725d42] shadow-[0_6px_0_rgba(121,79,39,0.08)]">
+              <span
+                aria-hidden="true"
+                className="absolute -top-2 right-8 h-5 w-16 rotate-2 rounded-[8px] bg-[#f8a6b2]/60"
+              />
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+                <Icon name="icon-chat" size={18} bounce />
+                Month Memo
+              </p>
+              <p className="mt-2 text-base font-black text-[#794f27]">{memoTitle}</p>
+              <p className="mt-1">{memoBody}</p>
+            </div>
+
+            <div className="rounded-[30px] border-2 border-[#d9c49b] bg-[#fff8da] px-4 py-4 text-sm font-bold leading-7 text-[#725d42] shadow-[0_6px_0_rgba(121,79,39,0.08)]">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Notebook Status</p>
+              <p className="mt-2 text-2xl font-black text-[#794f27]">{summary.entryCount} 条</p>
+              <p className="mt-1">
+                {hasNoRecords ? "等第一张小票贴上来。" : isLowData ? "低数据月，先轻轻记录。" : "本月资料正在变丰富。"}
+              </p>
+            </div>
           </div>
 
           <Divider type="wave-yellow" className="my-6" />
@@ -193,12 +216,12 @@ function DashboardMonthHero({
           </div>
         </div>
 
-        <aside className="relative rounded-[30px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_8px_0_rgba(121,79,39,0.1)]">
+        <aside className="relative rounded-[32px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_8px_0_rgba(121,79,39,0.1)]">
           <span className="absolute -top-3 right-8 rotate-3 rounded-full border-2 border-[#d9c49b] bg-[#fff1ed] px-4 py-1 text-xs font-black text-[#9b6c48] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
             {formatMemberRole(role)}
           </span>
 
-          <div className="rounded-[24px] bg-[#82d5bb] px-4 py-4 text-white shadow-[0_5px_0_#5fb89f]">
+          <div className="rounded-[26px] bg-[#82d5bb] px-4 py-4 text-white shadow-[0_5px_0_#5fb89f]">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
               <WalletCards aria-hidden="true" size={16} />
               Real Ledger
@@ -368,10 +391,12 @@ function CategoryBreakdownCard({ items }: { items: DashboardCategoryBreakdownIte
         </div>
       ) : (
         <EmptyLedgerState
+          eyebrow="Empty Sticker"
           title="还没有分类支出"
           body="记下第一笔支出后，这里会长出你们的小岛消费贴纸。"
           actionHref="/records/new"
           actionLabel="记一笔账"
+          iconName="icon-shopping"
         />
       )}
     </Card>
@@ -379,6 +404,8 @@ function CategoryBreakdownCard({ items }: { items: DashboardCategoryBreakdownIte
 }
 
 function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
+  const isLowData = records.length > 0 && records.length < 3;
+
   return (
     <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-6">
       <span
@@ -431,13 +458,27 @@ function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
               </div>
             </article>
           ))}
+
+          {isLowData ? (
+            <div className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-sm font-bold leading-7 text-[#725d42] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+                <Icon name="icon-chat" size={18} bounce />
+                Low Data Memo
+              </p>
+              <p className="mt-2">
+                本月流水还很少，先把它当成刚贴上的小票墙；继续记账后，这里会自然变成完整的月记。
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : (
         <EmptyLedgerState
+          eyebrow="Empty Memo"
           title="这个月还没有记录"
-          body="从一笔小小的日常开始，给 99岛 留下今天的生活痕迹。"
+          body="从一笔小小的日常开始，给小岛留下今天的生活痕迹。"
           actionHref="/records/new"
           actionLabel="记一笔账"
+          iconName="icon-chat"
         />
       )}
     </Card>
@@ -451,51 +492,63 @@ function SettlementPlaceholder() {
         aria-hidden="true"
         className="absolute -top-3 left-8 h-7 w-24 -rotate-2 rounded-[10px] bg-[#fff1ed]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
             <Icon name="icon-diy" size={18} bounce />
             Settlement Preview
           </p>
-          <h2 className="mt-2 text-lg font-black text-[#794f27]">分摊结算正在准备中</h2>
-          <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-            等流水和分摊更完整后，这里会帮你们算清谁该转给谁。
+          <div className="mt-3">
+            <Title size="small" color="app-yellow">
+              分摊结算正在准备中
+            </Title>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
+            等流水和分摊更完整后，这里会帮你们算清谁该转给谁。现在先把它留成一张温柔的计划便签。
           </p>
         </div>
-        <span className="w-fit rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#9f927d] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
-          计划中的小工具
-        </span>
+        <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Planned Tool</p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">计划中的小工具</p>
+          <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">不会猜测分摊，也不会写入新数据。</p>
+        </div>
       </div>
     </Card>
   );
 }
 
 function EmptyLedgerState({
+  eyebrow,
   title,
   body,
   actionHref,
-  actionLabel
+  actionLabel,
+  iconName
 }: {
+  eyebrow: string;
   title: string;
   body: string;
   actionHref: string;
   actionLabel: string;
+  iconName: "icon-chat" | "icon-diy" | "icon-shopping";
 }) {
   return (
-    <div className="mt-5 rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-6 text-sm font-bold leading-7 text-[#725d42] shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-        <Icon name="icon-diy" size={18} bounce />
-        Empty Memo
-      </p>
-      <p className="mt-3 text-base font-black text-[#794f27]">{title}</p>
-      <p className="mt-2">{body}</p>
-      <IslandLink
-        href={actionHref}
-        className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-      >
-        <PlusCircle aria-hidden="true" size={17} />
-        {actionLabel}
-      </IslandLink>
+    <div className="mt-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-6 text-sm font-bold leading-7 text-[#725d42] shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+      <div className="mx-auto flex max-w-md flex-col items-center text-center">
+        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#82d5bb] shadow-[0_5px_0_#5fb89f]">
+          <Icon name={iconName} size={30} bounce />
+        </span>
+        <p className="mt-4 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">{eyebrow}</p>
+        <p className="mt-2 text-lg font-black text-[#794f27]">{title}</p>
+        <p className="mt-2">{body}</p>
+        <IslandLink
+          href={actionHref}
+          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+        >
+          <PlusCircle aria-hidden="true" size={17} />
+          {actionLabel}
+        </IslandLink>
+      </div>
     </div>
   );
 }
@@ -521,7 +574,7 @@ function SummaryMetric({
         <MetricIcon aria-hidden="true" size={17} className="text-[#1f7a70]" />
         <span>{label}</span>
       </div>
-      <p className="mt-2 text-lg font-black tracking-normal text-[#794f27]">{value}</p>
+      <p className="mt-2 break-words text-lg font-black tracking-normal text-[#794f27]">{value}</p>
     </div>
   );
 }
@@ -538,10 +591,16 @@ function CategoryChip({ category }: { category: DashboardCategory }) {
 function LedgerStatSticker({ stat }: { stat: LedgerStat }) {
   return (
     <article
-      className={`relative min-h-[156px] rounded-[28px] border-2 border-dashed p-5 shadow-[0_8px_0_rgba(121,79,39,0.08)] ${statToneClasses[stat.tone]}`}
+      className={`relative min-h-[158px] rounded-[30px] border-2 border-dashed p-5 shadow-[0_8px_0_rgba(121,79,39,0.08)] ${statToneClasses[stat.tone]}`}
     >
-      <span className="absolute -top-3 right-5 h-6 w-16 rotate-2 rounded-[8px] bg-[#f7cd67]/75 shadow-[0_4px_0_rgba(121,79,39,0.08)]" />
-      <span className="absolute -bottom-2 left-8 h-5 w-14 -rotate-2 rounded-[8px] bg-white/55 shadow-[0_3px_0_rgba(121,79,39,0.06)]" />
+      <span
+        aria-hidden="true"
+        className={`absolute -top-3 right-5 h-6 w-16 rotate-2 rounded-[8px] shadow-[0_4px_0_rgba(121,79,39,0.08)] ${statToneTapeClasses[stat.tone]}`}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-2 left-8 h-5 w-14 -rotate-2 rounded-[8px] bg-white/55 shadow-[0_3px_0_rgba(121,79,39,0.06)]"
+      />
       <div className="flex items-start justify-between gap-3">
         <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">{stat.label}</p>
         <Icon name={statToneIcons[stat.tone]} size={24} bounce />
