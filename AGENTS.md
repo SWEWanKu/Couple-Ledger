@@ -26,46 +26,79 @@ Tone:
 Main Chinese product name:
 - 小岛账本
 
-## animal-island-ui is the UI foundation
+## Strict animal-island-ui design contract
 
-For all UI work, treat `animal-island-ui` as the primary visual and component foundation.
+For all visible product UI, `animal-island-ui` is the primary and mandatory UI foundation.
 
-Canonical reference:
-- GitHub: `https://github.com/guokaigdg/animal-island-ui/blob/main/AI_USAGE.md`
-- Local installed copy: `node_modules/animal-island-ui/AI_USAGE.md`
-
-Before using or changing `animal-island-ui` components, always inspect:
+Before any UI work, Codex must inspect:
 - `node_modules/animal-island-ui/AI_USAGE.md`
 - `node_modules/animal-island-ui/README.md`
 - `node_modules/animal-island-ui/dist/types/index.d.ts`
 
-Rules:
+Canonical references:
+- GitHub AI reference: `https://github.com/guokaigdg/animal-island-ui/blob/main/AI_USAGE.md`
+- Local installed AI reference: `node_modules/animal-island-ui/AI_USAGE.md`
+- Design prompt, when needed: `https://github.com/guokaigdg/animal-island-ui/blob/main/DESIGN_PROMPT.md`
+
+Component and import rules:
 - Do not invent component props.
 - Import components only from the package root:
   - `import { ... } from "animal-island-ui";`
 - Do not deep import package internals.
 - Keep `import "animal-island-ui/style";` imported exactly once in `src/app/layout.tsx`.
-- Do not copy or fork `animal-island-ui` source files into this repo.
+- Do not copy, fork, or reimplement `animal-island-ui` source or CSS.
 - Do not replace the library styles with a custom design system.
-- If a desired component or prop is unclear, use semantic HTML plus Tailwind classes instead of guessing.
+- Tailwind may be used only for layout, spacing, responsive grids, and small glue styles.
+- If a desired component or prop is unclear, use semantic HTML plus Tailwind classes rather than guessing fake props.
 
-Currently allowed style direction:
+For visible surfaces, controls, and decorative UI, prefer official components such as:
+- `Card`
+- `Title`
+- `Button`
+- `Input`
+- `Select`
+- `Radio`
+- `Checkbox`
+- `Divider`
+- `Icon`
+- `Cursor`
+- `Loading`
+- `Tooltip`
+- `Table`
+- other documented exports when appropriate
+
+UI must visually match the official `animal-island-ui` style:
+- Animal Crossing / island game feeling
+- warm parchment background `#f8f8f0`
+- content cards `rgb(247, 243, 223)`
+- brown text `#794f27` / `#725d42`
+- muted brown `#9f927d`
+- mint accent `#19c8b9`
+- thick rounded corners
+- ribbon titles
+- playful badges/stamps
+- game-like buttons
 - green island background
 - parchment card / notice-board surfaces
-- brown text
-- mint/green accents
-- thick rounded corners
-- soft playful shadows
-- ribbon-like title treatment
-- stamp/badge details
 - cute wallet/memo/ledger metaphors
+- no generic SaaS style
 
 Avoid:
-- cold blue or purple SaaS gradients
+- cold blue/purple SaaS gradients
 - glassmorphism as the main style
-- corporate dashboard styling
+- plain Tailwind cards/buttons when an `animal-island-ui` component exists
+- shadcn-style UI
+- antd-style UI
+- generic corporate finance dashboard look
 - public signup language
 - fake private data presented as real data
+
+When refactoring existing pages, migrate visible UI surfaces toward `animal-island-ui` components rather than adding more one-off custom Tailwind UI.
+
+For each future UI task, Codex final response must report:
+- which `animal-island-ui` components were used
+- whether `AI_USAGE.md` was inspected
+- confirmation that no fake props were invented
 
 ## Next.js project rules
 
