@@ -119,7 +119,7 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <DetailField
                 icon={<UserRound aria-hidden="true" size={18} />}
-                label="付款人"
+                label="经手人"
                 value={record.paidByLabel}
               />
               <DetailField

@@ -219,7 +219,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                           className="h-4 w-4 accent-[#19c8b9]"
                         />
                         <span>
-                          <span className="block font-black text-[#794f27]">两人等分</span>
+                          <span className="block font-black text-[#794f27]">两人平分</span>
                           <span className="mt-1 block text-xs font-bold leading-5 text-[#725d42]">
                             金额按成员顺序拆分，最后一位补齐分差。
                           </span>
