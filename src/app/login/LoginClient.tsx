@@ -89,9 +89,10 @@ function getSafeErrorMessage(error: unknown, fallback: string, serverErrorMessag
 
 type LoginClientProps = {
   isDevLoginEnabled: boolean;
+  isPartnerDevLoginConfigured: boolean;
 };
 
-export default function LoginClient({ isDevLoginEnabled }: LoginClientProps) {
+export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfigured }: LoginClientProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -112,10 +113,27 @@ export default function LoginClient({ isDevLoginEnabled }: LoginClientProps) {
       });
     }
 
-    if (params.get("devLogin") === "failed") {
+    const devLoginStatus = params.get("devLogin");
+
+    if (devLoginStatus === "failed") {
       setStatus({
         type: "error",
         message: "本地测试登录失败，请检查本机测试账号配置。"
+      });
+    }
+
+    if (devLoginStatus === "partner_missing") {
+      setStatus({
+        type: "error",
+        message:
+          "第二位本地测试账号还没配置。请在 .env.local 设置 DEV_LOGIN_PARTNER_EMAIL 和 DEV_LOGIN_PARTNER_PASSWORD；系统不会自动创建用户或成员。"
+      });
+    }
+
+    if (devLoginStatus === "partner_failed") {
+      setStatus({
+        type: "error",
+        message: "第二位本地测试登录失败，请确认该邮箱已存在于 Supabase Auth、密码正确，并且已加入同一个 household。"
       });
     }
   }, []);
@@ -405,13 +423,40 @@ export default function LoginClient({ isDevLoginEnabled }: LoginClientProps) {
                   </form>
 
                   {isDevLoginEnabled ? (
-                    <IslandLink
-                      href="/dev-login"
-                      className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee] px-4 py-2 text-sm font-black text-[#2f7a5a] shadow-[0_5px_0_rgba(47,122,90,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(47,122,90,0.16)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-                    >
-                      <Sparkles aria-hidden="true" size={18} />
-                      本地测试登录
-                    </IslandLink>
+                    <div className="mt-4 grid gap-3 rounded-[24px] border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee]/80 p-3 shadow-[0_5px_0_rgba(47,122,90,0.14)]">
+                      <p className="text-xs font-black leading-5 text-[#2f7a5a]">本地双人烟测入口</p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <IslandLink
+                          href="/dev-login"
+                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee] px-4 py-2 text-center text-sm font-black leading-5 text-[#2f7a5a] shadow-[0_5px_0_rgba(47,122,90,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(47,122,90,0.16)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                        >
+                          <Sparkles aria-hidden="true" size={18} />
+                          本地测试登录 · 我
+                        </IslandLink>
+                        {isPartnerDevLoginConfigured ? (
+                          <IslandLink
+                            href="/dev-login?persona=partner"
+                            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-2 text-center text-sm font-black leading-5 text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.14)] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+                          >
+                            <Sparkles aria-hidden="true" size={18} />
+                            本地测试登录 · 对方
+                          </IslandLink>
+                        ) : null}
+                      </div>
+                      <p className="rounded-[18px] bg-white/75 px-3 py-2 text-[11px] font-bold leading-5 text-[#725d42] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
+                        {isPartnerDevLoginConfigured ? (
+                          "第二位入口只会登录已存在的 Supabase Auth 用户，仍由 RLS 判断是否属于同一个小岛。"
+                        ) : (
+                          <>
+                            第二位本地测试账号未配置：
+                            <code className="font-black">DEV_LOGIN_PARTNER_EMAIL</code>
+                            {" / "}
+                            <code className="font-black">DEV_LOGIN_PARTNER_PASSWORD</code>
+                            。不会自动创建用户或成员。
+                          </>
+                        )}
+                      </p>
+                    </div>
                   ) : null}
 
                   <div
