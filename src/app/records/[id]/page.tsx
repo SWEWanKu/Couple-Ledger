@@ -14,8 +14,10 @@ import {
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getRecordDetail, type RecordDetail } from "@/lib/ledger/get-record-detail";
+import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 
 type RecordDetailPageProps = {
@@ -62,6 +64,10 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
   }
 
   const record = detail.record;
+  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
+    householdId: membership.household_id,
+    month: getMonthKeyFromDateOnly(record.occurredOn)
+  });
 
   return (
     <AppShell
@@ -149,6 +155,8 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
             {householdWarning ? <PageNotice message={householdWarning} tone="warning" /> : null}
             {detail.warning ? <PageNotice message={detail.warning} tone="warning" /> : null}
           </Card>
+
+          <RecordsSettlementAwareness statusResult={settlementStatus} context="detail" />
 
           <SplitBreakdown record={record} />
         </div>
@@ -320,6 +328,10 @@ function formatDateOnly(date: string) {
   }
 
   return `${year}.${month}.${day}`;
+}
+
+function getMonthKeyFromDateOnly(date: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : null;
 }
 
 function formatDateTime(value: string) {

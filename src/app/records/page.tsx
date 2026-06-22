@@ -16,6 +16,7 @@ import {
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   formatMoney,
@@ -23,6 +24,7 @@ import {
   type LedgerRecord,
   type RecordsMonthRange
 } from "@/lib/ledger/list-records";
+import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 
 type RecordsPageProps = {
@@ -59,6 +61,10 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     categories: householdSummary.categories,
     members: householdSummary.members,
     month: selectedMonth
+  });
+  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
+    householdId: membership.household_id,
+    month: range.month
   });
 
   return (
@@ -132,6 +138,11 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
 
             {householdWarning ? <PageNotice message={householdWarning} /> : null}
             {recordsWarning ? <PageNotice message={recordsWarning} /> : null}
+            <RecordsSettlementAwareness
+              statusResult={settlementStatus}
+              context="list"
+              className="mt-5"
+            />
 
             <div className="mt-6">
               {records.length > 0 ? (

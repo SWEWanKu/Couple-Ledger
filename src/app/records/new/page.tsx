@@ -12,6 +12,7 @@ import {
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   createRecord,
@@ -19,12 +20,14 @@ import {
   type RecordCategoryOption,
   type RecordMemberOption
 } from "@/lib/ledger/create-record";
+import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 
 type NewRecordPageProps = {
   searchParams?: Promise<{
     error?: string | string[];
+    month?: string | string[];
   }>;
 };
 
@@ -35,6 +38,7 @@ type HouseholdMembershipRow = {
 
 export default async function NewRecordPage({ searchParams }: NewRecordPageProps) {
   const params = searchParams ? await searchParams : {};
+  const selectedMonth = getSingleParam(params.month);
   const errorMessage = getCreateRecordErrorMessage(getSingleParam(params.error));
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary, warning } = await getDashboardHouseholdSummary(supabase, {
@@ -42,6 +46,10 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
     currentUserId: user.id
   });
   const today = getTodayDateOnly();
+  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
+    householdId: membership.household_id,
+    month: selectedMonth ?? today.slice(0, 7)
+  });
   const canCreateRecord = summary.categories.length > 0 && summary.members.length > 0;
 
   return (
@@ -86,6 +94,11 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
 
               {warning ? <FormNotice tone="warning" message={warning} /> : null}
               {errorMessage ? <FormNotice tone="error" message={errorMessage} /> : null}
+              <RecordsSettlementAwareness
+                statusResult={settlementStatus}
+                context="new"
+                className="mt-5"
+              />
 
               {canCreateRecord ? (
                 <form action={saveRecordAction} className="mt-5 grid gap-5" noValidate>
