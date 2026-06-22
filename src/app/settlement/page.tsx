@@ -666,6 +666,14 @@ function StoredSnapshotPanel({
             ))}
           </div>
         ) : null}
+
+        <IslandLink
+          href={`/settlement/history/${snapshot.id}`}
+          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          <NotebookTabs aria-hidden="true" size={17} />
+          查看已保存的结算便签
+        </IslandLink>
       </section>
 
       <section className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-5 shadow-[0_7px_0_rgba(121,79,39,0.08)]">

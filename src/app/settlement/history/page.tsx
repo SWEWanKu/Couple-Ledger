@@ -296,13 +296,22 @@ function HistoryCard({ item }: { item: SettlementHistoryItem }) {
         </div>
       )}
 
-      <IslandLink
-        href={`/settlement?month=${item.monthKey}`}
-        className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#82d5bb] px-5 py-2 text-sm font-black text-white shadow-[0_5px_0_#5fb89f] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#5fb89f] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-      >
-        <WalletCards aria-hidden="true" size={17} />
-        打开这个月的结算页
-      </IslandLink>
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <IslandLink
+          href={`/settlement/history/${item.snapshot.id}`}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#82d5bb] px-5 py-2 text-sm font-black text-white shadow-[0_5px_0_#5fb89f] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#5fb89f] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          <FileText aria-hidden="true" size={17} />
+          打开这张结算便签
+        </IslandLink>
+        <IslandLink
+          href={`/settlement?month=${item.monthKey}`}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          <WalletCards aria-hidden="true" size={17} />
+          查看当月实时结算
+        </IslandLink>
+      </div>
     </article>
   );
 }
