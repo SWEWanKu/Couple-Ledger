@@ -4,18 +4,38 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRightLeft,
+  BadgeCheck,
   CalendarDays,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  FilePenLine,
+  Hourglass,
   NotebookTabs,
   ReceiptText,
+  Send,
   ShieldCheck,
+  Stamp,
+  UsersRound,
   WalletCards
 } from "lucide-react";
-import { Card, Divider, Icon, Title } from "animal-island-ui";
+import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
+import {
+  confirmSettlementSnapshotAction,
+  proposeSettlementSnapshotAction
+} from "@/app/settlement/actions";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
+import {
+  buildSettlementSnapshotPayload,
+  type SettlementSnapshotJson
+} from "@/lib/settlement/build-settlement-snapshot-payload";
+import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
+import {
+  getSettlementSnapshotStatus,
+  type GetSettlementSnapshotStatusResult
+} from "@/lib/settlement/get-settlement-snapshot-status";
 import { getSettlementSummary } from "@/lib/settlement/get-settlement-summary";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -32,6 +52,9 @@ export const metadata: Metadata = {
 type SettlementPageProps = {
   searchParams?: Promise<{
     month?: string | string[];
+    settlement_action?: string | string[];
+    settlement_result?: string | string[];
+    settlement_error?: string | string[];
   }>;
 };
 
@@ -43,26 +66,39 @@ type HouseholdMembershipRow = {
 export default async function SettlementPage({ searchParams }: SettlementPageProps) {
   const params = searchParams ? await searchParams : {};
   const selectedMonth = getSingleParam(params.month);
+  const settlementFeedback = getSettlementFeedback({
+    action: getSingleParam(params.settlement_action),
+    result: getSingleParam(params.settlement_result),
+    error: getSingleParam(params.settlement_error)
+  });
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary: householdSummary, warning: householdWarning } =
     await getDashboardHouseholdSummary(supabase, {
       householdId: membership.household_id,
       currentUserId: user.id
     });
-  const { summary: settlementSummary, warning: settlementWarning } = await getSettlementSummary(
-    supabase,
-    {
-      householdId: membership.household_id,
-      currentUserId: user.id,
-      month: selectedMonth
-    }
-  );
+  const settlementResult = await getSettlementSummary(supabase, {
+    householdId: membership.household_id,
+    currentUserId: user.id,
+    month: selectedMonth
+  });
+  const { summary: settlementSummary, warning: settlementWarning } = settlementResult;
+  const snapshotStatus = await getSettlementSnapshotStatus(supabase, {
+    householdId: membership.household_id,
+    month: selectedMonth
+  });
+  const outdatedSnapshotWarning = getOutdatedSnapshotWarning({
+    householdId: membership.household_id,
+    currentUserId: user.id,
+    settlementResult,
+    snapshotStatus
+  });
   const range = settlementSummary.month;
 
   return (
     <AppShell
       title={`${householdSummary.householdName} 小岛结算`}
-      subtitle="只读整理这个月谁垫付、谁承担，以及账本给出的轻量转账建议。"
+      subtitle="实时计算保持只读，结算便签可以盖章存档并等待两个人确认。"
     >
       <div className="mx-auto grid max-w-6xl gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -75,7 +111,7 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
           </IslandLink>
           <span className="inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
             <ShieldCheck aria-hidden="true" size={16} />
-            只读结算便签
+            双人确认 · 不转钱
           </span>
         </div>
 
@@ -110,7 +146,7 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
               </div>
 
               <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-[#725d42] sm:text-lg">
-                这张手账页只读取已经写进账本的支出和分摊行，不猜测分摊，也不会写入任何结清状态。
+                上半页继续用 helper 实时读取支出和分摊行；下半页可以把本月结果盖章成不可变便签，再等两个人各自确认。
               </p>
 
               <Divider type="wave-yellow" className="my-6" />
@@ -152,14 +188,24 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
                   Read Source
                 </p>
-                <p className="mt-1">通过结算 helper 读取成员、月度支出和分摊行。</p>
+                <p className="mt-1">实时计算来自结算 helper；盖章便签来自 settlement snapshot。</p>
               </div>
             </aside>
           </div>
         </Card>
 
+        {settlementFeedback ? (
+          <PageNotice message={settlementFeedback.message} tone={settlementFeedback.tone} />
+        ) : null}
         {householdWarning ? <PageNotice message={householdWarning} tone="warning" /> : null}
         {settlementWarning ? <PageNotice message={settlementWarning} tone="warning" /> : null}
+        {snapshotStatus.status === "error" ? (
+          <PageNotice
+            message="结算便签状态暂时读不到，实时计算仍然可以查看。如果本地数据库还没有 settlement 表，请先只看预览，不要运行远程 SQL。"
+            tone="warning"
+          />
+        ) : null}
+        {outdatedSnapshotWarning ? <PageNotice message={outdatedSnapshotWarning} tone="warning" /> : null}
 
         <section className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
           <MemberBalanceSection
@@ -168,6 +214,15 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
           />
           <TransferSuggestionCard calculation={settlementSummary.calculation} />
         </section>
+
+        <SettlementSnapshotStatusCard
+          currentUserId={user.id}
+          range={range}
+          statusResult={snapshotStatus}
+          calculation={settlementSummary.calculation}
+          members={settlementSummary.members}
+          includedExpenseCount={settlementSummary.includedExpenseCount}
+        />
       </div>
     </AppShell>
   );
@@ -375,6 +430,280 @@ function TransferSuggestionCard({ calculation }: { calculation: SettlementCalcul
   );
 }
 
+function SettlementSnapshotStatusCard({
+  currentUserId,
+  range,
+  statusResult,
+  calculation,
+  members,
+  includedExpenseCount
+}: {
+  currentUserId: string;
+  range: SettlementMonthMetadata;
+  statusResult: GetSettlementSnapshotStatusResult;
+  calculation: SettlementCalculationResult;
+  members: SettlementSummaryMember[];
+  includedExpenseCount: number;
+}) {
+  const statusCopy = getSnapshotStatusCopy(statusResult.status);
+
+  return (
+    <Card color="default" pattern="app-green" className="relative overflow-visible p-5 sm:p-6">
+      <span
+        aria-hidden="true"
+        className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-3 right-12 h-7 w-24 rotate-2 rounded-[10px] bg-[#fff1a8]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Stamp aria-hidden="true" size={17} />
+            Snapshot Stamp
+          </p>
+          <div className="mt-3">
+            <Title size="small" color="app-yellow">
+              结算盖章便签
+            </Title>
+          </div>
+          <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-[#725d42]">
+            上方是实时计算；这里展示已经存档的结算快照和两个人的确认进度。它只记录小岛账本里的约定，不代表真实转账。
+          </p>
+        </div>
+        <span
+          className={`inline-flex min-h-10 w-fit items-center gap-2 rounded-full border-2 px-4 py-2 text-xs font-black shadow-[0_5px_0_rgba(121,79,39,0.1)] ${statusCopy.className}`}
+        >
+          {statusCopy.icon}
+          {statusCopy.label}
+        </span>
+      </div>
+
+      <Divider type="dashed-brown" className="my-5" />
+
+      {statusResult.status === "error" ? (
+        <div className="rounded-[30px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-5 py-6 text-sm font-bold leading-7 text-[#725d42]">
+          <p className="text-lg font-black text-[#794f27]">结算便签册暂时翻不开</p>
+          <p className="mt-2">
+            实时计算仍在正常展示。等 settlement snapshot 表可读后，这里会显示提出、确认和已完成状态。
+          </p>
+        </div>
+      ) : statusResult.status === "no_snapshot" ? (
+        <NoSnapshotActionPanel
+          calculation={calculation}
+          includedExpenseCount={includedExpenseCount}
+          range={range}
+        />
+      ) : (
+        <StoredSnapshotPanel
+          currentUserId={currentUserId}
+          members={members}
+          range={range}
+          statusResult={statusResult}
+        />
+      )}
+    </Card>
+  );
+}
+
+function NoSnapshotActionPanel({
+  calculation,
+  includedExpenseCount,
+  range
+}: {
+  calculation: SettlementCalculationResult;
+  includedExpenseCount: number;
+  range: SettlementMonthMetadata;
+}) {
+  const canPropose =
+    includedExpenseCount > 0 && calculation.status === "ready" && Boolean(calculation.transferSuggestion);
+  const copy = getProposalReadinessCopy({
+    status: calculation.status,
+    includedExpenseCount,
+    canPropose
+  });
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-stretch">
+      <div className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-5 shadow-[0_6px_0_rgba(121,79,39,0.08)]">
+        <p className="flex items-center gap-2 text-lg font-black text-[#794f27]">
+          <FilePenLine aria-hidden="true" size={21} className="text-[#9f927d]" />
+          {copy.title}
+        </p>
+        <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">{copy.body}</p>
+      </div>
+
+      <div className="rounded-[30px] bg-[#fff8da] px-5 py-5 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+        {canPropose ? (
+          <form action={proposeSettlementSnapshotAction} className="grid h-full content-center gap-4">
+            <input type="hidden" name="month" value={range.month} />
+            <p className="text-sm font-black leading-7 text-[#725d42]">
+              把当前实时计算盖章存成 {range.monthLabel} 的结算便签。
+            </p>
+            <Button type="primary" size="large" htmlType="submit" icon={<Send aria-hidden="true" size={18} />} block>
+              提出本月结算便签
+            </Button>
+          </form>
+        ) : (
+          <div className="grid h-full content-center gap-3 text-sm font-bold leading-7 text-[#725d42]">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_5px_0_#5fb89f]">
+              <Icon name="icon-chat" size={26} bounce />
+            </span>
+            <p>先不用盖章；等本月有明确的转账建议时，这里才会出现提出按钮。</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StoredSnapshotPanel({
+  currentUserId,
+  members,
+  range,
+  statusResult
+}: {
+  currentUserId: string;
+  members: SettlementSummaryMember[];
+  range: SettlementMonthMetadata;
+  statusResult: Extract<GetSettlementSnapshotStatusResult, { snapshot: SettlementSnapshotRow }>;
+}) {
+  const snapshot = statusResult.snapshot;
+  const snapshotJson = getSnapshotJson(snapshot.snapshot);
+  const memberNameMap = getSnapshotMemberNameMap(members, snapshotJson);
+  const confirmedUserIds = new Set(statusResult.confirmations.map((confirmation) => confirmation.confirmed_by));
+  const hasCurrentUserConfirmed = confirmedUserIds.has(currentUserId);
+  const isFullyConfirmed = statusResult.status === "fully_confirmed";
+  const pendingMembers = members.filter((member) => !confirmedUserIds.has(member.userId));
+  const confirmedMembers = statusResult.confirmations.map((confirmation) => ({
+    id: confirmation.id,
+    userId: confirmation.confirmed_by,
+    displayName: memberNameMap.get(confirmation.confirmed_by) ?? "小岛成员",
+    confirmedAt: confirmation.confirmed_at
+  }));
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
+      <section className="rounded-[30px] border-2 border-[#d9c49b] bg-[#fffdf3] px-5 py-5 shadow-[0_7px_0_rgba(121,79,39,0.08)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+              Stored Snapshot
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-[#794f27]">{range.monthLabel} 存档便签</h2>
+          </div>
+          <span className="inline-flex min-h-9 items-center rounded-full bg-[#fff8da] px-3 py-1 text-xs font-black text-[#8a6420] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+            {snapshot.calculation_status === "ready" ? "有转账建议" : "无需转账"}
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <AmountTile label="快照总支出" value={formatCentsCurrency(snapshot.total_expense_cents)} />
+          <AmountTile label="快照支出数" value={`${snapshot.expense_count} 笔`} />
+          <AmountTile label="快照转账额" value={formatCentsCurrency(snapshot.transfer_amount_cents)} accent />
+        </div>
+
+        <div className="mt-5 rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-4 text-sm font-black leading-7 text-[#725d42]">
+          <p className="flex items-center gap-2 text-[#794f27]">
+            <ArrowRightLeft aria-hidden="true" size={18} className="text-[#9f927d]" />
+            {formatSnapshotTransfer(snapshot, memberNameMap)}
+          </p>
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
+            提出时间：{formatDateTime(snapshot.created_at)}
+          </p>
+        </div>
+
+        {snapshotJson?.memberBalances.length ? (
+          <div className="mt-5 grid gap-3">
+            {snapshotJson.memberBalances.map((balance) => (
+              <div
+                key={balance.userId}
+                className="grid gap-3 rounded-[24px] bg-white px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)] sm:grid-cols-[minmax(0,1fr)_auto]"
+              >
+                <p className="min-w-0 text-sm font-black text-[#794f27]">{balance.displayName}</p>
+                <p className="text-sm font-black text-[#725d42]">
+                  已付 {formatCentsCurrency(balance.paidAmountCents)} · 应担{" "}
+                  {formatCentsCurrency(balance.shareAmountCents)} · 净额{" "}
+                  {formatSignedCentsCurrency(balance.netAmountCents)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-5 shadow-[0_7px_0_rgba(121,79,39,0.08)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+              Confirmations
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-[#794f27]">
+              {isFullyConfirmed ? "这个月已经两个人都确认啦" : "等待小岛成员确认"}
+            </h2>
+          </div>
+          <span className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#82d5bb] px-3 py-1 text-xs font-black text-white shadow-[0_4px_0_#5fb89f]">
+            <UsersRound aria-hidden="true" size={15} />
+            {confirmedUserIds.size}/{statusResult.requiredConfirmationCount}
+          </span>
+        </div>
+
+        <div className="mt-5 grid gap-3">
+          {confirmedMembers.length > 0 ? (
+            confirmedMembers.map((member) => (
+              <div
+                key={member.id}
+                className="flex items-start gap-3 rounded-[24px] bg-[#e9fbf4] px-4 py-3 text-sm font-black leading-6 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.55)]"
+              >
+                <CheckCircle2 aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+                <span>
+                  {member.displayName} 已确认 · {formatDateTime(member.confirmedAt)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="flex items-start gap-3 rounded-[24px] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+              <Hourglass aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+              <span>这张便签已经提出，还没有人盖确认章。</span>
+            </div>
+          )}
+
+          {pendingMembers.length > 0 && !isFullyConfirmed ? (
+            <div className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white px-4 py-3 text-sm font-black leading-6 text-[#725d42]">
+              还在等待：{pendingMembers.map((member) => member.displayName).join("、")}
+            </div>
+          ) : null}
+        </div>
+
+        <Divider type="wave-yellow" className="my-5" />
+
+        {isFullyConfirmed ? (
+          <div className="rounded-[26px] bg-[#e9fbf4] px-4 py-4 text-sm font-black leading-7 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.55)]">
+            两个人都已经确认这张结算便签，本月在小岛账本里正式对齐啦。
+          </div>
+        ) : hasCurrentUserConfirmed ? (
+          <div className="rounded-[26px] bg-[#fff8da] px-4 py-4 text-sm font-black leading-7 text-[#8a6420] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+            你已经确认过这张便签啦，等另一位小岛成员盖章就好。
+          </div>
+        ) : (
+          <form action={confirmSettlementSnapshotAction} className="grid gap-4">
+            <input type="hidden" name="month" value={range.month} />
+            <input type="hidden" name="snapshot_id" value={snapshot.id} />
+            <p className="text-sm font-bold leading-7 text-[#725d42]">
+              确认后只会新增你自己的确认记录，不会改动原始账本，也不会替对方确认。
+            </p>
+            <Button type="primary" size="large" htmlType="submit" icon={<Stamp aria-hidden="true" size={18} />} block>
+              确认这张结算便签
+            </Button>
+          </form>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function NoTransferState({ status }: { status: SettlementCalculationResult["status"] }) {
   const copy = getNoTransferCopy(status);
 
@@ -438,22 +767,345 @@ function PageNotice({
   tone
 }: {
   message: string;
-  tone: "warning" | "error";
+  tone: "success" | "warning" | "error";
 }) {
   const classes =
     tone === "error"
       ? "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
-      : "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]";
+      : tone === "success"
+        ? "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+        : "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]";
+  const NoticeIcon = tone === "success" ? CheckCircle2 : AlertCircle;
 
   return (
     <div
       role={tone === "error" ? "alert" : "status"}
       className={`flex items-start gap-3 rounded-[24px] border-2 border-dashed px-4 py-3 text-sm font-black leading-6 ${classes}`}
     >
-      <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+      <NoticeIcon aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
       <span>{message}</span>
     </div>
   );
+}
+
+function getSettlementFeedback({
+  action,
+  result,
+  error
+}: {
+  action: string | null;
+  result: string | null;
+  error: string | null;
+}) {
+  if (!action || !result) {
+    return null;
+  }
+
+  const errorSuffix = error ? `（${error}）` : "";
+
+  if (action === "propose") {
+    if (result === "created") {
+      return {
+        tone: "success" as const,
+        message: "结算便签已经提出啦，接下来等两个人分别确认。"
+      };
+    }
+
+    if (result === "already_exists") {
+      return {
+        tone: "warning" as const,
+        message: "这个月已经有一张结算便签啦，直接在下方确认就好。"
+      };
+    }
+
+    if (result === "unauthenticated") {
+      return {
+        tone: "error" as const,
+        message: "登录状态过期啦，请重新登录后再提出结算便签。"
+      };
+    }
+
+    if (result === "unsupported_calculation_status") {
+      return {
+        tone: "warning" as const,
+        message: "结算表还没有准备好，先补齐分摊数据或等出现明确转账建议。"
+      };
+    }
+
+    if (result === "insert_failed" || result === "existing_snapshot_read_failed") {
+      return {
+        tone: "warning" as const,
+        message: `结算表还没有准备好，暂时不能提出这张便签${errorSuffix}。`
+      };
+    }
+
+    return {
+      tone: "warning" as const,
+      message: `结算便签暂时没有写上去，实时计算仍然安全可看${errorSuffix}。`
+    };
+  }
+
+  if (action === "confirm") {
+    if (result === "confirmed") {
+      return {
+        tone: "success" as const,
+        message: "你已经确认这张结算便签啦，等另一位小岛成员盖章后本月就正式对齐。"
+      };
+    }
+
+    if (result === "already_confirmed") {
+      return {
+        tone: "warning" as const,
+        message: "你已经确认过这张便签啦，不会重复盖章。"
+      };
+    }
+
+    if (result === "snapshot_not_found" || result === "snapshot_missing") {
+      return {
+        tone: "warning" as const,
+        message: "这张结算便签没有找到，刷新后再从当前月份重新确认。"
+      };
+    }
+
+    if (result === "snapshot_status_unavailable") {
+      return {
+        tone: "warning" as const,
+        message: `结算表还没有准备好，暂时不能确认这张便签${errorSuffix}。`
+      };
+    }
+
+    if (result === "insert_failed" || result === "confirmation_read_failed") {
+      return {
+        tone: "warning" as const,
+        message: `结算表还没有准备好，暂时不能盖确认章${errorSuffix}。`
+      };
+    }
+
+    if (result === "unauthenticated") {
+      return {
+        tone: "error" as const,
+        message: "登录状态过期啦，请重新登录后再确认结算便签。"
+      };
+    }
+
+    return {
+      tone: "warning" as const,
+      message: `确认章暂时没有盖上去，稍后可以再试一次${errorSuffix}。`
+    };
+  }
+
+  return null;
+}
+
+function getOutdatedSnapshotWarning({
+  householdId,
+  currentUserId,
+  settlementResult,
+  snapshotStatus
+}: {
+  householdId: string;
+  currentUserId: string;
+  settlementResult: Awaited<ReturnType<typeof getSettlementSummary>>;
+  snapshotStatus: GetSettlementSnapshotStatusResult;
+}) {
+  if (snapshotStatus.status === "error" || snapshotStatus.status === "no_snapshot") {
+    return null;
+  }
+
+  const built = buildSettlementSnapshotPayload({
+    householdId,
+    createdBy: currentUserId,
+    createdAt: new Date(0),
+    summaryResult: settlementResult
+  });
+
+  if (!built.ok) {
+    return null;
+  }
+
+  if (built.payload.source_fingerprint !== snapshotStatus.snapshot.source_fingerprint) {
+    return "账本后来好像有变动：当前实时计算和已存档结算便签不完全一样，旧便签不会被自动改写。";
+  }
+
+  return null;
+}
+
+function getSnapshotStatusCopy(status: GetSettlementSnapshotStatusResult["status"]) {
+  if (status === "no_snapshot") {
+    return {
+      label: "还没盖章",
+      icon: <FilePenLine aria-hidden="true" size={15} />,
+      className: "border-[#d9c49b] bg-[#fffdf3] text-[#8a7556]"
+    };
+  }
+
+  if (status === "proposed") {
+    return {
+      label: "已提出",
+      icon: <Hourglass aria-hidden="true" size={15} />,
+      className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
+    };
+  }
+
+  if (status === "partially_confirmed") {
+    return {
+      label: "部分确认",
+      icon: <BadgeCheck aria-hidden="true" size={15} />,
+      className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+    };
+  }
+
+  if (status === "fully_confirmed") {
+    return {
+      label: "两人确认",
+      icon: <CheckCircle2 aria-hidden="true" size={15} />,
+      className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+    };
+  }
+
+  return {
+    label: "暂时读不到",
+    icon: <AlertCircle aria-hidden="true" size={15} />,
+    className: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+  };
+}
+
+function getProposalReadinessCopy({
+  status,
+  includedExpenseCount,
+  canPropose
+}: {
+  status: SettlementCalculationResult["status"];
+  includedExpenseCount: number;
+  canPropose: boolean;
+}) {
+  if (canPropose) {
+    return {
+      title: "可以提出本月结算便签",
+      body: "当前实时计算已经给出明确转账建议。提出后会保存一张不可变快照，后续账本变化不会偷偷改写它。"
+    };
+  }
+
+  if (includedExpenseCount === 0) {
+    return {
+      title: "这个月还没有要盖章的支出",
+      body: "等本月有真实支出和分摊行后，小岛账本会先给出实时结算建议。"
+    };
+  }
+
+  if (status === "no_settlement_needed") {
+    return {
+      title: "这个月已经平衡啦",
+      body: "当前没有需要互相转的金额，所以先不鼓励创建空结算便签。"
+    };
+  }
+
+  if (status === "incomplete") {
+    return {
+      title: "分摊数据待完善",
+      body: "有些账单的分摊行还没对齐，等实时计算准备好后再提出便签。"
+    };
+  }
+
+  return {
+    title: "结算规则还在待办夹",
+    body: "当前状态还不能生成 V1 双人结算便签，先保留实时预览。"
+  };
+}
+
+function getSnapshotJson(value: unknown): SettlementSnapshotJson | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const snapshot = value as Partial<SettlementSnapshotJson>;
+
+  if (!snapshot.month || !Array.isArray(snapshot.memberBalances)) {
+    return null;
+  }
+
+  return snapshot as SettlementSnapshotJson;
+}
+
+function getSnapshotMemberNameMap(
+  members: SettlementSummaryMember[],
+  snapshotJson: SettlementSnapshotJson | null
+) {
+  const map = new Map(members.map((member) => [member.userId, member.displayName]));
+
+  snapshotJson?.memberBalances.forEach((balance) => {
+    if (!map.has(balance.userId)) {
+      map.set(balance.userId, balance.displayName);
+    }
+  });
+
+  return map;
+}
+
+function formatSnapshotTransfer(snapshot: SettlementSnapshotRow, memberNameMap: Map<string, string>) {
+  const transferAmountCents = toCents(snapshot.transfer_amount_cents);
+
+  if (
+    !transferAmountCents ||
+    transferAmountCents <= 0 ||
+    !snapshot.transfer_from_user_id ||
+    !snapshot.transfer_to_user_id
+  ) {
+    return "这张便签记录为无需转账。";
+  }
+
+  const fromName = memberNameMap.get(snapshot.transfer_from_user_id) ?? "小岛成员";
+  const toName = memberNameMap.get(snapshot.transfer_to_user_id) ?? "小岛成员";
+
+  return `${fromName} 给 ${toName} ${formatCentsCurrency(transferAmountCents)}`;
+}
+
+function formatCentsCurrency(amount: number | string) {
+  const cents = toCents(amount);
+
+  if (cents === null) {
+    return "¥--";
+  }
+
+  const sign = cents < 0 ? "-" : "";
+  const absoluteCents = Math.abs(cents);
+  const yuan = Math.floor(absoluteCents / 100);
+  const centPart = String(absoluteCents % 100).padStart(2, "0");
+
+  return `${sign}¥${yuan}.${centPart}`;
+}
+
+function formatSignedCentsCurrency(amount: number | string) {
+  return formatCentsCurrency(amount);
+}
+
+function toCents(amount: number | string | null | undefined) {
+  if (amount === null || amount === undefined) {
+    return null;
+  }
+
+  const value = typeof amount === "string" ? Number(amount) : amount;
+
+  if (!Number.isFinite(value)) {
+    return null;
+  }
+
+  return Math.round(value);
+}
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 }
 
 function getNoTransferCopy(status: SettlementCalculationResult["status"]) {
