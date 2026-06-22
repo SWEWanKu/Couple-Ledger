@@ -1,11 +1,13 @@
 import { redirect } from "next/navigation";
 import {
   AlertCircle,
+  ArrowRightLeft,
   ChartPie,
   Clock3,
   Home,
   PlusCircle,
   ReceiptText,
+  ShieldCheck,
   Tags,
   UsersRound,
   WalletCards,
@@ -112,7 +114,7 @@ export default async function DashboardPage() {
           <RecentRecordsCard records={ledgerSummary.recentRecords} />
         </section>
 
-        <SettlementPlaceholder />
+        <SettlementEntryCard summary={ledgerSummary} />
       </div>
     </AppShell>
   );
@@ -485,32 +487,50 @@ function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
   );
 }
 
-function SettlementPlaceholder() {
+function SettlementEntryCard({ summary }: { summary: DashboardLedgerSummary }) {
+  const settlementHref = `/settlement?month=${summary.monthStart.slice(0, 7)}`;
+
   return (
     <Card type="dashed" color="default" className="relative overflow-visible p-5 sm:p-6">
       <span
         aria-hidden="true"
         className="absolute -top-3 left-8 h-7 w-24 -rotate-2 rounded-[10px] bg-[#fff1ed]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
             <Icon name="icon-diy" size={18} bounce />
-            Settlement Preview
+            Settlement Notebook
           </p>
           <div className="mt-3">
             <Title size="small" color="app-yellow">
-              分摊结算正在准备中
+              小岛结算
             </Title>
           </div>
           <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
-            等流水和分摊更完整后，这里会帮你们算清谁该转给谁。现在先把它留成一张温柔的计划便签。
+            看看这个月怎么结算。本页只打开只读结算便签，不会改变账本，也不会记录结清状态。
           </p>
+          <Divider type="wave-yellow" className="my-5" />
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <IslandLink
+              href={settlementHref}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#82d5bb] px-5 py-3 text-sm font-black text-white shadow-[0_5px_0_#5fb89f] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#5fb89f] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <ArrowRightLeft aria-hidden="true" size={18} />
+              打开结算便签
+            </IslandLink>
+            <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-3 text-sm font-black text-[#725d42] shadow-[0_5px_0_rgba(121,79,39,0.12)]">
+              <ShieldCheck aria-hidden="true" size={18} />
+              只读预览，不会改变账本
+            </span>
+          </div>
         </div>
         <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Planned Tool</p>
-          <p className="mt-2 text-lg font-black text-[#794f27]">计划中的小工具</p>
-          <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">不会猜测分摊，也不会写入新数据。</p>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Month Memo</p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">本月谁请客多一点？</p>
+          <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">
+            当前月份 {summary.monthStart.slice(0, 7)}，本月支出 {formatMoney(summary.expenseTotal)}。去结算页看成员支付、分摊和净额。
+          </p>
         </div>
       </div>
     </Card>
