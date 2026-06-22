@@ -583,9 +583,33 @@ function StoredSnapshotPanel({
     displayName: memberNameMap.get(confirmation.confirmed_by) ?? "小岛成员",
     confirmedAt: confirmation.confirmed_at
   }));
+  const statusMemo = getStoredSnapshotStatusMemo({
+    hasCurrentUserConfirmed,
+    isFullyConfirmed,
+    pendingMembers,
+    progressLabel: `${confirmedUserIds.size}/${statusResult.requiredConfirmationCount}`
+  });
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
+    <div className="grid gap-5">
+      <section className={`rounded-[30px] border-2 border-dashed px-5 py-4 shadow-[0_7px_0_rgba(121,79,39,0.08)] ${statusMemo.className}`}>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+              {statusMemo.icon}
+              Confirmation Progress
+            </p>
+            <p className="mt-2 text-xl font-black text-[#794f27]">{statusMemo.title}</p>
+            <p className="mt-2 text-sm font-black leading-7 text-[#725d42]">{statusMemo.body}</p>
+          </div>
+          <div className="rounded-[26px] bg-white/80 px-5 py-4 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">盖章进度</p>
+            <p className="mt-1 text-3xl font-black text-[#794f27]">{statusMemo.progressLabel}</p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
       <section className="rounded-[30px] border-2 border-[#d9c49b] bg-[#fffdf3] px-5 py-5 shadow-[0_7px_0_rgba(121,79,39,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -700,6 +724,7 @@ function StoredSnapshotPanel({
           </form>
         )}
       </section>
+      </div>
     </div>
   );
 }
@@ -807,14 +832,14 @@ function getSettlementFeedback({
     if (result === "created") {
       return {
         tone: "success" as const,
-        message: "结算便签已经提出啦，接下来等两个人分别确认。"
+        message: "结算便签已经提出啦。它会保留当前这份快照，接下来等两个人分别盖章确认。"
       };
     }
 
     if (result === "already_exists") {
       return {
         tone: "warning" as const,
-        message: "这个月已经有一张结算便签啦，直接在下方确认就好。"
+        message: "这个月已经有一张结算便签啦。小岛不会重复写一张，直接查看下方盖章进度就好。"
       };
     }
 
@@ -849,14 +874,14 @@ function getSettlementFeedback({
     if (result === "confirmed") {
       return {
         tone: "success" as const,
-        message: "你已经确认这张结算便签啦，等另一位小岛成员盖章后本月就正式对齐。"
+        message: "你已经在这张结算便签上盖章确认啦，等另一位小岛成员也盖章后，本月就正式对齐。"
       };
     }
 
     if (result === "already_confirmed") {
       return {
         tone: "warning" as const,
-        message: "你已经确认过这张便签啦，不会重复盖章。"
+        message: "你之前已经确认过啦，小岛不会重复盖同一枚章。"
       };
     }
 
@@ -924,10 +949,52 @@ function getOutdatedSnapshotWarning({
   }
 
   if (built.payload.source_fingerprint !== snapshotStatus.snapshot.source_fingerprint) {
-    return "账本后来好像有变动：当前实时计算和已存档结算便签不完全一样，旧便签不会被自动改写。";
+    return "这张结算便签生成后，账本好像又有变化，建议重新看一看。旧便签不会被自动改写，也不会偷偷替你们重新结算。";
   }
 
   return null;
+}
+
+function getStoredSnapshotStatusMemo({
+  hasCurrentUserConfirmed,
+  isFullyConfirmed,
+  pendingMembers,
+  progressLabel
+}: {
+  hasCurrentUserConfirmed: boolean;
+  isFullyConfirmed: boolean;
+  pendingMembers: SettlementSummaryMember[];
+  progressLabel: string;
+}) {
+  if (isFullyConfirmed) {
+    return {
+      title: "这张便签已经两个人都盖章啦",
+      body: "本月结算在小岛账本里已经对齐。这里仍然只是家庭账本记录，不代表真实银行转账。",
+      progressLabel,
+      icon: <CheckCircle2 aria-hidden="true" size={17} />,
+      className: "border-[#82d5bb] bg-[#e9fbf4]"
+    };
+  }
+
+  if (hasCurrentUserConfirmed) {
+    const pendingLabel = pendingMembers.map((member) => member.displayName).join("、") || "另一位小岛成员";
+
+    return {
+      title: "你已经盖章，正在等对方确认",
+      body: `你的确认已经写进便签册。现在只需要等 ${pendingLabel} 再盖一次章。`,
+      progressLabel,
+      icon: <BadgeCheck aria-hidden="true" size={17} />,
+      className: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  return {
+    title: "结算便签已提出，等你盖确认章",
+    body: "确认只会新增你自己的盖章记录，不会改账本金额，也不会替对方确认。",
+    progressLabel,
+    icon: <Hourglass aria-hidden="true" size={17} />,
+    className: "border-[#d9c49b] bg-[#fffdf3]"
+  };
 }
 
 function getSnapshotStatusCopy(status: GetSettlementSnapshotStatusResult["status"]) {

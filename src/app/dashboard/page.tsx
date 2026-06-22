@@ -2,9 +2,12 @@ import { redirect } from "next/navigation";
 import {
   AlertCircle,
   ArrowRightLeft,
+  BadgeCheck,
   ChartPie,
+  CheckCircle2,
   Clock3,
   Home,
+  Hourglass,
   PlusCircle,
   ReceiptText,
   ShieldCheck,
@@ -18,6 +21,10 @@ import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
+import {
+  getSettlementSnapshotStatus,
+  type GetSettlementSnapshotStatusResult
+} from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type {
   DashboardCategory,
@@ -80,6 +87,10 @@ export default async function DashboardPage() {
       householdId: membership.household_id,
       categories: householdSummary.categories
     });
+  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
+    householdId: membership.household_id,
+    month: ledgerSummary.monthStart.slice(0, 7)
+  });
   const ledgerStats = createLedgerStats(ledgerSummary);
 
   return (
@@ -114,7 +125,11 @@ export default async function DashboardPage() {
           <RecentRecordsCard records={ledgerSummary.recentRecords} />
         </section>
 
-        <SettlementEntryCard summary={ledgerSummary} />
+        <SettlementEntryCard
+          currentUserId={user.id}
+          settlementStatus={settlementStatus}
+          summary={ledgerSummary}
+        />
       </div>
     </AppShell>
   );
@@ -487,8 +502,18 @@ function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
   );
 }
 
-function SettlementEntryCard({ summary }: { summary: DashboardLedgerSummary }) {
+function SettlementEntryCard({
+  currentUserId,
+  settlementStatus,
+  summary
+}: {
+  currentUserId: string;
+  settlementStatus: GetSettlementSnapshotStatusResult;
+  summary: DashboardLedgerSummary;
+}) {
   const settlementHref = `/settlement?month=${summary.monthStart.slice(0, 7)}`;
+  const teaser = getDashboardSettlementTeaser(settlementStatus, currentUserId);
+  const TeaserIcon = teaser.icon;
 
   return (
     <Card type="dashed" color="default" className="relative overflow-visible p-5 sm:p-6">
@@ -508,7 +533,7 @@ function SettlementEntryCard({ summary }: { summary: DashboardLedgerSummary }) {
             </Title>
           </div>
           <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
-            看看这个月怎么结算。本页只打开只读结算便签，不会改变账本，也不会记录结清状态。
+            看看这个月怎么结算。这里先给一张只读状态贴纸，真正盖章仍然要去结算页。
           </p>
           <Divider type="wave-yellow" className="my-5" />
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -521,20 +546,77 @@ function SettlementEntryCard({ summary }: { summary: DashboardLedgerSummary }) {
             </IslandLink>
             <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-3 text-sm font-black text-[#725d42] shadow-[0_5px_0_rgba(121,79,39,0.12)]">
               <ShieldCheck aria-hidden="true" size={18} />
-              只读预览，不会改变账本
+              看板不盖章，只做提醒
             </span>
           </div>
         </div>
-        <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Month Memo</p>
-          <p className="mt-2 text-lg font-black text-[#794f27]">本月谁请客多一点？</p>
+        <div className={`rounded-[28px] border-2 border-dashed px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${teaser.className}`}>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            <TeaserIcon aria-hidden="true" size={16} />
+            Settlement Status
+          </p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">{teaser.title}</p>
           <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">
-            当前月份 {summary.monthStart.slice(0, 7)}，本月支出 {formatMoney(summary.expenseTotal)}。去结算页看成员支付、分摊和净额。
+            {teaser.body}
+          </p>
+          <p className="mt-3 rounded-[20px] bg-white/70 px-3 py-2 text-xs font-black leading-5 text-[#8a7556] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]">
+            当前月份 {summary.monthStart.slice(0, 7)} · 本月支出 {formatMoney(summary.expenseTotal)}
           </p>
         </div>
       </div>
     </Card>
   );
+}
+
+function getDashboardSettlementTeaser(
+  status: GetSettlementSnapshotStatusResult,
+  currentUserId: string
+) {
+  if (status.status === "error") {
+    return {
+      title: "结算便签暂时读不到",
+      body: "实时账本仍然可以看，结算状态稍后再翻这页。",
+      icon: AlertCircle,
+      className: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  if (status.status === "no_snapshot") {
+    return {
+      title: "本月结算便签还没提出",
+      body: "可以先去结算页看看成员支付、分摊和净额；看板这里不会创建便签。",
+      icon: ArrowRightLeft,
+      className: "border-[#d9c49b] bg-[#fffdf3]"
+    };
+  }
+
+  const confirmedUserIds = new Set(status.confirmations.map((confirmation) => confirmation.confirmed_by));
+  const progress = `${confirmedUserIds.size}/${status.requiredConfirmationCount}`;
+
+  if (status.status === "fully_confirmed") {
+    return {
+      title: "本月结算已经对齐",
+      body: `这张便签已经 ${progress} 盖章完成，去结算页可以看存档快照。`,
+      icon: CheckCircle2,
+      className: "border-[#82d5bb] bg-[#e9fbf4]"
+    };
+  }
+
+  if (confirmedUserIds.has(currentUserId)) {
+    return {
+      title: "你已确认，等对方盖章",
+      body: `这张便签现在是 ${progress}，再等另一位小岛成员确认。`,
+      icon: BadgeCheck,
+      className: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  return {
+    title: "结算便签等待确认",
+    body: `这张便签现在是 ${progress}，打开结算页可以盖你自己的确认章。`,
+    icon: Hourglass,
+    className: "border-[#f7cd67] bg-[#fff8da]"
+  };
 }
 
 function EmptyLedgerState({
