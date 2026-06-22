@@ -79,6 +79,65 @@ The future feature should feel like adding a stamped note to a monthly island le
 
 The feature should not pretend to move money. It only records a household note that the two people consider the settlement handled.
 
+## V1 Locked Decisions
+
+These decisions are locked for the first settlement write/confirmation version unless a later task explicitly changes this plan before implementation.
+
+1. Settlement records are immutable monthly snapshots.
+   - A confirmed settlement preserves the calculated result at the time the snapshot is created.
+   - The snapshot must not silently change when ledger entries are later edited, added, or deleted.
+   - Settled state belongs to the snapshot, not to each individual ledger entry.
+
+2. Live recalculation remains read-only.
+   - `/settlement` may continue to show the current live calculation from `getSettlementSummary`.
+   - Future settlement history must read from stored snapshots.
+   - If live calculation differs from an existing snapshot, future UI should show an outdated-snapshot warning instead of mutating the snapshot.
+
+3. Amounts are stored as integer cents.
+   - Do not store settlement money as floats.
+   - Do not change `calculateSettlement` amount rules.
+   - Future persistence must convert current helper output amounts according to existing project money-unit conventions and store exact cents.
+
+4. V1 confirmation requires both household members.
+   - One household member may propose/create a settlement snapshot.
+   - Each household member must confirm the same snapshot.
+   - The settlement becomes fully `settled` only after both household members have confirmed.
+   - V1 does not allow one person to unilaterally mark the month as settled.
+
+5. V1 supports one active settlement snapshot per household/month.
+   - Future schema should use idempotency and unique constraints to prevent duplicate active monthly snapshots.
+   - A future void/supersede flow can be planned separately.
+   - V1 must not implement void/supersede unless a later task explicitly requires it.
+
+6. Ledger changes after settlement do not rewrite the settlement.
+   - Later ledger changes can make the old snapshot appear potentially outdated.
+   - A future flow may allow a new superseding snapshot.
+   - Old confirmed snapshot amounts must not be auto-updated.
+
+7. RLS direction is household-member scoped.
+   - Only authenticated members of the same household can read settlement snapshots for that household.
+   - Only authenticated members of the same household can create or confirm settlement snapshots.
+   - Do not use service role in app code.
+   - Do not bypass RLS.
+
+8. Idempotency is required.
+   - Future schema must prevent duplicate confirmations by the same user.
+   - Future schema must prevent duplicate active monthly settlements for the same household/month.
+   - Future write helpers/actions must be safe to retry.
+
+9. V1 UI remains future work.
+   - Keep `/settlement` as live read-only until a later write task begins.
+   - Future confirmation UI must clearly distinguish live calculation, proposed snapshot, fully settled snapshot, and outdated snapshot warning.
+   - Do not add payment or settlement-confirmation UI in this decision-locking task.
+
+10. Rollout is split into small focused tasks.
+    - Step 1: schema + RLS migration only.
+    - Step 2: generated Supabase types, if the project starts using generated database types.
+    - Step 3: server-side write helper/action with tests.
+    - Step 4: read historical snapshots.
+    - Step 5: UI confirmation flow.
+    - Step 6: outdated snapshot warning.
+
 ## Definition Of Settled
 
 Recommended definition:
@@ -161,7 +220,7 @@ Recommended constraints:
 Purpose:
 
 - Records who confirmed a settlement snapshot.
-- Supports either one-person mark-as-paid or two-person confirmation, depending on the human decision.
+- V1 uses this table for two-person confirmation: each household member confirms the same snapshot before it becomes fully settled.
 
 Proposed columns:
 
@@ -180,6 +239,7 @@ Recommended constraints:
 - A member can confirm the same settlement snapshot only once.
 - `confirmed_by` must be a member of the parent household.
 - The confirmation's `household_id` must match the parent snapshot.
+- For V1, the parent settlement should move to `settled` only after both household members have confirmation rows.
 
 ### Optional Later Audit Table
 
@@ -227,48 +287,20 @@ Recommended first implementation:
 - A member may not create a confirmation row for the other person.
 - A member may not confirm a snapshot outside their household.
 - A member may not change transfer amount, transfer direction, or member balances after the snapshot is created.
+- A snapshot remains pending until both household members have confirmed it.
+- A single member confirmation must not mark the month fully settled in V1.
 
 This mirrors the current app's simple two-person trust model while preserving database-level household boundaries.
 
-## One-Person Versus Two-Person Confirmation
+## V1 Confirmation Model
 
-There are two viable product models.
+V1 is locked to two-person confirmation.
 
-### Option A: One-Person Mark-As-Handled
+One household member can propose/create a monthly settlement snapshot. The snapshot stores the calculation result and starts in a pending state. Each household member then confirms the same snapshot with their own confirmation row. The snapshot becomes fully `settled` only after both household members have confirmed.
 
-One household member records that the settlement was handled, and the snapshot becomes `settled` immediately.
+This avoids unilateral settlement while keeping the feature understandable for the current private two-person household.
 
-Pros:
-
-- Faster daily use.
-- Fits the private two-person trust model.
-- Less UI and fewer edge states.
-
-Cons:
-
-- The other person has no explicit acknowledgment in app history.
-- Accidental confirmation needs a clear void path.
-
-### Option B: Two-Person Confirmation
-
-One member starts confirmation; the other member also confirms before the snapshot becomes `settled`.
-
-Pros:
-
-- Better shared accountability.
-- More precise if the app later becomes the historical source of truth.
-
-Cons:
-
-- More UI complexity.
-- More states: pending, confirmed by one side, fully settled, expired/voided.
-- Requires careful copy so it does not feel like a corporate approval flow.
-
-Recommendation for first write version:
-
-- Choose Option A if this remains a private couple app with high trust.
-- Choose Option B only if the user explicitly wants mutual acknowledgment.
-- Until that decision is made, the implementation should not start.
+One-person mark-as-handled remains a non-V1 alternative. It should not be implemented unless this plan is explicitly changed in a later decision task.
 
 ## Idempotency And Duplicate Prevention
 
@@ -474,7 +506,7 @@ Future implementation tasks should run targeted checks for:
 
 Each step should be its own branch, commit, verification, and review.
 
-### Step 1: Data Design Migration
+### Step 1: Schema + RLS Migration Only
 
 Future task:
 
@@ -482,83 +514,113 @@ Future task:
 - Add indexes and constraints.
 - Enable RLS.
 - Do not wire UI.
+- Do not add server actions or API routes.
 - Verify anonymous and cross-household access is blocked.
 
-### Step 2: RLS Policies
+### Step 2: Generated Supabase Types, If Used
 
 Future task:
 
-- Add narrowly scoped policies for settlement tables.
-- Reuse household membership checks.
-- Keep `allowed_user_emails` admin-only.
-- Verify normal authenticated clients can only access their household rows.
+- If the project adopts generated Supabase database types, regenerate them after the migration.
+- Do not hand-edit generated type output.
+- Skip this step if the project still does not use generated database types.
 
-### Step 3: Pure Snapshot Builder
-
-Future task:
-
-- Add a pure helper that converts `SettlementSummary` into a snapshot payload.
-- Preserve `calculateSettlement` output and amount rules.
-- Add deterministic examples for fingerprint generation and cents conversion.
-
-### Step 4: Server Write Helper
+### Step 3: Server-Side Write Helper / Action With Tests
 
 Future task:
 
-- Add one server-only helper for snapshot creation and confirmation.
+- Add one server-side write path for snapshot creation and member confirmation.
 - It must verify household membership first.
 - It must call the existing settlement summary path or shared read path.
 - It must block incomplete or unsupported calculations.
 - It must be idempotent.
+- It must preserve `calculateSettlement` output and amount rules.
+- It must include tests for duplicate snapshot and duplicate confirmation prevention.
 
-### Step 5: Minimal UI Action
+### Step 4: Read Historical Snapshots
+
+Future task:
+
+- Add read helpers for settlement snapshots and confirmations.
+- Keep reads household-scoped and RLS-backed.
+- Show immutable stored snapshot data separately from live calculation data.
+
+### Step 5: UI Confirmation Flow
 
 Future task:
 
 - Add one Animal-Island-style action to `/settlement`.
 - Keep copy gentle and explicit that this records a household note.
+- Clearly distinguish proposed snapshot, current user's confirmation, partner confirmation, and fully settled state.
 - Do not add payment-provider integration.
 - Do not add broad dashboard navigation changes in the same step.
 
-### Step 6: Read-Only History
+### Step 6: Outdated Snapshot Warning
 
 Future task:
 
-- Add history display after write behavior is stable.
-- Show immutable snapshots.
-- Show mismatch notices when live ledger differs from the snapshot.
+- Compare the stored snapshot fingerprint with the current live calculation.
+- If they differ, show an outdated-snapshot warning.
+- Do not mutate the stored snapshot.
 
-### Step 7: Optional Void / Reopen Flow
+### Deferred Beyond V1: Void / Reopen / Supersede Flow
 
-Future task only if needed:
+Plan separately if needed:
 
-- Add a way to void a mistaken settlement snapshot.
+- Add a way to void or supersede a mistaken settlement snapshot.
 - Decide whether one member can void or both must acknowledge.
 - Preserve history rather than hard-removing rows.
 
-## Open Questions For Human Decision
+## Decision Status
 
-These decisions should be answered before implementation begins:
+### Resolved For V1
 
-1. Should one member be able to mark a month settled, or should both members confirm?
-2. Should zero-transfer months be recordable as settled history?
-3. If a settled month later changes, should the app only warn, or should it require voiding and re-settling?
-4. Should settled months lock ledger edits, or should the app allow edits with mismatch notices?
-5. Should settlement history be visible on `/settlement`, a separate history page, or both?
-6. Should confirmations allow a short note?
-7. Should only the debtor be able to start the confirmation, or can either member do it?
-8. Should a mistaken settlement be voidable by one member or require both members?
-9. Is CNY cents storage sufficient for the foreseeable future, or should a currency column be introduced with settlement tables?
-10. Should the first implementation support only the current two-person household, or design the schema for more members while keeping UI limited?
+These decisions are no longer open for the first implementation:
+
+1. Settlement records are immutable monthly snapshots.
+2. Live recalculation stays read-only and does not mutate snapshots.
+3. Settlement money is persisted as integer cents, not floats.
+4. V1 requires both household members to confirm the same snapshot.
+5. One member may propose/create the snapshot, but one member alone cannot make it fully settled.
+6. V1 supports one active settlement snapshot per household/month.
+7. Ledger changes after settlement do not rewrite old snapshot amounts.
+8. Later ledger changes should produce an outdated-snapshot warning.
+9. Settlement snapshot reads/writes are scoped to authenticated members of the same household.
+10. No service role and no RLS bypass are allowed in app code.
+11. Future writes must be retry-safe and idempotent.
+12. `/settlement` remains live read-only until a later write/UI task.
+13. V1 rollout follows schema/RLS first, then optional generated types, write helper/action tests, historical reads, UI confirmation flow, and outdated warning.
+
+### Deferred Beyond V1
+
+These ideas remain useful but should not be implemented in V1 unless a later decision changes scope:
+
+1. A void, reopen, or supersede flow for mistaken snapshots.
+2. One-person mark-as-handled mode.
+3. Hard locking ledger edits after a month is settled.
+4. Multi-member transfer simplification beyond the current two-person household.
+5. A separate `/settlement/history` route or `/settlement/history/[id]` detail route.
+6. Full settlement event audit trail beyond snapshot and confirmation rows.
+7. Currency expansion beyond the current money-unit convention.
+
+### Still Needs Human Decision
+
+These choices can be decided before or during later implementation tasks:
+
+1. Should zero-transfer months be recordable as settled history?
+2. Should confirmations include an optional short note?
+3. Should the V1 history display live only on `/settlement`, or should a separate history route be added in a later read task?
+4. What exact user-facing Chinese copy should distinguish proposed, pending, fully settled, and outdated states?
+5. Should the first migration include only the minimum settlement snapshot/confirmation tables, or also include optional event/audit groundwork as disabled future-proofing?
 
 ## Stop Conditions For Future Implementation
 
 Stop and write a follow-up design note instead of implementing if:
 
-- one-person versus two-person confirmation is undecided
-- immutable snapshot versus live-only state is undecided
-- old-month ledger edit behavior is undecided
-- exact money unit storage is unclear
+- a future task attempts to switch V1 back to one-person settlement without a decision update
+- a future task attempts live-only settlement state instead of immutable snapshots
+- a future task attempts to auto-update old confirmed snapshot amounts after ledger edits
+- exact money-unit conversion conflicts with the current `calculateSettlement` conventions
 - RLS cannot express household-scoped writes safely
 - implementation requires service role credentials in app code
 - implementation requires changing `calculateSettlement` rules
