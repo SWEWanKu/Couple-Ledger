@@ -544,6 +544,13 @@ function SettlementEntryCard({
               <ArrowRightLeft aria-hidden="true" size={18} />
               打开结算便签
             </IslandLink>
+            <IslandLink
+              href="/settlement/history"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <ReceiptText aria-hidden="true" size={18} />
+              翻翻结算手账
+            </IslandLink>
             <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-3 text-sm font-black text-[#725d42] shadow-[0_5px_0_rgba(121,79,39,0.12)]">
               <ShieldCheck aria-hidden="true" size={18} />
               看板不盖章，只做提醒

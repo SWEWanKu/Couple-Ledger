@@ -109,10 +109,19 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
             <ArrowLeft aria-hidden="true" size={17} />
             回到看板
           </IslandLink>
-          <span className="inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
-            <ShieldCheck aria-hidden="true" size={16} />
-            双人确认 · 不转钱
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <IslandLink
+              href="/settlement/history"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <NotebookTabs aria-hidden="true" size={17} />
+              翻翻结算手账
+            </IslandLink>
+            <span className="inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
+              <ShieldCheck aria-hidden="true" size={16} />
+              双人确认 · 不转钱
+            </span>
+          </div>
         </div>
 
         <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">
