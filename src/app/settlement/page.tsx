@@ -29,6 +29,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   buildSettlementSnapshotPayload,
+  createSettlementSnapshotSourceFingerprint,
   type SettlementSnapshotJson
 } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
@@ -957,7 +958,17 @@ function getOutdatedSnapshotWarning({
     return null;
   }
 
-  if (built.payload.source_fingerprint !== snapshotStatus.snapshot.source_fingerprint) {
+  if (built.payload.source_fingerprint === snapshotStatus.snapshot.source_fingerprint) {
+    return null;
+  }
+
+  const storedSnapshotJson = getSnapshotJson(snapshotStatus.snapshot.snapshot);
+
+  if (!storedSnapshotJson) {
+    return "这张旧便签缺少完整校验信息，暂时不能判断账本有没有变化。确认状态仍以两个人的盖章记录为准。";
+  }
+
+  if (built.payload.source_fingerprint !== createSettlementSnapshotSourceFingerprint(storedSnapshotJson)) {
     return "这张结算便签生成后，账本好像又有变化，建议重新看一看。旧便签不会被自动改写，也不会偷偷替你们重新结算。";
   }
 

@@ -27,6 +27,18 @@ export type SettlementSnapshotTransferSuggestion = {
   amountCents: number;
 };
 
+type SettlementSourceFingerprintInput = {
+  calculationStatus: PersistableCalculationStatus;
+  calculationVersion: typeof SETTLEMENT_CALCULATION_VERSION;
+  expenseCount: number;
+  householdId: string;
+  memberBalances: Array<Omit<SettlementSnapshotMemberBalance, "displayName">>;
+  monthStart: string;
+  nextMonthStart: string;
+  totalExpenseCents: number;
+  transferSuggestion: SettlementSnapshotTransferSuggestion | null;
+};
+
 export type SettlementSnapshotJson = {
   schemaVersion: typeof SETTLEMENT_SNAPSHOT_SCHEMA_VERSION;
   calculationVersion: typeof SETTLEMENT_CALCULATION_VERSION;
@@ -152,9 +164,8 @@ export function buildSettlementSnapshotPayload({
   }
 
   const transferAmountCents = transferSuggestion?.amountCents ?? 0;
-  const sourceFingerprintInput = {
+  const sourceFingerprintInput = createSourceFingerprintInput({
     calculationStatus,
-    calculationVersion: SETTLEMENT_CALCULATION_VERSION,
     expenseCount: summary.includedExpenseCount,
     householdId,
     memberBalances,
@@ -162,7 +173,7 @@ export function buildSettlementSnapshotPayload({
     nextMonthStart: summary.month.nextMonthStart,
     totalExpenseCents,
     transferSuggestion
-  };
+  });
   const sourceFingerprint = createSourceFingerprint(sourceFingerprintInput);
   const snapshot: SettlementSnapshotJson = {
     schemaVersion: SETTLEMENT_SNAPSHOT_SCHEMA_VERSION,
@@ -206,6 +217,21 @@ export function buildSettlementSnapshotPayload({
       snapshot
     }
   };
+}
+
+export function createSettlementSnapshotSourceFingerprint(snapshot: SettlementSnapshotJson) {
+  return createSourceFingerprint(
+    createSourceFingerprintInput({
+      calculationStatus: snapshot.calculationStatus,
+      expenseCount: snapshot.expenseCount,
+      householdId: snapshot.householdId,
+      memberBalances: snapshot.memberBalances,
+      monthStart: snapshot.month.monthStart,
+      nextMonthStart: snapshot.month.nextMonthStart,
+      totalExpenseCents: snapshot.totalExpenseCents,
+      transferSuggestion: snapshot.transferSuggestion
+    })
+  );
 }
 
 function isPersistableCalculationStatus(
@@ -282,6 +308,36 @@ function parseMoneyToCents(value: string | number) {
   const totalCents = sign * (yuan * 100 + cents);
 
   return Number.isSafeInteger(totalCents) ? totalCents : null;
+}
+
+function createSourceFingerprintInput({
+  calculationStatus,
+  expenseCount,
+  householdId,
+  memberBalances,
+  monthStart,
+  nextMonthStart,
+  totalExpenseCents,
+  transferSuggestion
+}: Omit<SettlementSourceFingerprintInput, "calculationVersion">): SettlementSourceFingerprintInput {
+  return {
+    calculationStatus,
+    calculationVersion: SETTLEMENT_CALCULATION_VERSION,
+    expenseCount,
+    householdId,
+    memberBalances: memberBalances
+      .map(({ userId, paidAmountCents, shareAmountCents, netAmountCents }) => ({
+        userId,
+        paidAmountCents,
+        shareAmountCents,
+        netAmountCents
+      }))
+      .sort((left, right) => left.userId.localeCompare(right.userId)),
+    monthStart,
+    nextMonthStart,
+    totalExpenseCents,
+    transferSuggestion
+  };
 }
 
 function createSourceFingerprint(value: unknown) {
