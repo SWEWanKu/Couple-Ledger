@@ -53,3 +53,31 @@ export type SettlementCalculationResult = {
   transferSuggestion: SettlementTransferSuggestion | null;
   warnings: string[];
 };
+
+export type SettlementMonthMetadata = {
+  month: string;
+  monthLabel: string;
+  monthStart: string;
+  nextMonthStart: string;
+  previousMonth: string;
+  nextMonth: string;
+};
+
+export type SettlementSummaryMember = SettlementMemberInput & {
+  role: string;
+  joinedAt: string | null;
+  isCurrentUser: boolean;
+};
+
+export type SettlementSummary = {
+  month: SettlementMonthMetadata;
+  members: SettlementSummaryMember[];
+  includedExpenseCount: number;
+  totalExpense: string;
+  calculation: SettlementCalculationResult;
+};
+
+export type SettlementSummaryResult = {
+  summary: SettlementSummary;
+  warning: string | null;
+};
