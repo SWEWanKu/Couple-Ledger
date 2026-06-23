@@ -8,8 +8,8 @@
 
 ## Goal
 
-Define how Settlement V2 should handle ledger changes after a settlement snapshot
-has already been fully confirmed.
+Define how Settlement V2 should handle ledger changes after a settlement
+snapshot has already been fully confirmed.
 
 V1 gives the app a durable two-person settlement snapshot:
 
@@ -70,17 +70,91 @@ Avoid payment-provider wording such as "payment succeeded", "bank transfer",
 - **Confirmed snapshot**: a stored settlement snapshot that has enough
   confirmation rows for the required household members.
 - **Active snapshot**: the current authoritative stored snapshot for a
-  household/month. In V1 this is the only snapshot for that month.
+  household/month.
 - **Outdated warning**: a read-only notice shown when the active snapshot's
   canonical source fingerprint no longer matches the live calculation.
 - **Replacement snapshot**: a new snapshot proposed for a month whose active
   snapshot is outdated or otherwise needs re-alignment.
-- **Superseded snapshot**: an old snapshot that remains readable but is no longer
-  the active snapshot because a replacement became active.
-- **Voided snapshot**: a proposed or mistaken snapshot that should remain in
-  history but should not count as active.
+- **Pending replacement snapshot**: a replacement snapshot waiting for all
+  required confirmations.
+- **Superseded snapshot**: an old snapshot that remains readable but is no
+  longer the active snapshot because a replacement became active.
+- **Voided snapshot**: future-reserved vocabulary for a proposed or mistaken
+  snapshot that should remain in history but not count as active.
 - **Reopened month**: optional product wording for a month whose active snapshot
   is outdated and awaiting a replacement decision.
+
+## Current V1 Constraints To Respect
+
+- Current migration `20260622_add_settlement_schema_rls.sql` creates
+  `unique (household_id, month_start)` on `settlement_snapshots`.
+- V1 has no update or delete policies for settlement snapshots or confirmations.
+- Snapshot amount data is immutable from normal browser clients.
+- Current status helpers derive `proposed`, `partially_confirmed`, and
+  `fully_confirmed` from confirmation rows.
+- Current outdated warning compares a freshly built snapshot payload fingerprint
+  with the stored snapshot fingerprint.
+- Current fingerprint intentionally excludes display names, profile fields,
+  confirmation rows, and UI query params.
+
+## V2 Locked Decisions
+
+These decisions are locked for the first V2 implementation pass. Later tasks
+should treat this section as the source of truth unless a new decision document
+explicitly changes it.
+
+1. Proposing a replacement snapshot does not auto-confirm the proposer.
+   Proposal and confirmation remain separate actions. Both members must
+   explicitly confirm the replacement snapshot.
+2. The old active snapshot is superseded only after the replacement snapshot is
+   fully confirmed. While the replacement is proposed or partially confirmed,
+   the old snapshot remains the active snapshot and the UI may show a pending
+   replacement note beside it.
+3. V2 initial scope allows one `active` snapshot and at most one
+   `pending_replacement` snapshot per household/month. Multiple replacement
+   cycles over time are allowed only after the previous replacement becomes
+   active. Concurrent replacement drafts are deferred beyond V2.
+4. V2 initial implementation does not include a void/cancel replacement flow.
+   `voided` may be reserved as future-compatible vocabulary, but it must not be
+   exposed in V2 UI or write flows.
+5. Replacement is allowed for any historical month that has an active
+   settlement snapshot. It is not restricted to the current month. Ledger
+   changes do not automatically create replacement snapshots.
+6. V2 status vocabulary is explicit: `active`, `pending_replacement`, and
+   `superseded`. `voided` is optional future-reserved vocabulary. Code must not
+   infer current or old status from timestamps alone.
+7. The V1 `unique (household_id, month_start)` constraint must be replaced with
+   partial unique indexes: one active snapshot per household/month and one
+   pending replacement snapshot per household/month. Superseded historical rows
+   must not block new active rows.
+8. Confirmations belong to the exact `settlement_snapshot_id`. Old
+   confirmations do not carry to a replacement. Fully confirmed means all
+   current household members required by the app confirmed that exact snapshot.
+9. Replacement transitions are:
+   - create replacement: insert a `pending_replacement` snapshot while the old
+     active snapshot remains active
+   - confirm replacement: insert a confirmation for the current authenticated
+     user and exact snapshot
+   - when the replacement is fully confirmed: atomically transition the old
+     active snapshot to `superseded` and the replacement snapshot to `active`
+   - use the normal authenticated Supabase client and RLS; no service role or
+     RLS bypass
+10. Fingerprints continue to represent canonical calculation-relevant data.
+    They exclude display names/profile fields, confirmation state, UI query
+    params, and `created_at` unless a future decision changes this. Preserve the
+    V1 false-positive fix.
+11. UI behavior:
+    - `/settlement` shows live calculation, active snapshot, any pending
+      replacement, and an outdated warning when the live calculation differs
+    - `/settlement/history` labels `active`, `pending_replacement`, and
+      `superseded` snapshots
+    - settlement snapshot detail pages label archived state clearly
+    - records awareness reminds users that old snapshots are immutable
+12. Rollout stays independently verifiable:
+    decision doc lock, schema/RLS migration, read helpers, replacement snapshot
+    payload builder, propose replacement helper/action, confirmation transition
+    logic, UI pending replacement/outdated active, history/detail labels, and
+    regression checklist update.
 
 ## Recommended V2 Product Rule
 
@@ -98,85 +172,31 @@ When ledger data changes after settlement:
 8. Mark the old active snapshot as superseded at the same time.
 9. Keep both snapshots visible in history.
 
-Recommendation: a proposed replacement should not immediately supersede the old
-fully confirmed snapshot. The old snapshot should remain active until the
-replacement is fully confirmed, because it is still the last mutually accepted
-settlement note.
+A proposed replacement should not immediately supersede the old fully confirmed
+snapshot. The old snapshot should remain active until the replacement is fully
+confirmed, because it is still the last mutually accepted settlement note.
 
-## Current V1 Constraints To Respect
+## Schema Direction
 
-- Current migration `20260622_add_settlement_schema_rls.sql` creates
-  `unique (household_id, month_start)` on `settlement_snapshots`.
-- V1 has no update or delete policies for settlement snapshots or confirmations.
-- Snapshot amount data is immutable from normal browser clients.
-- Current status helpers derive `proposed`, `partially_confirmed`, and
-  `fully_confirmed` from confirmation rows.
-- Current outdated warning compares a freshly built snapshot payload fingerprint
-  with the stored snapshot fingerprint.
-- Current fingerprint intentionally excludes display names, profile fields,
-  confirmation rows, and UI query params.
+Choose the smallest schema shape that preserves V1 snapshots as immutable amount
+records while adding explicit lifecycle metadata.
 
-## Schema Options
+Recommended metadata on `settlement_snapshots`:
 
-### Option A: Add Status Columns To `settlement_snapshots`
-
-Add lifecycle fields directly to the existing table:
-
-- `lifecycle_status`
-- `replacement_of_snapshot_id`
-- `superseded_by_snapshot_id`
-- `superseded_at`
-- `voided_at`
-- `voided_by`
-
-Tradeoffs:
-
-- Pros: minimal new tables, easiest reads, history stays in one table.
-- Pros: good fit for a small private two-person app.
-- Cons: requires carefully constrained metadata updates.
-- Cons: replacing the current unique constraint needs a migration with rollback
-  planning.
-- Cons: status updates must not become a loophole for editing amounts.
-
-### Option B: Add `settlement_snapshot_versions` Or Events
-
-Keep the current snapshot row as a monthly settlement aggregate and add a child
-table for versions/events.
-
-Tradeoffs:
-
-- Pros: stronger audit story and append-only lifecycle history.
-- Pros: avoids overloading the current snapshot row with every future state.
-- Cons: more tables, more joins, more RLS surface area.
-- Cons: heavier than V2 needs unless the app wants a visible audit timeline.
-- Cons: harder to ship in small focused steps.
-
-### Option C: Add Supersede Metadata To Existing Snapshots
-
-Keep each row as an immutable amount snapshot, but add only the lifecycle
-metadata needed for active/replacement/superseded/voided states:
-
-- `lifecycle_status` with values such as `active`, `replacement_proposed`,
-  `superseded`, `voided`
+- `lifecycle_status` with values `active`, `pending_replacement`,
+  `superseded`, and future-reserved `voided`
 - `replacement_of_snapshot_id` pointing from a replacement to the old snapshot
 - `superseded_by_snapshot_id` pointing from the old snapshot to the replacement
 - `superseded_at`
-- `voided_at`
-- optional `voided_by`
+- optional future `voided_at`
+- optional future `voided_by`
 
-Tradeoffs:
+This keeps history and detail pages readable from `settlement_snapshots`, avoids
+a large event model for V2, and makes lifecycle changes explicit without making
+amount fields mutable.
 
-- Pros: preserves V1 data model while allowing multiple snapshots for a month.
-- Pros: history and detail pages can still read from `settlement_snapshots`.
-- Pros: lifecycle changes are explicit without introducing a large event model.
-- Cons: still requires metadata updates when replacement is promoted.
-- Cons: needs database guards to keep amount fields immutable.
-
-Recommendation: choose Option C for V2. It is the smallest change that supports
-outdated, replacement, superseded, and voided states while preserving the
-existing immutable snapshot row as the historical record.
-
-Option B can be revisited later if the app needs a full visible event timeline.
+A fuller `settlement_snapshot_versions` or lifecycle event table can be
+revisited later if the app needs a visible audit timeline.
 
 ## Unique Constraint Strategy
 
@@ -187,7 +207,7 @@ unique (household_id, month_start)
 ```
 
 V2 needs multiple snapshots for the same household/month over time, while still
-allowing only one active snapshot.
+allowing only one active snapshot and one pending replacement snapshot.
 
 Recommended future migration direction:
 
@@ -202,16 +222,18 @@ Recommended future migration direction:
    where lifecycle_status = 'active';
    ```
 
-4. Add a partial unique index for one open replacement attempt per active
-   snapshot, unless the product explicitly chooses multiple parallel attempts:
+4. Add a partial unique index for one pending replacement snapshot per
+   household/month:
 
    ```sql
-   create unique index settlement_snapshots_one_open_replacement_idx
-   on public.settlement_snapshots (replacement_of_snapshot_id)
-   where lifecycle_status = 'replacement_proposed';
+   create unique index settlement_snapshots_one_pending_replacement_month_idx
+   on public.settlement_snapshots (household_id, month_start)
+   where lifecycle_status = 'pending_replacement';
    ```
 
-5. Drop the V1 `unique (household_id, month_start)` constraint after the new
+5. Keep `superseded` historical rows outside those partial unique indexes so
+   old history does not block a new active snapshot.
+6. Drop the V1 `unique (household_id, month_start)` constraint after the new
    indexes are in place.
 
 Migration risks:
@@ -238,6 +260,8 @@ V2 should keep the current security posture:
 - Household members can read snapshots for their household.
 - Household members can propose replacement snapshots for their household.
 - Household members can confirm replacement snapshots for their household.
+- Household members can transition a fully confirmed `pending_replacement`
+  snapshot to `active` only through the intended constrained path.
 - No service role.
 - No Supabase admin API.
 - No RLS bypass.
@@ -278,19 +302,17 @@ Rules:
 - Confirmation rows still belong to one `settlement_snapshot_id`.
 - One user cannot confirm for the other user.
 - Duplicate confirmation from the same user remains idempotent.
+- Promotion to `active` only happens after the exact replacement snapshot is
+  fully confirmed.
 
-Recommendation: proposing a replacement should not auto-confirm the proposer in
-V2. This keeps V2 consistent with V1's explicit "propose, then confirm" rhythm
-and avoids surprising users who expected a draft-like replacement note.
+Proposing a replacement should not auto-confirm the proposer in V2. This keeps
+V2 consistent with V1's explicit "propose, then confirm" rhythm and avoids
+surprising users who expected a draft-like replacement note.
 
-Alternative for later: auto-confirm proposer for lower friction. If chosen, the
-copy and tests must clearly say that proposing also stamps the proposer's own
-confirmation.
-
-Future schema note: if household membership can change later, store the required
-confirmer user ids in the snapshot JSON or a companion field at proposal time.
-For the current private two-person app, current household members are the
-practical confirmer set.
+Future schema note: if household membership can change later, store the
+required confirmer user ids in the snapshot JSON or a companion field at
+proposal time. For the current private two-person app, current household
+members are the practical confirmer set.
 
 ## Ledger-Change Detection
 
@@ -314,6 +336,7 @@ Do not include:
 - confirmation state
 - snapshot lifecycle labels
 - UI query params
+- `created_at`
 - timestamps that do not affect calculation
 - route-specific copy
 
@@ -334,23 +357,25 @@ Future `/settlement` behavior:
 
 - Show the live calculation for the selected month.
 - Show the current active snapshot for that month, if one exists.
+- Show a pending replacement snapshot for that month, if one exists.
 - If the active snapshot is outdated, show a gentle island notebook warning.
-- Future V2 may offer `重新生成结算便签`.
-- The action should explain that it creates a replacement household note, not a
-  real transfer.
+- Offer a "Create replacement settlement note" action only when allowed.
+- Explain that replacement creates a household note, not a real transfer.
 
 Future `/settlement/history` behavior:
 
 - Show all versions for a month.
 - Label the active snapshot.
+- Label pending replacement snapshots.
 - Label superseded snapshots.
-- Label voided snapshots.
+- Do not expose voided snapshots in the V2 initial UI unless a later task
+  explicitly adds the deferred void/cancel flow.
 - Keep old fully confirmed snapshots readable.
 
 Future snapshot detail behavior:
 
-- Show whether the snapshot is current, superseded, voided, proposed replacement,
-  or fully confirmed.
+- Show whether the snapshot is active, pending replacement, superseded, or a
+  future archived state.
 - Show replacement links in both directions when available.
 - Continue emphasizing that stored snapshot amounts are immutable.
 
@@ -368,16 +393,16 @@ Future records awareness behavior:
 Suggested states:
 
 - `active`: the current accepted snapshot for a household/month.
-- `replacement_proposed`: a replacement snapshot waiting for confirmations.
+- `pending_replacement`: a replacement snapshot waiting for confirmations.
 - `superseded`: a previously active snapshot replaced by a fully confirmed
   replacement.
-- `voided`: a proposed or mistaken snapshot kept for history but not counted.
+- `voided`: future-reserved only; not part of the V2 initial UI or write flow.
 
 Suggested transition:
 
 1. V1 existing snapshot starts as `active`.
 2. Ledger changes make the live fingerprint differ.
-3. Member proposes a replacement snapshot with `replacement_proposed`.
+3. Member proposes a replacement snapshot with `pending_replacement`.
 4. Each member confirms the replacement snapshot.
 5. When replacement reaches full confirmation, one transaction:
    - updates old active snapshot to `superseded`
@@ -389,19 +414,21 @@ This preserves the old confirmed agreement until a new agreement is complete.
 
 ## Rollout Plan
 
-Each step should be a separate focused branch.
+Each step should be a separate focused branch and independently verifiable.
 
 ### Step 1: Lock V2 Decisions In Docs
 
-- Confirm lifecycle vocabulary.
-- Decide whether proposed replacement auto-confirms proposer.
-- Decide when old snapshot becomes superseded.
-- Decide whether voiding proposed replacements is part of V2 or deferred.
+- Lock lifecycle vocabulary.
+- Lock separate proposal and confirmation actions.
+- Lock old-active superseding only after replacement is fully confirmed.
+- Lock one active plus one pending replacement per household/month.
+- Lock void/cancel as deferred beyond V2.
 
 ### Step 2: Schema/RLS Migration Only
 
 - Add lifecycle metadata columns.
-- Add partial unique indexes.
+- Add partial unique indexes for one active and one pending replacement
+  snapshot per household/month.
 - Drop the V1 household/month unique constraint only after replacement indexes
   are ready.
 - Add RLS and database guards for lifecycle metadata.
@@ -410,7 +437,7 @@ Each step should be a separate focused branch.
 
 ### Step 3: Read Helpers
 
-- Add helpers for active, replacement, superseded, and voided snapshots.
+- Add helpers for active, pending replacement, and superseded snapshots.
 - Keep current V1 history/detail helpers readable.
 - Ensure old V1 rows are treated as active after migration.
 
@@ -429,20 +456,30 @@ Each step should be a separate focused branch.
 - Do not use service role.
 - Reject replacement when the live calculation is not persistable.
 - Make duplicate replacement proposals idempotent.
+- Do not auto-confirm the proposer.
 
-### Step 6: UI For Outdated Active Snapshot
+### Step 6: Confirmation Transition Logic
+
+- Confirm only the exact replacement snapshot id.
+- Keep old confirmations separate from replacement confirmations.
+- Promote replacement to active only after full confirmation.
+- Atomically set the previous active snapshot to superseded.
+- Do not expose broad amount-field or snapshot JSON mutation.
+
+### Step 7: UI For Pending Replacement And Outdated Active Snapshot
 
 - Update `/settlement` to show the active snapshot and outdated warning.
-- Offer a gentle future action to propose a replacement.
+- Show any pending replacement beside the active snapshot.
+- Offer a gentle action to propose a replacement only when allowed.
 - Keep payment-provider wording out.
 
-### Step 7: History And Detail Labels
+### Step 8: History And Detail Labels
 
-- Label active, superseded, voided, and replacement snapshots.
+- Label active, pending replacement, and superseded snapshots.
 - Link old and replacement snapshots together.
 - Keep detail pages read-only.
 
-### Step 8: Regression Checklist Update
+### Step 9: Regression Checklist Update
 
 - Extend `SETTLEMENT_V1_REGRESSION.md` or create a V2 checklist in a later
   documentation task.
@@ -461,39 +498,69 @@ Future V2 implementation should verify:
 - Confirmation changes do not trigger outdated warnings.
 - Replacement snapshot can be proposed by a household member.
 - Duplicate replacement proposal is safe and idempotent.
+- Only one pending replacement snapshot can exist per household/month.
+- Proposer is not auto-confirmed.
 - Replacement snapshot requires two confirmations.
 - Old confirmations do not count for replacement.
-- Old snapshot stays active while replacement is only proposed.
+- Old snapshot stays active while replacement is pending or partially confirmed.
 - Replacement becomes active only after full confirmation.
 - Old snapshot becomes superseded only when replacement becomes active.
 - History shows both old and replacement snapshots.
 - Snapshot detail shows stored amounts, not recalculated live amounts.
 - Old amount fields and snapshot JSON are never mutated.
-- Voided snapshots, if V2 supports them, are readable but not active.
+- Voided snapshots remain future-reserved and are not exposed in the initial V2
+  write flow.
 - RLS prevents non-members from reading snapshots.
 - RLS prevents non-members from proposing replacements.
 - RLS prevents confirming as another user.
 - No service role or Supabase admin API is used.
 - No payment provider or real transfer behavior is introduced.
 
-## Open Human Decisions
+## Decision Status
 
-1. Should proposing a replacement auto-confirm the proposer?
-   - Recommendation: no, keep explicit confirmation.
-2. Should the old snapshot become superseded immediately when replacement is
-   proposed, or only after replacement is fully confirmed?
-   - Recommendation: only after replacement is fully confirmed.
-3. Should users be able to void a proposed replacement before both confirm?
-   - Recommendation: defer unless real use shows mistaken proposals are common.
-4. Should V2 support multiple replacement attempts for one month?
-   - Recommendation: allow only one open replacement attempt at a time.
-5. What copy should distinguish "旧便签" from "当前便签"?
-6. Should records creation after a fully confirmed month show stronger wording?
-7. Should replacement be allowed for any historical month or only recent months?
-8. Should V2 store required confirmer user ids at proposal time, or keep using
-   current household members as the required confirmation set?
-9. Should composition-level ledger edits warn even when the settlement totals and
-   transfer suggestion are unchanged?
+### Resolved For V2
+
+1. Proposing a replacement does not auto-confirm the proposer.
+2. Old active snapshots become `superseded` only after a replacement is fully
+   confirmed.
+3. V2 initial scope is one `active` snapshot and at most one
+   `pending_replacement` snapshot per household/month.
+4. Multiple replacement cycles over time are allowed after each previous
+   replacement becomes active.
+5. Replacement is allowed for any historical month with an active snapshot.
+6. Ledger changes never automatically create a replacement snapshot.
+7. V2 uses explicit `active`, `pending_replacement`, and `superseded`
+   vocabulary.
+8. `voided` is reserved only for future compatibility.
+9. The V1 household/month unique constraint is replaced with partial unique
+   indexes for active and pending replacement rows.
+10. Confirmations belong to the exact snapshot id.
+11. Fully confirmed means all current household members required by the app
+    confirmed that exact snapshot.
+12. Fingerprints remain calculation-relevant and preserve the V1 false-positive
+    fix.
+13. `/settlement`, `/settlement/history`, snapshot detail pages, and records
+    awareness show lifecycle state without introducing real payment behavior.
+
+### Deferred Beyond V2
+
+1. Void/cancel replacement flow.
+2. Multiple concurrent replacement drafts for the same household/month.
+3. Exposing `voided` in V2 UI or write flows.
+4. Payment-provider integration or real transfer confirmation.
+5. Month locking that blocks record creation after full confirmation.
+6. A full visible event timeline or append-only lifecycle event table.
+
+### Still Needs Human Decision
+
+1. Exact user-facing copy that distinguishes old/current/pending/superseded
+   settlement notes.
+2. Whether records creation after a fully confirmed month should show stronger
+   wording than the current immutable-snapshot reminder.
+3. Whether V2 should store required confirmer user ids at proposal time, or keep
+   using current household members as the required confirmation set.
+4. Whether composition-level ledger edits should warn even when the settlement
+   totals and transfer suggestion are unchanged.
 
 ## Implementation Stop Conditions
 
@@ -506,7 +573,11 @@ Stop and write a follow-up design note instead of implementing if:
 - RLS cannot safely express household-scoped replacement proposals
 - replacement logic would require changing `calculateSettlement` amount rules
 - replacement logic would require changing `getSettlementSummary` read semantics
-- the product decision on when to supersede old snapshots blocks a safe migration
+- a future task attempts to supersede old snapshots before replacement is fully
+  confirmed
+- a future task attempts to auto-confirm the replacement proposer without a new
+  explicit product decision
+- a future task attempts to expose void/cancel behavior in the V2 initial flow
 - implementation requires payment-provider or real money transfer behavior
 
 ## Current Task Verification
@@ -527,4 +598,5 @@ This current documentation-only task is complete only if:
   was introduced.
 - `calculateSettlement` remains unchanged.
 - `getSettlementSummary` remains unchanged.
-- `npm run build` passes.
+- `npm run build` passes, or the skipped build is explicitly reported because
+  this is a Markdown-only task.
