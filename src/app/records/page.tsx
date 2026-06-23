@@ -19,6 +19,10 @@ import { AppShell } from "@/components/layout/AppShell";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
+  getMonthlyLedgerSummary,
+  type MonthlyLedgerSummaryResult
+} from "@/lib/ledger/get-monthly-ledger-summary";
+import {
   formatMoney,
   getLedgerRecords,
   type LedgerRecord,
@@ -61,6 +65,13 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     categories: householdSummary.categories,
     members: householdSummary.members,
     month: selectedMonth
+  });
+  const monthlyLedgerSummary = await getMonthlyLedgerSummary(supabase, {
+    householdId: membership.household_id,
+    currentUserId: user.id,
+    categories: householdSummary.categories,
+    members: householdSummary.members,
+    month: range.month
   });
   const settlementStatus = await getSettlementSnapshotStatus(supabase, {
     householdId: membership.household_id,
@@ -124,6 +135,8 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
             <Divider type="wave-yellow" className="my-6" />
 
             <MonthNavigator range={range} />
+
+            <RecordsMonthlySummaryNote result={monthlyLedgerSummary} />
 
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div className="flex flex-wrap gap-3">
@@ -208,6 +221,78 @@ function MonthNavigator({ range }: { range: RecordsMonthRange }) {
           本月
         </IslandLink>
       </div>
+    </div>
+  );
+}
+
+function RecordsMonthlySummaryNote({ result }: { result: MonthlyLedgerSummaryResult }) {
+  const summary = result.summary;
+  const topCategory = summary.categoryBreakdown[0] ?? null;
+  const topPayer = summary.payerBreakdown[0] ?? null;
+
+  return (
+    <div className="mb-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            <Icon name="icon-chat" size={18} bounce />
+            Selected Month Note
+          </p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">{summary.mood.title}</p>
+          <p className="mt-1 text-sm font-bold leading-7 text-[#725d42]">
+            {summary.mood.body}
+          </p>
+          {result.warning ? (
+            <p className="mt-2 text-sm font-black leading-6 text-[#b14c46]">{result.warning}</p>
+          ) : null}
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[520px]">
+          <SummaryNotePill label="支出" value={formatMoney(summary.expenseTotal)} helper={`${summary.expenseCount} 笔`} />
+          <SummaryNotePill label="收入" value={formatMoney(summary.incomeTotal)} helper={`${summary.incomeCount} 笔`} />
+          <SummaryNotePill label="净额" value={formatSignedMoney(summary.netAmount)} helper="收入减支出" />
+          <SummaryNotePill label="流水" value={`${summary.entryCount} 条`} helper="只读小结" />
+        </div>
+      </div>
+
+      {result.status !== "empty" ? (
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="rounded-[22px] bg-white/75 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">Top Sticker</p>
+            <p className="mt-1 text-sm font-black leading-6 text-[#794f27]">
+              {topCategory
+                ? `${topCategory.categoryIcon ? `${topCategory.categoryIcon} ` : ""}${topCategory.categoryName} · ${formatMoney(topCategory.totalAmount)}`
+                : "这个月还没有分类贴纸。"}
+            </p>
+          </div>
+          <div className="rounded-[22px] bg-white/75 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">Main Handler</p>
+            <p className="mt-1 text-sm font-black leading-6 text-[#794f27]">
+              {topPayer
+                ? `${topPayer.userLabel} · 经手 ${formatMoney(topPayer.totalHandled)}`
+                : "这个月还没有成员经手流水。"}
+            </p>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SummaryNotePill({
+  label,
+  value,
+  helper
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-[22px] bg-white px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">{label}</p>
+      <p className="mt-1 break-words text-base font-black text-[#794f27]">{value}</p>
+      <p className="mt-0.5 text-xs font-bold text-[#9f927d]">{helper}</p>
     </div>
   );
 }
@@ -403,6 +488,14 @@ function formatEntryType(entryType: LedgerRecord["entryType"]) {
 function formatRecordAmount(record: LedgerRecord) {
   const prefix = record.entryType === "income" ? "+" : "-";
   return `${prefix}${formatMoney(record.amount)}`;
+}
+
+function formatSignedMoney(amount: number) {
+  if (amount === 0) {
+    return formatMoney(0);
+  }
+
+  return `${amount > 0 ? "+" : "-"}${formatMoney(Math.abs(amount))}`;
 }
 
 function formatLongDate(date: string) {

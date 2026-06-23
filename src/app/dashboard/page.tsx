@@ -22,6 +22,12 @@ import { AppShell } from "@/components/layout/AppShell";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
 import {
+  getMonthlyLedgerSummary,
+  type MonthlyLedgerCategoryBreakdownItem,
+  type MonthlyLedgerPayerBreakdownItem,
+  type MonthlyLedgerSummaryResult
+} from "@/lib/ledger/get-monthly-ledger-summary";
+import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
 } from "@/lib/settlement/get-settlement-snapshot-status";
@@ -87,6 +93,13 @@ export default async function DashboardPage() {
       householdId: membership.household_id,
       categories: householdSummary.categories
     });
+  const monthlyLedgerSummary = await getMonthlyLedgerSummary(supabase, {
+    householdId: membership.household_id,
+    currentUserId: user.id,
+    categories: householdSummary.categories,
+    members: householdSummary.members,
+    month: ledgerSummary.monthStart.slice(0, 7)
+  });
   const settlementStatus = await getSettlementSnapshotStatus(supabase, {
     householdId: membership.household_id,
     month: ledgerSummary.monthStart.slice(0, 7)
@@ -119,6 +132,8 @@ export default async function DashboardPage() {
             <LedgerStatSticker key={stat.label} stat={stat} />
           ))}
         </section>
+
+        <MonthlyLedgerNotebookCard result={monthlyLedgerSummary} />
 
         <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <CategoryBreakdownCard items={ledgerSummary.categoryBreakdown} />
@@ -351,6 +366,160 @@ function DashboardHouseholdSummaryCard({
         </div>
       </div>
     </Card>
+  );
+}
+
+function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryResult }) {
+  const summary = result.summary;
+  const topCategories = summary.categoryBreakdown.slice(0, 4);
+  const payerBreakdown = summary.payerBreakdown.slice(0, 2);
+
+  return (
+    <Card color="default" pattern="app-green" className="relative overflow-visible p-5 sm:p-6">
+      <span
+        aria-hidden="true"
+        className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-3 right-12 h-7 w-24 rotate-2 rounded-[10px] bg-[#fff1ed]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+
+      <div className="relative grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Icon name="icon-diy" size={18} bounce />
+            Monthly Ledger Note
+          </p>
+          <div className="mt-3">
+            <Title size="small" color="app-yellow">
+              本月小岛账本小结
+            </Title>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
+            这张便签只整理 {summary.range.monthLabel} 的真实流水，不会改动账本、结算便签或任何写入流程。
+          </p>
+
+          {result.warning ? (
+            <div className="mt-4 flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
+              <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+              <span>{result.warning}</span>
+            </div>
+          ) : null}
+
+          <div className="mt-4 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+            <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+              <Icon name="icon-chat" size={18} bounce />
+              Island Mood
+            </p>
+            <p className="mt-2 text-lg font-black text-[#794f27]">{summary.mood.title}</p>
+            <p className="mt-1 text-sm font-bold leading-7 text-[#725d42]">{summary.mood.body}</p>
+          </div>
+        </div>
+
+        <div className="grid gap-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MiniLedgerMetric label="支出小票" value={formatMoney(summary.expenseTotal)} helper={`${summary.expenseCount} 笔`} tone="coral" />
+            <MiniLedgerMetric label="收入便签" value={formatMoney(summary.incomeTotal)} helper={`${summary.incomeCount} 笔`} tone="teal" />
+            <MiniLedgerMetric label="本月净额" value={formatSignedMoney(summary.netAmount)} helper="收入减支出" tone="amber" />
+            <MiniLedgerMetric label="总流水" value={`${summary.entryCount} 条`} helper="只读统计" tone="ink" />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-[28px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+              <p className="flex items-center gap-2 text-sm font-black text-[#794f27]">
+                <ChartPie aria-hidden="true" size={18} className="text-[#9f927d]" />
+                分类贴纸
+              </p>
+              <div className="mt-3 grid gap-2">
+                {topCategories.length > 0 ? (
+                  topCategories.map((category) => (
+                    <MonthlyCategoryRow key={category.categoryId ?? "uncategorized"} category={category} />
+                  ))
+                ) : (
+                  <p className="rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-white/70 px-4 py-3 text-sm font-bold leading-6 text-[#725d42]">
+                    这个月还没有可展示的分类流水。
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+              <p className="flex items-center gap-2 text-sm font-black text-[#794f27]">
+                <UsersRound aria-hidden="true" size={18} className="text-[#9f927d]" />
+                经手便签
+              </p>
+              <div className="mt-3 grid gap-2">
+                {payerBreakdown.length > 0 ? (
+                  payerBreakdown.map((payer) => (
+                    <MonthlyPayerRow key={payer.userId} payer={payer} />
+                  ))
+                ) : (
+                  <p className="rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-white/70 px-4 py-3 text-sm font-bold leading-6 text-[#725d42]">
+                    这个月还没有可展示的成员经手流水。
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function MiniLedgerMetric({
+  label,
+  value,
+  helper,
+  tone
+}: {
+  label: string;
+  value: string;
+  helper: string;
+  tone: LedgerStat["tone"];
+}) {
+  return (
+    <div className={`relative rounded-[24px] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${statToneClasses[tone]}`}>
+      <span
+        aria-hidden="true"
+        className={`absolute -top-2 right-5 h-4 w-12 rotate-2 rounded-[7px] ${statToneTapeClasses[tone]}`}
+      />
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">{label}</p>
+      <p className="mt-2 break-words text-xl font-black text-[#794f27]">{value}</p>
+      <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">{helper}</p>
+    </div>
+  );
+}
+
+function MonthlyCategoryRow({ category }: { category: MonthlyLedgerCategoryBreakdownItem }) {
+  return (
+    <div className="rounded-[22px] border-2 border-[#ead9b8] bg-white/75 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.06)]">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 font-black text-[#794f27]">
+          {category.categoryIcon ? `${category.categoryIcon} ` : ""}
+          {category.categoryName}
+        </p>
+        <p className="shrink-0 text-sm font-black text-[#794f27]">{formatMoney(category.totalAmount)}</p>
+      </div>
+      <p className="mt-1 text-xs font-bold leading-5 text-[#9f927d]">
+        支出 {formatMoney(category.expenseTotal)} · 收入 {formatMoney(category.incomeTotal)} · {category.recordCount} 条
+      </p>
+    </div>
+  );
+}
+
+function MonthlyPayerRow({ payer }: { payer: MonthlyLedgerPayerBreakdownItem }) {
+  return (
+    <div className="rounded-[22px] border-2 border-[#ead9b8] bg-white/75 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.06)]">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 font-black text-[#794f27]">{payer.userLabel}</p>
+        <p className="shrink-0 text-sm font-black text-[#794f27]">{formatMoney(payer.totalHandled)}</p>
+      </div>
+      <p className="mt-1 text-xs font-bold leading-5 text-[#9f927d]">
+        支出经手 {formatMoney(payer.expenseTotal)} · 收入经手 {formatMoney(payer.incomeTotal)} · {payer.recordCount} 条
+      </p>
+    </div>
   );
 }
 
