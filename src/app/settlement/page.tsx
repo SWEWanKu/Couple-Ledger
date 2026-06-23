@@ -35,7 +35,9 @@ import {
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
 import {
   getSettlementSnapshotStatus,
-  type GetSettlementSnapshotStatusResult
+  type GetSettlementSnapshotStatusResult,
+  type SettlementSnapshotLifecycleRow,
+  type SettlementSnapshotLifecycleSummary
 } from "@/lib/settlement/get-settlement-snapshot-status";
 import { getSettlementSummary } from "@/lib/settlement/get-settlement-summary";
 import { createClient } from "@/lib/supabase/server";
@@ -514,6 +516,9 @@ function SettlementSnapshotStatusCard({
           statusResult={statusResult}
         />
       )}
+      {statusResult.pendingReplacement ? (
+        <PendingReplacementNotice pendingReplacement={statusResult.pendingReplacement} />
+      ) : null}
     </Card>
   );
 }
@@ -578,11 +583,12 @@ function StoredSnapshotPanel({
   currentUserId: string;
   members: SettlementSummaryMember[];
   range: SettlementMonthMetadata;
-  statusResult: Extract<GetSettlementSnapshotStatusResult, { snapshot: SettlementSnapshotRow }>;
+  statusResult: Extract<GetSettlementSnapshotStatusResult, { snapshot: SettlementSnapshotLifecycleRow }>;
 }) {
   const snapshot = statusResult.snapshot;
   const snapshotJson = getSnapshotJson(snapshot.snapshot);
   const memberNameMap = getSnapshotMemberNameMap(members, snapshotJson);
+  const lifecycleCopy = getSnapshotLifecycleCopy(snapshot.lifecycle_status);
   const confirmedUserIds = new Set(statusResult.confirmations.map((confirmation) => confirmation.confirmed_by));
   const hasCurrentUserConfirmed = confirmedUserIds.has(currentUserId);
   const isFullyConfirmed = statusResult.status === "fully_confirmed";
@@ -643,6 +649,9 @@ function StoredSnapshotPanel({
           <p className="flex items-center gap-2 text-[#794f27]">
             <ArrowRightLeft aria-hidden="true" size={18} className="text-[#9f927d]" />
             {formatSnapshotTransfer(snapshot, memberNameMap)}
+          </p>
+          <p className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-black ${lifecycleCopy.className}`}>
+            {lifecycleCopy.label}
           </p>
           <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
             提出时间：{formatDateTime(snapshot.created_at)}
@@ -742,6 +751,38 @@ function StoredSnapshotPanel({
           </form>
         )}
       </section>
+      </div>
+    </div>
+  );
+}
+
+function PendingReplacementNotice({
+  pendingReplacement
+}: {
+  pendingReplacement: SettlementSnapshotLifecycleSummary;
+}) {
+  return (
+    <div className="rounded-[30px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-5 py-4 text-sm font-black leading-7 text-[#725d42] shadow-[0_7px_0_rgba(121,79,39,0.08)]">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            <Hourglass aria-hidden="true" size={16} />
+            Pending Replacement
+          </p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">
+            有一张新的结算便签正在等盖章
+          </p>
+          <p className="mt-1">
+            当前页面仍以 active 的结算便签作为本月已保存结果。这张新便签只是只读提示，不会在这里创建替换、切换 active 或新增确认入口。
+          </p>
+        </div>
+        <IslandLink
+          href={`/settlement/history/${pendingReplacement.snapshot.id}`}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          <NotebookTabs aria-hidden="true" size={16} />
+          查看新便签草稿 · {pendingReplacement.confirmedCount}/{pendingReplacement.requiredConfirmationCount}
+        </IslandLink>
       </div>
     </div>
   );
@@ -1062,6 +1103,27 @@ function getSnapshotStatusCopy(status: GetSettlementSnapshotStatusResult["status
     label: "暂时读不到",
     icon: <AlertCircle aria-hidden="true" size={15} />,
     className: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+  };
+}
+
+function getSnapshotLifecycleCopy(status: SettlementSnapshotLifecycleRow["lifecycle_status"]) {
+  if (status === "pending_replacement") {
+    return {
+      label: "新结算便签草稿",
+      className: "bg-[#fff8da] text-[#8a6420]"
+    };
+  }
+
+  if (status === "superseded") {
+    return {
+      label: "旧结算便签",
+      className: "bg-[#fff1ed] text-[#b14c46]"
+    };
+  }
+
+  return {
+    label: "当前结算便签",
+    className: "bg-[#e9fbf4] text-[#1f7a70]"
   };
 }
 

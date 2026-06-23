@@ -2,6 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementConfirmationRow } from "@/lib/settlement/confirm-settlement-snapshot";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
+import type {
+  SettlementSnapshotLifecycleFields,
+  SettlementSnapshotLifecycleStatus
+} from "@/types/settlement";
 
 export type SettlementSnapshotDetailStatus =
   | "proposed"
@@ -24,10 +28,13 @@ export type SettlementSnapshotConfirmationDetail = SettlementConfirmationRow & {
 };
 
 export type SettlementSnapshotDetail = {
-  snapshot: SettlementSnapshotRow;
+  snapshot: SettlementSnapshotDetailRow;
   snapshotJson: SettlementSnapshotJson | null;
   monthKey: string;
   monthLabel: string;
+  lifecycleStatus: SettlementSnapshotLifecycleStatus;
+  replacementOfSnapshotId: string | null;
+  supersededBySnapshotId: string | null;
   confirmationCount: number;
   memberCount: number;
   currentUserConfirmed: boolean;
@@ -70,6 +77,9 @@ type HouseholdMemberRow = {
   joined_at: string | null;
 };
 
+export type SettlementSnapshotDetailRow = SettlementSnapshotRow &
+  SettlementSnapshotLifecycleFields;
+
 const settlementSnapshotSelect = [
   "id",
   "household_id",
@@ -84,7 +94,13 @@ const settlementSnapshotSelect = [
   "calculation_version",
   "calculation_status",
   "source_fingerprint",
-  "snapshot"
+  "snapshot",
+  "lifecycle_status",
+  "replacement_of_snapshot_id",
+  "superseded_by_snapshot_id",
+  "superseded_at",
+  "status_updated_at",
+  "status_updated_by"
 ].join(", ");
 
 const settlementConfirmationSelect = [
@@ -138,7 +154,7 @@ export async function getSettlementSnapshotDetail(
     };
   }
 
-  const snapshot = snapshotData as unknown as SettlementSnapshotRow;
+  const snapshot = normalizeSnapshotLifecycle(snapshotData);
   const { data: confirmationData, error: confirmationError } = await supabase
     .from("settlement_confirmations")
     .select(settlementConfirmationSelect)
@@ -166,6 +182,9 @@ export async function getSettlementSnapshotDetail(
       snapshotJson,
       monthKey: getSnapshotMonthKey(snapshot, snapshotJson),
       monthLabel: getSnapshotMonthLabel(snapshot, snapshotJson),
+      lifecycleStatus: snapshot.lifecycle_status,
+      replacementOfSnapshotId: snapshot.replacement_of_snapshot_id,
+      supersededBySnapshotId: snapshot.superseded_by_snapshot_id,
       confirmationCount,
       memberCount,
       currentUserConfirmed: confirmedUserIds.has(userId),
@@ -231,6 +250,28 @@ function getSnapshotJson(value: unknown): SettlementSnapshotJson | null {
   return snapshot as SettlementSnapshotJson;
 }
 
+function normalizeSnapshotLifecycle(value: unknown): SettlementSnapshotDetailRow {
+  const snapshot = value as SettlementSnapshotRow & Partial<SettlementSnapshotLifecycleFields>;
+
+  return {
+    ...snapshot,
+    lifecycle_status: isSettlementSnapshotLifecycleStatus(snapshot.lifecycle_status)
+      ? snapshot.lifecycle_status
+      : "active",
+    replacement_of_snapshot_id: snapshot.replacement_of_snapshot_id ?? null,
+    superseded_by_snapshot_id: snapshot.superseded_by_snapshot_id ?? null,
+    superseded_at: snapshot.superseded_at ?? null,
+    status_updated_at: snapshot.status_updated_at ?? null,
+    status_updated_by: snapshot.status_updated_by ?? null
+  };
+}
+
+function isSettlementSnapshotLifecycleStatus(
+  value: unknown
+): value is SettlementSnapshotLifecycleStatus {
+  return value === "active" || value === "pending_replacement" || value === "superseded";
+}
+
 function createDisplayNameMap(
   members: HouseholdMemberRow[],
   snapshotJson: SettlementSnapshotJson | null,
@@ -265,7 +306,7 @@ function getMemberFallbackLabel(member: HouseholdMemberRow, index: number, curre
 }
 
 function getSnapshotMonthKey(
-  snapshot: SettlementSnapshotRow,
+  snapshot: SettlementSnapshotDetailRow,
   snapshotJson: SettlementSnapshotJson | null
 ) {
   if (snapshotJson?.month.key) {
@@ -278,7 +319,7 @@ function getSnapshotMonthKey(
 }
 
 function getSnapshotMonthLabel(
-  snapshot: SettlementSnapshotRow,
+  snapshot: SettlementSnapshotDetailRow,
   snapshotJson: SettlementSnapshotJson | null
 ) {
   if (snapshotJson?.month.label) {

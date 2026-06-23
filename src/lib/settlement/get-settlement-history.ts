@@ -2,14 +2,21 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementConfirmationRow } from "@/lib/settlement/confirm-settlement-snapshot";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
+import type {
+  SettlementSnapshotLifecycleFields,
+  SettlementSnapshotLifecycleStatus
+} from "@/types/settlement";
 
 export type SettlementHistoryStatus = "proposed" | "partially_confirmed" | "fully_confirmed";
 
 export type SettlementHistoryItem = {
-  snapshot: SettlementSnapshotRow;
+  snapshot: SettlementHistorySnapshotRow;
   snapshotJson: SettlementSnapshotJson | null;
   monthKey: string;
   monthLabel: string;
+  lifecycleStatus: SettlementSnapshotLifecycleStatus;
+  replacementOfSnapshotId: string | null;
+  supersededBySnapshotId: string | null;
   confirmationCount: number;
   memberCount: number;
   currentUserConfirmed: boolean;
@@ -47,6 +54,9 @@ type HouseholdMemberRow = {
   user_id: string;
 };
 
+export type SettlementHistorySnapshotRow = SettlementSnapshotRow &
+  SettlementSnapshotLifecycleFields;
+
 const settlementSnapshotSelect = [
   "id",
   "household_id",
@@ -61,7 +71,13 @@ const settlementSnapshotSelect = [
   "calculation_version",
   "calculation_status",
   "source_fingerprint",
-  "snapshot"
+  "snapshot",
+  "lifecycle_status",
+  "replacement_of_snapshot_id",
+  "superseded_by_snapshot_id",
+  "superseded_at",
+  "status_updated_at",
+  "status_updated_by"
 ].join(", ");
 
 const settlementConfirmationSelect = [
@@ -104,6 +120,7 @@ export async function getSettlementHistory(
     .select(settlementSnapshotSelect)
     .eq("household_id", householdId)
     .order("month_start", { ascending: false })
+    .order("lifecycle_status", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(clampHistoryLimit(limit));
 
@@ -111,7 +128,9 @@ export async function getSettlementHistory(
     return createErrorResult("snapshots_read_failed");
   }
 
-  const snapshots = (snapshotData ?? []) as unknown as SettlementSnapshotRow[];
+  const snapshots = ((snapshotData ?? []) as unknown[]).map((snapshot) =>
+    normalizeSnapshotLifecycle(snapshot)
+  );
 
   if (snapshots.length === 0) {
     return {
@@ -170,7 +189,7 @@ function createHistoryItem({
   currentUserId,
   memberCount
 }: {
-  snapshot: SettlementSnapshotRow;
+  snapshot: SettlementHistorySnapshotRow;
   confirmations: SettlementConfirmationRow[];
   currentUserId: string;
   memberCount: number;
@@ -184,6 +203,9 @@ function createHistoryItem({
     snapshotJson,
     monthKey: getSnapshotMonthKey(snapshot, snapshotJson),
     monthLabel: getSnapshotMonthLabel(snapshot, snapshotJson),
+    lifecycleStatus: snapshot.lifecycle_status,
+    replacementOfSnapshotId: snapshot.replacement_of_snapshot_id,
+    supersededBySnapshotId: snapshot.superseded_by_snapshot_id,
     confirmationCount,
     memberCount,
     currentUserConfirmed: confirmedUserIds.has(currentUserId),
@@ -233,8 +255,30 @@ function getSnapshotJson(value: unknown): SettlementSnapshotJson | null {
   return snapshot as SettlementSnapshotJson;
 }
 
+function normalizeSnapshotLifecycle(value: unknown): SettlementHistorySnapshotRow {
+  const snapshot = value as SettlementSnapshotRow & Partial<SettlementSnapshotLifecycleFields>;
+
+  return {
+    ...snapshot,
+    lifecycle_status: isSettlementSnapshotLifecycleStatus(snapshot.lifecycle_status)
+      ? snapshot.lifecycle_status
+      : "active",
+    replacement_of_snapshot_id: snapshot.replacement_of_snapshot_id ?? null,
+    superseded_by_snapshot_id: snapshot.superseded_by_snapshot_id ?? null,
+    superseded_at: snapshot.superseded_at ?? null,
+    status_updated_at: snapshot.status_updated_at ?? null,
+    status_updated_by: snapshot.status_updated_by ?? null
+  };
+}
+
+function isSettlementSnapshotLifecycleStatus(
+  value: unknown
+): value is SettlementSnapshotLifecycleStatus {
+  return value === "active" || value === "pending_replacement" || value === "superseded";
+}
+
 function getSnapshotMonthKey(
-  snapshot: SettlementSnapshotRow,
+  snapshot: SettlementHistorySnapshotRow,
   snapshotJson: SettlementSnapshotJson | null
 ) {
   if (snapshotJson?.month.key) {
@@ -247,7 +291,7 @@ function getSnapshotMonthKey(
 }
 
 function getSnapshotMonthLabel(
-  snapshot: SettlementSnapshotRow,
+  snapshot: SettlementHistorySnapshotRow,
   snapshotJson: SettlementSnapshotJson | null
 ) {
   if (snapshotJson?.month.label) {

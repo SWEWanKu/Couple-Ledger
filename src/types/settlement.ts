@@ -8,6 +8,20 @@ export type SettlementCalculationStatus =
   | "incomplete"
   | "unsupported_member_count";
 
+export type SettlementSnapshotLifecycleStatus =
+  | "active"
+  | "pending_replacement"
+  | "superseded";
+
+export type SettlementSnapshotLifecycleFields = {
+  lifecycle_status: SettlementSnapshotLifecycleStatus;
+  replacement_of_snapshot_id: string | null;
+  superseded_by_snapshot_id: string | null;
+  superseded_at: string | null;
+  status_updated_at: string | null;
+  status_updated_by: string | null;
+};
+
 export type SettlementMemberInput = {
   userId: string;
   displayName: string;

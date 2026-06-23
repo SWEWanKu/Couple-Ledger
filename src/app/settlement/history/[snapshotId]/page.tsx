@@ -24,8 +24,7 @@ import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-s
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
 import {
   getSettlementSnapshotDetail,
-  type SettlementSnapshotDetail,
-  type SettlementSnapshotDetailStatus
+  type SettlementSnapshotDetail
 } from "@/lib/settlement/get-settlement-snapshot-detail";
 import { createClient } from "@/lib/supabase/server";
 
@@ -187,7 +186,7 @@ function SnapshotHero({
   detail: SettlementSnapshotDetail;
   householdName: string;
 }) {
-  const statusCopy = getStatusCopy(detail.status);
+  const statusCopy = getStatusCopy(detail);
   const transferText = formatSnapshotTransfer(detail);
 
   return (
@@ -351,7 +350,7 @@ function MemberArchiveCard({ detail }: { detail: SettlementSnapshotDetail }) {
 }
 
 function ConfirmationArchiveCard({ detail }: { detail: SettlementSnapshotDetail }) {
-  const statusCopy = getStatusCopy(detail.status);
+  const statusCopy = getStatusCopy(detail);
 
   return (
     <Card color="default" pattern="app-green" className="relative overflow-visible p-5 sm:p-6">
@@ -535,36 +534,18 @@ function PageNotice({
   );
 }
 
-function getStatusCopy(status: SettlementSnapshotDetailStatus) {
-  if (status === "fully_confirmed") {
-    return {
-      label: "两人确认",
-      title: "这个月已经两个人都确认啦",
-      body: "确认章已经收齐，便签册里保留的是当时双方认可的存档金额。",
-      icon: <CheckCircle2 aria-hidden="true" size={15} />,
-      className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]",
-      panelClassName: "border-[#82d5bb] bg-[#e9fbf4]"
-    };
-  }
-
-  if (status === "partially_confirmed") {
-    return {
-      label: "部分确认",
-      title: "这张便签还差一枚确认章",
-      body: "已经有人确认过这张存档便签，但还没有收齐所有小岛成员的确认。",
-      icon: <BadgeCheck aria-hidden="true" size={15} />,
-      className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]",
-      panelClassName: "border-[#f7cd67] bg-[#fff8da]"
-    };
-  }
+function getStatusCopy(detail: SettlementSnapshotDetail) {
+  const status = detail.status;
+  const lifecycleCopy = getDetailLifecycleCopy(detail.lifecycleStatus);
+  const confirmationCopy = getDetailConfirmationCopy(status);
 
   return {
-    label: "等待盖章",
-    title: "这张便签还在等待确认",
-    body: "它已经被保存成快照，但还没有确认记录。当前详情页仍然只读展示。",
-    icon: <Clock3 aria-hidden="true" size={15} />,
-    className: "border-[#d9c49b] bg-[#fffdf3] text-[#8a7556]",
-    panelClassName: "border-[#d9c49b] bg-[#fffdf3]"
+    label: `${lifecycleCopy.raw} · ${status}`,
+    title: lifecycleCopy.title,
+    body: `${lifecycleCopy.body} ${confirmationCopy.body}`,
+    icon: confirmationCopy.icon,
+    className: lifecycleCopy.className,
+    panelClassName: lifecycleCopy.panelClassName
   };
 }
 
@@ -580,6 +561,57 @@ function createMemberNameMap(detail: SettlementSnapshotDetail) {
   });
 
   return map;
+}
+
+function getDetailLifecycleCopy(status: SettlementSnapshotDetail["lifecycleStatus"]) {
+  if (status === "pending_replacement") {
+    return {
+      raw: "pending_replacement",
+      title: "新的结算便签草稿，等待两个人确认",
+      body: "这张便签还没有替代当前 active 结算便签。",
+      className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]",
+      panelClassName: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  if (status === "superseded") {
+    return {
+      raw: "superseded",
+      title: "旧结算便签，已被新的便签替代",
+      body: "这张旧便签仍然只读保留，方便回看当时确认过的金额。",
+      className: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]",
+      panelClassName: "border-[#fc736d] bg-[#fff1ed]"
+    };
+  }
+
+  return {
+    raw: "active",
+    title: "当前结算便签",
+    body: "这是当前 active 的已保存结算便签。",
+    className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]",
+    panelClassName: "border-[#82d5bb] bg-[#e9fbf4]"
+  };
+}
+
+function getDetailConfirmationCopy(status: SettlementSnapshotDetail["status"]) {
+  if (status === "fully_confirmed") {
+    return {
+      body: "两个人都已经确认啦。",
+      icon: <CheckCircle2 aria-hidden="true" size={15} />
+    };
+  }
+
+  if (status === "partially_confirmed") {
+    return {
+      body: "它还差一枚确认章。",
+      icon: <BadgeCheck aria-hidden="true" size={15} />
+    };
+  }
+
+  return {
+    body: "它还在等待盖章。",
+    icon: <Clock3 aria-hidden="true" size={15} />
+  };
 }
 
 function formatSnapshotTransfer(detail: SettlementSnapshotDetail) {

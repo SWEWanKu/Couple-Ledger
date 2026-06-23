@@ -397,43 +397,71 @@ function PageNotice({
 }
 
 function getStatusCopy(item: SettlementHistoryItem) {
-  if (item.status === "fully_confirmed") {
-    return {
-      label: "两人确认",
-      memo: "两个人都确认啦",
-      icon: <CheckCircle2 aria-hidden="true" size={15} />,
-      className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
-    };
-  }
-
-  if (item.currentUserConfirmed) {
-    return {
-      label: "部分确认",
-      memo: "你已确认，等对方盖章",
-      icon: <BadgeCheck aria-hidden="true" size={15} />,
-      className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
-    };
-  }
-
-  if (item.status === "partially_confirmed") {
-    return {
-      label: "等待你盖章",
-      memo: "等待你盖章",
-      icon: <Hourglass aria-hidden="true" size={15} />,
-      className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
-    };
-  }
+  const lifecycleCopy = getLifecycleHistoryCopy(item.lifecycleStatus);
+  const confirmationCopy = getHistoryConfirmationCopy(item);
 
   return {
-    label: "等待盖章",
-    memo: "等待盖章",
-    icon: <Clock3 aria-hidden="true" size={15} />,
-    className: "border-[#d9c49b] bg-[#fffdf3] text-[#8a7556]"
+    label: `${lifecycleCopy.raw} · ${item.status}`,
+    memo: `${lifecycleCopy.memo} · ${confirmationCopy.memo}`,
+    icon: confirmationCopy.icon,
+    className: lifecycleCopy.className
   };
 }
 
 function getHistoryCount(history: GetSettlementHistoryResult) {
   return history.status === "ok" ? history.items.length : 0;
+}
+
+function getLifecycleHistoryCopy(status: SettlementHistoryItem["lifecycleStatus"]) {
+  if (status === "pending_replacement") {
+    return {
+      raw: "pending_replacement",
+      memo: "新的结算便签草稿，等待两个人确认",
+      className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
+    };
+  }
+
+  if (status === "superseded") {
+    return {
+      raw: "superseded",
+      memo: "旧结算便签，已被新的便签替代",
+      className: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+    };
+  }
+
+  return {
+    raw: "active",
+    memo: "当前结算便签",
+    className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+  };
+}
+
+function getHistoryConfirmationCopy(item: SettlementHistoryItem) {
+  if (item.status === "fully_confirmed") {
+    return {
+      memo: "两个人都确认啦",
+      icon: <CheckCircle2 aria-hidden="true" size={15} />
+    };
+  }
+
+  if (item.currentUserConfirmed) {
+    return {
+      memo: "你已确认，等对方盖章",
+      icon: <BadgeCheck aria-hidden="true" size={15} />
+    };
+  }
+
+  if (item.status === "partially_confirmed") {
+    return {
+      memo: "等待你盖章",
+      icon: <Hourglass aria-hidden="true" size={15} />
+    };
+  }
+
+  return {
+    memo: "等待盖章",
+    icon: <Clock3 aria-hidden="true" size={15} />
+  };
 }
 
 function getSnapshotMemberNameMap(snapshotJson: SettlementSnapshotJson | null) {
