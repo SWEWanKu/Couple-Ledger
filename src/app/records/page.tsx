@@ -185,7 +185,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
 
             <div className="mt-6">
               {records.length > 0 ? (
-                <RecordsList records={records} />
+                <RecordsList filters={recordsFilters} records={records} returnMonth={range.month} />
               ) : (
                 <EmptyRecordsState
                   clearHref={getRecordsHref(range.month)}
@@ -560,7 +560,15 @@ async function requireHouseholdAccess() {
   };
 }
 
-function RecordsList({ records }: { records: LedgerRecord[] }) {
+function RecordsList({
+  filters,
+  records,
+  returnMonth
+}: {
+  filters: LedgerRecordFilters;
+  records: LedgerRecord[];
+  returnMonth: string;
+}) {
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
@@ -577,7 +585,7 @@ function RecordsList({ records }: { records: LedgerRecord[] }) {
       {records.map((record) => (
         <IslandLink
           key={record.id}
-          href={`/records/${record.id}`}
+          href={getRecordDetailHref(record.id, returnMonth, filters)}
           ariaLabel={`查看账单 ${record.note?.trim() || record.categoryName}`}
           className="group block rounded-[28px] border-2 border-[#ead9b8] bg-[#fffdf3] px-5 py-4 shadow-[0_6px_0_rgba(121,79,39,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_8px_0_rgba(121,79,39,0.1)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
         >
@@ -841,6 +849,18 @@ function formatRangeLabel(range: RecordsMonthRange) {
 }
 
 function getRecordsHref(month?: string | null, filters: LedgerRecordFilters = {}) {
+  const query = getRecordsQuery(month, filters);
+
+  return query ? `/records?${query}` : "/records";
+}
+
+function getRecordDetailHref(recordId: string, month: string, filters: LedgerRecordFilters = {}) {
+  const query = getRecordsQuery(month, filters);
+
+  return query ? `/records/${recordId}?${query}` : `/records/${recordId}`;
+}
+
+function getRecordsQuery(month?: string | null, filters: LedgerRecordFilters = {}) {
   const params = new URLSearchParams();
 
   if (month) {
@@ -863,9 +883,7 @@ function getRecordsHref(month?: string | null, filters: LedgerRecordFilters = {}
     params.set("q", filters.keyword);
   }
 
-  const query = params.toString();
-
-  return query ? `/records?${query}` : "/records";
+  return params.toString();
 }
 
 function getSingleParam(value: string | string[] | undefined) {

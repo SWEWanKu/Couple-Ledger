@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   AlertCircle,
@@ -24,6 +25,15 @@ type RecordDetailPageProps = {
   params: Promise<{
     id: string;
   }>;
+  searchParams?: Promise<RecordDetailSearchParams>;
+};
+
+type RecordDetailSearchParams = {
+  month?: string | string[];
+  type?: string | string[];
+  category?: string | string[];
+  member?: string | string[];
+  q?: string | string[];
 };
 
 type HouseholdMembershipRow = {
@@ -31,8 +41,9 @@ type HouseholdMembershipRow = {
   role: string;
 };
 
-export default async function RecordDetailPage({ params }: RecordDetailPageProps) {
+export default async function RecordDetailPage({ params, searchParams }: RecordDetailPageProps) {
   const { id } = await params;
+  const returnParams = searchParams ? await searchParams : {};
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary, warning: householdWarning } = await getDashboardHouseholdSummary(supabase, {
     householdId: membership.household_id,
@@ -51,10 +62,12 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
   }
 
   if (detail.status === "error") {
+    const returnHref = getRecordsReturnHref(returnParams, null);
+
     return (
       <AppShell title={`${summary.householdName} 账单详情`} subtitle="这张账单暂时没有读完整">
           <div className="mx-auto grid max-w-4xl gap-6">
-            <DetailNav />
+            <DetailNav returnHref={returnHref} />
             <Card color="default" pattern="app-yellow" className="p-5 sm:p-7">
               <PageNotice message={detail.warning} tone="error" />
             </Card>
@@ -64,6 +77,7 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
   }
 
   const record = detail.record;
+  const returnHref = getRecordsReturnHref(returnParams, getMonthKeyFromDateOnly(record.occurredOn));
   const settlementStatus = await getSettlementSnapshotStatus(supabase, {
     householdId: membership.household_id,
     month: getMonthKeyFromDateOnly(record.occurredOn)
@@ -75,9 +89,18 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
       subtitle="只读查看这张小岛流水，不会修改任何账本数据。"
     >
         <div className="mx-auto grid max-w-6xl gap-6">
-          <DetailNav />
+          <DetailNav returnHref={returnHref} />
 
-          <Card color="default" pattern="app-teal" className="p-5 sm:p-7">
+          <Card
+            color="default"
+            pattern="app-teal"
+            className="relative overflow-visible p-5 sm:p-7"
+            data-record-detail-note="true"
+          >
+            <span
+              aria-hidden="true"
+              className="absolute -top-3 left-8 h-7 w-28 -rotate-2 rounded-[10px] bg-[#f7cd67]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+            />
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
@@ -90,6 +113,7 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
                   <span
+                    data-record-detail-type={record.entryType}
                     className={`inline-flex min-h-10 items-center justify-center rounded-full px-4 py-2 text-sm font-black text-white shadow-[0_5px_0_rgba(121,79,39,0.14)] ${
                       record.entryType === "income" ? "bg-[#1f9f8f]" : "bg-[#d46a5b]"
                     }`}
@@ -103,7 +127,14 @@ export default async function RecordDetailPage({ params }: RecordDetailPageProps
                   </span>
                 </div>
               </div>
-              <div className="rounded-[30px] bg-[#fffdf3] px-6 py-5 text-right shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+              <div className="relative overflow-hidden rounded-[30px] bg-[#fffdf3] px-6 py-5 text-right shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+                <span data-record-detail-amount="true" className="sr-only">
+                  {record.amountLabel}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#82d5bb]/20"
+                />
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
                   Amount
                 </p>
@@ -192,16 +223,18 @@ async function requireHouseholdAccess() {
   };
 }
 
-function DetailNav() {
+function DetailNav({ returnHref }: { returnHref: string }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <IslandLink
-        href="/records"
+      <Link
+        href={returnHref}
+        aria-label="返回账本列表"
+        data-record-detail-return="true"
         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
       >
         <ArrowLeft aria-hidden="true" size={17} />
-        返回流水
-      </IslandLink>
+        返回账本列表
+      </Link>
       <IslandLink
         href="/records/new"
         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
@@ -318,6 +351,75 @@ function PageNotice({
       <span>{message}</span>
     </div>
   );
+}
+
+function getRecordsReturnHref(params: RecordDetailSearchParams, fallbackMonth: string | null) {
+  const month = normalizeReturnMonth(getSingleParam(params.month)) ?? fallbackMonth;
+  const query = new URLSearchParams();
+
+  if (month) {
+    query.set("month", month);
+  }
+
+  const type = normalizeReturnType(getSingleParam(params.type));
+
+  if (type) {
+    query.set("type", type);
+  }
+
+  const category = normalizeReturnText(getSingleParam(params.category), 120);
+
+  if (category) {
+    query.set("category", category);
+  }
+
+  const member = normalizeReturnText(getSingleParam(params.member), 120);
+
+  if (member) {
+    query.set("member", member);
+  }
+
+  const keyword = normalizeReturnText(getSingleParam(params.q), 80);
+
+  if (keyword) {
+    query.set("q", keyword);
+  }
+
+  const queryString = query.toString();
+
+  return queryString ? `/records?${queryString}` : "/records";
+}
+
+function normalizeReturnMonth(value: string | null) {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month] = value.split("-").map(Number);
+
+  if (year < 1 || year > 9999 || month < 1 || month > 12) {
+    return null;
+  }
+
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}`;
+}
+
+function normalizeReturnType(value: string | null) {
+  return value === "expense" || value === "income" ? value : null;
+}
+
+function normalizeReturnText(value: string | null, maxLength: number) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function getSingleParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? null;
+  }
+
+  return value ?? null;
 }
 
 function formatDateOnly(date: string) {
