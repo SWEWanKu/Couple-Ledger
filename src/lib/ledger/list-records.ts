@@ -21,6 +21,15 @@ export type LedgerRecord = {
   createdAt: string;
 };
 
+export type LedgerRecordTypeFilter = "all" | LedgerRecordEntryType;
+
+export type LedgerRecordFilters = {
+  type?: LedgerRecordTypeFilter;
+  categoryId?: string | null;
+  paidBy?: string | null;
+  keyword?: string | null;
+};
+
 export type RecordsMonthRange = {
   month: string;
   monthLabel: string;
@@ -33,6 +42,8 @@ export type RecordsMonthRange = {
 export type LedgerRecordsResult = {
   records: LedgerRecord[];
   range: RecordsMonthRange;
+  totalRecordCount: number;
+  filteredRecordCount: number;
   warning: string | null;
 };
 
@@ -42,6 +53,7 @@ type LedgerRecordsInput = {
   categories: DashboardCategory[];
   members: DashboardHouseholdMember[];
   month?: string | null;
+  filters?: LedgerRecordFilters;
   now?: Date;
 };
 
@@ -62,7 +74,15 @@ const uncategorizedName = "未分类";
 
 export async function getLedgerRecords(
   supabase: SupabaseClient,
-  { householdId, currentUserId, categories, members, month, now = new Date() }: LedgerRecordsInput
+  {
+    householdId,
+    currentUserId,
+    categories,
+    members,
+    month,
+    filters,
+    now = new Date()
+  }: LedgerRecordsInput
 ): Promise<LedgerRecordsResult> {
   const range = getRecordsMonthRange(month, now);
   const { data, error } = await supabase
@@ -72,24 +92,30 @@ export async function getLedgerRecords(
     .gte("occurred_on", range.monthStart)
     .lt("occurred_on", range.nextMonthStart)
     .order("occurred_on", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .order("created_at", { ascending: false });
 
   if (error) {
     return {
       records: [],
       range,
+      totalRecordCount: 0,
+      filteredRecordCount: 0,
       warning: recordsWarning
     };
   }
 
+  const allRecords = mapLedgerRecordRows((data ?? []) as LedgerEntryRow[], {
+    categories,
+    members,
+    currentUserId
+  });
+  const filteredRecords = filterLedgerRecords(allRecords, filters);
+
   return {
-    records: mapLedgerRecordRows((data ?? []) as LedgerEntryRow[], {
-      categories,
-      members,
-      currentUserId
-    }),
+    records: filteredRecords.slice(0, 50),
     range,
+    totalRecordCount: allRecords.length,
+    filteredRecordCount: filteredRecords.length,
     warning: null
   };
 }
@@ -185,11 +211,59 @@ function mapLedgerRecordRows(
   });
 }
 
+function filterLedgerRecords(records: LedgerRecord[], filters: LedgerRecordFilters | undefined) {
+  if (!filters) {
+    return records;
+  }
+
+  const keyword = normalizeSearchText(filters.keyword);
+
+  return records.filter((record) => {
+    if (filters.type && filters.type !== "all" && record.entryType !== filters.type) {
+      return false;
+    }
+
+    if (filters.categoryId && record.categoryId !== filters.categoryId) {
+      return false;
+    }
+
+    if (filters.paidBy && record.paidBy !== filters.paidBy) {
+      return false;
+    }
+
+    if (keyword && !recordMatchesKeyword(record, keyword)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function recordMatchesKeyword(record: LedgerRecord, keyword: string) {
+  const fields = [
+    record.note,
+    record.categoryName,
+    record.paidByLabel,
+    record.splitModeLabel,
+    getEntryTypeLabel(record.entryType)
+  ];
+
+  return fields.some((field) => normalizeSearchText(field).includes(keyword));
+}
+
+function normalizeSearchText(value: string | null | undefined) {
+  return value?.trim().toLocaleLowerCase("zh-CN") ?? "";
+}
+
 function formatMemberLabel(member: DashboardHouseholdMember, index: number) {
   const role = member.role === "owner" ? "岛主" : "伙伴";
   const name = member.isCurrentUser ? "你" : `成员 ${index + 1}`;
 
   return `${role} · ${name}`;
+}
+
+function getEntryTypeLabel(entryType: LedgerRecordEntryType) {
+  return entryType === "income" ? "收入" : "支出";
 }
 
 function toAmount(value: number | string) {
