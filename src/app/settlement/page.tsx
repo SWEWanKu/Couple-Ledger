@@ -21,7 +21,9 @@ import {
 } from "lucide-react";
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import {
+  confirmSettlementReplacementSnapshotAction,
   confirmSettlementSnapshotAction,
+  proposeSettlementReplacementSnapshotAction,
   proposeSettlementSnapshotAction
 } from "@/app/settlement/actions";
 import { IslandLink } from "@/components/IslandLink";
@@ -229,6 +231,7 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
 
         <SettlementSnapshotStatusCard
           currentUserId={user.id}
+          outdatedSnapshotWarning={outdatedSnapshotWarning}
           range={range}
           statusResult={snapshotStatus}
           calculation={settlementSummary.calculation}
@@ -444,6 +447,7 @@ function TransferSuggestionCard({ calculation }: { calculation: SettlementCalcul
 
 function SettlementSnapshotStatusCard({
   currentUserId,
+  outdatedSnapshotWarning,
   range,
   statusResult,
   calculation,
@@ -451,6 +455,7 @@ function SettlementSnapshotStatusCard({
   includedExpenseCount
 }: {
   currentUserId: string;
+  outdatedSnapshotWarning: string | null;
   range: SettlementMonthMetadata;
   statusResult: GetSettlementSnapshotStatusResult;
   calculation: SettlementCalculationResult;
@@ -517,7 +522,14 @@ function SettlementSnapshotStatusCard({
         />
       )}
       {statusResult.pendingReplacement ? (
-        <PendingReplacementNotice pendingReplacement={statusResult.pendingReplacement} />
+        <PendingReplacementNotice
+          currentUserId={currentUserId}
+          members={members}
+          pendingReplacement={statusResult.pendingReplacement}
+          range={range}
+        />
+      ) : outdatedSnapshotWarning && statusResult.status !== "error" && statusResult.status !== "no_snapshot" ? (
+        <ReplacementProposalPanel message={outdatedSnapshotWarning} range={range} />
       ) : null}
     </Card>
   );
@@ -757,32 +769,150 @@ function StoredSnapshotPanel({
 }
 
 function PendingReplacementNotice({
+  currentUserId,
+  members,
+  range,
   pendingReplacement
 }: {
+  currentUserId: string;
+  members: SettlementSummaryMember[];
+  range: SettlementMonthMetadata;
   pendingReplacement: SettlementSnapshotLifecycleSummary;
 }) {
+  const snapshotJson = getSnapshotJson(pendingReplacement.snapshot.snapshot);
+  const memberNameMap = getSnapshotMemberNameMap(members, snapshotJson);
+  const confirmedUserIds = new Set(
+    pendingReplacement.confirmations.map((confirmation) => confirmation.confirmed_by)
+  );
+  const hasCurrentUserConfirmed = confirmedUserIds.has(currentUserId);
+  const isFullyConfirmed =
+    pendingReplacement.requiredConfirmationCount > 0 &&
+    pendingReplacement.confirmedCount >= pendingReplacement.requiredConfirmationCount;
+  const confirmedMembers = pendingReplacement.confirmations.map((confirmation) => ({
+    id: confirmation.id,
+    displayName: memberNameMap.get(confirmation.confirmed_by) ?? "小岛成员",
+    confirmedAt: confirmation.confirmed_at
+  }));
+
   return (
-    <div className="rounded-[30px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-5 py-4 text-sm font-black leading-7 text-[#725d42] shadow-[0_7px_0_rgba(121,79,39,0.08)]">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="rounded-[30px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-5 py-5 text-sm font-black leading-7 text-[#725d42] shadow-[0_7px_0_rgba(121,79,39,0.08)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
             <Hourglass aria-hidden="true" size={16} />
             Pending Replacement
           </p>
-          <p className="mt-2 text-lg font-black text-[#794f27]">
-            有一张新的结算便签正在等盖章
-          </p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">有一张新的结算便签正在等盖章</p>
           <p className="mt-1">
-            当前页面仍以 active 的结算便签作为本月已保存结果。这张新便签只是只读提示，不会在这里创建替换、切换 active 或新增确认入口。
+            旧的 active 便签仍然是当前双方接受的版本。新便签会重新走自己的盖章进度，
+            等两个人都确认后才会把旧便签收进历史。
+          </p>
+
+          <div className="mt-4 rounded-[24px] bg-white/75 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.65)]">
+            <p className="flex items-start gap-2 text-[#794f27]">
+              <ArrowRightLeft aria-hidden="true" size={18} className="mt-1 shrink-0 text-[#9f927d]" />
+              <span>{formatSnapshotTransfer(pendingReplacement.snapshot, memberNameMap)}</span>
+            </p>
+            <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
+              新便签提出时间：{formatDateTime(pendingReplacement.snapshot.created_at)}
+            </p>
+          </div>
+
+          {confirmedMembers.length > 0 ? (
+            <div className="mt-4 grid gap-2">
+              {confirmedMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-start gap-2 rounded-[20px] bg-[#e9fbf4] px-3 py-2 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.45)]"
+                >
+                  <CheckCircle2 aria-hidden="true" size={15} className="mt-0.5 shrink-0" />
+                  <span>
+                    {member.displayName} 已确认 · {formatDateTime(member.confirmedAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">新便签盖章</p>
+          <p className="mt-1 text-3xl font-black text-[#794f27]">
+            {pendingReplacement.confirmedCount}/{pendingReplacement.requiredConfirmationCount}
+          </p>
+          <p className="mt-2 text-xs font-black leading-5 text-[#8a7556]">
+            这是替换便签的独立确认进度，不会沿用旧便签的盖章。
+          </p>
+
+          <IslandLink
+            href={`/settlement/history/${pendingReplacement.snapshot.id}`}
+            className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+          >
+            <NotebookTabs aria-hidden="true" size={16} />
+            查看新便签草稿
+          </IslandLink>
+
+          <Divider type="wave-yellow" className="my-4" />
+
+          {isFullyConfirmed ? (
+            <p className="rounded-[22px] bg-[#e9fbf4] px-3 py-3 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.55)]">
+              新便签已经齐章，刷新后会成为 active 便签。
+            </p>
+          ) : hasCurrentUserConfirmed ? (
+            <p className="rounded-[22px] bg-[#fff8da] px-3 py-3 text-xs font-black leading-5 text-[#8a6420] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+              你已经确认这张新便签，正在等另一位小岛成员盖章。
+            </p>
+          ) : (
+            <form action={confirmSettlementReplacementSnapshotAction} className="grid gap-3">
+              <input type="hidden" name="month" value={range.month} />
+              <input type="hidden" name="snapshot_id" value={pendingReplacement.snapshot.id} />
+              <p className="text-xs font-black leading-5 text-[#725d42]">
+                确认后只给这张新便签加上你的盖章。它不是付款确认，也不会改账本流水。
+              </p>
+              <Button type="primary" size="large" htmlType="submit" icon={<Stamp aria-hidden="true" size={18} />} block>
+                确认新的结算便签
+              </Button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+}
+
+function ReplacementProposalPanel({
+  message,
+  range
+}: {
+  message: string;
+  range: SettlementMonthMetadata;
+}) {
+  return (
+    <div className="rounded-[30px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-5 py-5 text-sm font-black leading-7 text-[#725d42] shadow-[0_7px_0_rgba(121,79,39,0.08)]">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            <FilePenLine aria-hidden="true" size={16} />
+            Replacement Note
+          </p>
+          <p className="mt-2 text-lg font-black text-[#794f27]">可以重新生成一张结算便签</p>
+          <p className="mt-1">{message}</p>
+          <p className="mt-3 rounded-[22px] bg-white/75 px-4 py-3 text-xs font-black leading-5 text-[#8a7556] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.65)]">
+            新便签会保存当前实时计算结果，旧便签会保持 active，直到新的便签也获得两个人确认。
           </p>
         </div>
-        <IslandLink
-          href={`/settlement/history/${pendingReplacement.snapshot.id}`}
-          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-        >
-          <NotebookTabs aria-hidden="true" size={16} />
-          查看新便签草稿 · {pendingReplacement.confirmedCount}/{pendingReplacement.requiredConfirmationCount}
-        </IslandLink>
+
+        <form action={proposeSettlementReplacementSnapshotAction} className="grid gap-3 rounded-[26px] bg-[#fffdf3] px-4 py-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+          <input type="hidden" name="month" value={range.month} />
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">{range.monthLabel}</p>
+          <p className="text-sm font-black leading-6 text-[#725d42]">
+            只创建 pending replacement 便签，不会付款、不会结清，也不会替你确认。
+          </p>
+          <Button type="primary" size="large" htmlType="submit" icon={<FilePenLine aria-hidden="true" size={18} />} block>
+            重新生成结算便签
+          </Button>
+        </form>
       </div>
     </div>
   );
@@ -975,6 +1105,111 @@ function getSettlementFeedback({
     return {
       tone: "warning" as const,
       message: `确认章暂时没有盖上去，稍后可以再试一次${errorSuffix}。`
+    };
+  }
+
+  if (action === "replacement_propose") {
+    if (result === "created") {
+      return {
+        tone: "success" as const,
+        message: "新的结算便签草稿已经夹进手账里啦。它会重新等待两个人分别盖章，旧便签暂时仍是 active。"
+      };
+    }
+
+    if (result === "already_exists") {
+      return {
+        tone: "warning" as const,
+        message: "这个月已经有一张新的替换便签在等盖章了，小岛不会重复生成第二张草稿。"
+      };
+    }
+
+    if (result === "not_outdated") {
+      return {
+        tone: "success" as const,
+        message: "当前实时账本和 active 便签还是对齐的，不需要重新生成替换便签。"
+      };
+    }
+
+    if (result === "no_active_snapshot") {
+      return {
+        tone: "warning" as const,
+        message: "这个月还没有 active 结算便签，先按普通流程提出本月结算便签就好。"
+      };
+    }
+
+    if (result === "unauthenticated") {
+      return {
+        tone: "error" as const,
+        message: "登录状态过期啦，请重新登录后再生成替换便签。"
+      };
+    }
+
+    return {
+      tone: "warning" as const,
+      message: `新的替换便签暂时没有生成成功，实时结算仍然安全可看${errorSuffix}。`
+    };
+  }
+
+  if (action === "replacement_confirm") {
+    if (result === "confirmed") {
+      return {
+        tone: "success" as const,
+        message: "你已经确认这张新的结算便签啦，等另一位小岛成员盖章后才会替换 active 便签。"
+      };
+    }
+
+    if (result === "already_confirmed") {
+      return {
+        tone: "warning" as const,
+        message: "你之前已经确认过这张新便签，小岛不会重复盖同一枚章。"
+      };
+    }
+
+    if (result === "partially_confirmed") {
+      return {
+        tone: "success" as const,
+        message: "新的结算便签已经记下这次确认，还在等待另一枚确认章。"
+      };
+    }
+
+    if (result === "fully_confirmed") {
+      return {
+        tone: "success" as const,
+        message: "新的结算便签已经齐章，旧便签已收进历史，当前 active 便签已经更新。"
+      };
+    }
+
+    if (result === "not_pending_replacement" || result === "snapshot_not_found" || result === "not_found") {
+      return {
+        tone: "warning" as const,
+        message: "这张新的替换便签没有找到，或已经不再是待确认草稿。刷新后从当前月份重新查看就好。"
+      };
+    }
+
+    if (result === "snapshot_missing" || result === "snapshot_status_unavailable") {
+      return {
+        tone: "warning" as const,
+        message: `暂时不能确认这张新的替换便签，请刷新当前月份后再试${errorSuffix}。`
+      };
+    }
+
+    if (result === "unauthenticated") {
+      return {
+        tone: "error" as const,
+        message: "登录状态过期啦，请重新登录后再确认新的结算便签。"
+      };
+    }
+
+    if (result === "not_household_member") {
+      return {
+        tone: "error" as const,
+        message: "只有当前小岛成员才能确认这张新的结算便签。"
+      };
+    }
+
+    return {
+      tone: "warning" as const,
+      message: `新的确认章暂时没有盖上去，稍后可以再试一次${errorSuffix}。`
     };
   }
 
