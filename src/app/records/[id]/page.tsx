@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
   ArrowLeft,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   Plus,
   ReceiptText,
@@ -18,8 +21,18 @@ import { AppShell } from "@/components/layout/AppShell";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getRecordDetail, type RecordDetail } from "@/lib/ledger/get-record-detail";
+import {
+  formatMoney,
+  getLedgerRecords,
+  normalizeRecordsMonth,
+  type LedgerRecord,
+  type LedgerRecordFilters,
+  type LedgerRecordTypeFilter
+} from "@/lib/ledger/list-records";
+import { getRecordDetailHref } from "@/lib/ledger/records-query";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
+import type { DashboardHouseholdSummary } from "@/types/dashboard";
 
 type RecordDetailPageProps = {
   params: Promise<{
@@ -77,10 +90,19 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
   }
 
   const record = detail.record;
-  const returnHref = getRecordsReturnHref(returnParams, getMonthKeyFromDateOnly(record.occurredOn));
+  const recordMonth = getMonthKeyFromDateOnly(record.occurredOn);
+  const returnHref = getRecordsReturnHref(returnParams, recordMonth);
+  const recordPager = await getRecordPager(supabase, {
+    currentRecordId: record.id,
+    currentUserId: user.id,
+    householdId: membership.household_id,
+    householdSummary: summary,
+    params: returnParams,
+    recordMonth
+  });
   const settlementStatus = await getSettlementSnapshotStatus(supabase, {
     householdId: membership.household_id,
-    month: getMonthKeyFromDateOnly(record.occurredOn)
+    month: recordMonth
   });
 
   return (
@@ -90,6 +112,8 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
     >
         <div className="mx-auto grid max-w-6xl gap-6">
           <DetailNav returnHref={returnHref} />
+
+          <RecordPager pager={recordPager} />
 
           <Card
             color="default"
@@ -221,6 +245,297 @@ async function requireHouseholdAccess() {
     user,
     membership: membership as HouseholdMembershipRow
   };
+}
+
+type RecordPagerContext = {
+  month: string | null;
+  filters: LedgerRecordFilters;
+};
+
+type RecordPagerLink = {
+  href: string;
+  title: string;
+  meta: string;
+};
+
+type RecordPagerState = {
+  previous: RecordPagerLink | null;
+  next: RecordPagerLink | null;
+  fallbackApplied: boolean;
+  currentFound: boolean;
+  warning: string | null;
+};
+
+async function getRecordPager(
+  supabase: SupabaseClient,
+  {
+    currentRecordId,
+    currentUserId,
+    householdId,
+    householdSummary,
+    params,
+    recordMonth
+  }: {
+    currentRecordId: string;
+    currentUserId: string;
+    householdId: string;
+    householdSummary: DashboardHouseholdSummary;
+    params: RecordDetailSearchParams;
+    recordMonth: string | null;
+  }
+): Promise<RecordPagerState> {
+  const requestedContext = createRecordPagerContext(params, recordMonth, householdSummary);
+  const requestedPager = await getRecordPagerForContext(supabase, {
+    context: requestedContext,
+    currentRecordId,
+    currentUserId,
+    householdId,
+    householdSummary
+  });
+
+  if (requestedPager.currentFound) {
+    return requestedPager;
+  }
+
+  const fallbackContext = createMonthOnlyPagerContext(recordMonth);
+
+  if (isSamePagerContext(requestedContext, fallbackContext)) {
+    return requestedPager;
+  }
+
+  const fallbackPager = await getRecordPagerForContext(supabase, {
+    context: fallbackContext,
+    currentRecordId,
+    currentUserId,
+    householdId,
+    householdSummary
+  });
+
+  return {
+    ...fallbackPager,
+    fallbackApplied: true,
+    warning: fallbackPager.warning ?? requestedPager.warning
+  };
+}
+
+async function getRecordPagerForContext(
+  supabase: SupabaseClient,
+  {
+    context,
+    currentRecordId,
+    currentUserId,
+    householdId,
+    householdSummary
+  }: {
+    context: RecordPagerContext;
+    currentRecordId: string;
+    currentUserId: string;
+    householdId: string;
+    householdSummary: DashboardHouseholdSummary;
+  }
+): Promise<RecordPagerState> {
+  const result = await getLedgerRecords(supabase, {
+    householdId,
+    currentUserId,
+    categories: householdSummary.categories,
+    members: householdSummary.members,
+    month: context.month,
+    filters: context.filters
+  });
+  const currentIndex = result.records.findIndex((record) => record.id === currentRecordId);
+
+  return createRecordPagerState({
+    context,
+    currentIndex,
+    records: result.records,
+    warning: result.warning
+  });
+}
+
+function createRecordPagerState({
+  context,
+  currentIndex,
+  records,
+  warning
+}: {
+  context: RecordPagerContext;
+  currentIndex: number;
+  records: LedgerRecord[];
+  warning: string | null;
+}): RecordPagerState {
+  const currentFound = currentIndex >= 0;
+  const previousRecord = currentFound && currentIndex > 0 ? records[currentIndex - 1] : null;
+  const nextRecord = currentFound && currentIndex < records.length - 1 ? records[currentIndex + 1] : null;
+
+  return {
+    previous: previousRecord ? createRecordPagerLink(previousRecord, context) : null,
+    next: nextRecord ? createRecordPagerLink(nextRecord, context) : null,
+    fallbackApplied: false,
+    currentFound,
+    warning
+  };
+}
+
+function createRecordPagerLink(record: LedgerRecord, context: RecordPagerContext): RecordPagerLink {
+  const month = context.month ?? getMonthKeyFromDateOnly(record.occurredOn) ?? "";
+
+  return {
+    href: getRecordDetailHref(record.id, month, context.filters),
+    title: record.note?.trim() || record.categoryName,
+    meta: `${formatDateOnly(record.occurredOn)} · ${formatLedgerEntryType(record.entryType)} · ${formatLedgerRecordAmount(record)}`
+  };
+}
+
+function createRecordPagerContext(
+  params: RecordDetailSearchParams,
+  fallbackMonth: string | null,
+  householdSummary: DashboardHouseholdSummary
+): RecordPagerContext {
+  const category = normalizeReturnText(getSingleParam(params.category), 120);
+  const member = normalizeReturnText(getSingleParam(params.member), 120);
+
+  return {
+    month: normalizeRecordsMonth(getSingleParam(params.month)) ?? fallbackMonth,
+    filters: {
+      type: normalizeRecordTypeFilter(getSingleParam(params.type)),
+      categoryId: householdSummary.categories.some((candidate) => candidate.id === category)
+        ? category
+        : null,
+      paidBy: householdSummary.members.some((candidate) => candidate.userId === member)
+        ? member
+        : null,
+      keyword: normalizeReturnText(getSingleParam(params.q), 80)
+    }
+  };
+}
+
+function createMonthOnlyPagerContext(month: string | null): RecordPagerContext {
+  return {
+    month,
+    filters: {
+      type: "all",
+      categoryId: null,
+      paidBy: null,
+      keyword: null
+    }
+  };
+}
+
+function isSamePagerContext(left: RecordPagerContext, right: RecordPagerContext) {
+  return (
+    left.month === right.month &&
+    (left.filters.type ?? "all") === (right.filters.type ?? "all") &&
+    (left.filters.categoryId ?? null) === (right.filters.categoryId ?? null) &&
+    (left.filters.paidBy ?? null) === (right.filters.paidBy ?? null) &&
+    (left.filters.keyword ?? null) === (right.filters.keyword ?? null)
+  );
+}
+
+function RecordPager({ pager }: { pager: RecordPagerState }) {
+  return (
+    <Card
+      type="dashed"
+      color="default"
+      className="relative overflow-visible p-4 sm:p-5"
+      data-record-detail-pager="true"
+      data-record-detail-pager-fallback={pager.fallbackApplied ? "true" : "false"}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute -top-3 left-8 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <PagerSlot
+          direction="previous"
+          item={pager.previous}
+          missingLabel={
+            pager.currentFound
+              ? "已经是这张筛选贴纸下的第一笔"
+              : "这张筛选贴纸里没有找到相邻账单"
+          }
+        />
+        <PagerSlot
+          direction="next"
+          item={pager.next}
+          missingLabel={
+            pager.currentFound
+              ? "已经翻到最后一笔啦"
+              : "这张筛选贴纸里没有找到相邻账单"
+          }
+        />
+      </div>
+
+      {pager.fallbackApplied || pager.warning ? (
+        <div className="mt-4 rounded-[22px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-xs font-black leading-6 text-[#8a6420]">
+          {pager.fallbackApplied ? (
+            <p>当前筛选没有包含这张账单，已经按账单所在月份继续翻页。</p>
+          ) : null}
+          {pager.warning ? <p>{pager.warning}</p> : null}
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
+function PagerSlot({
+  direction,
+  item,
+  missingLabel
+}: {
+  direction: "previous" | "next";
+  item: RecordPagerLink | null;
+  missingLabel: string;
+}) {
+  const isPrevious = direction === "previous";
+  const EyebrowIcon = isPrevious ? ChevronLeft : ChevronRight;
+  const eyebrow = isPrevious ? "上一笔" : "下一笔";
+  const enabledDataAttribute = isPrevious
+    ? { "data-record-detail-prev-link": "true" }
+    : { "data-record-detail-next-link": "true" };
+  const disabledDataAttribute = isPrevious
+    ? { "data-record-detail-prev-boundary": "true" }
+    : { "data-record-detail-next-boundary": "true" };
+
+  if (!item) {
+    return (
+      <div
+        {...disabledDataAttribute}
+        className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 text-sm font-black leading-6 text-[#9f927d] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.45)]"
+      >
+        <p className="flex items-center gap-2 text-xs uppercase tracking-[0.14em]">
+          <EyebrowIcon aria-hidden="true" size={16} />
+          {eyebrow}
+        </p>
+        <p className="mt-2 text-[#725d42]">{missingLabel}</p>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      {...enabledDataAttribute}
+      href={item.href}
+      aria-label={`${eyebrow} ${item.title}`}
+      className="group block rounded-[26px] border-2 border-[#ead9b8] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_7px_0_rgba(121,79,39,0.1)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+    >
+      <div className={`flex items-start gap-3 ${isPrevious ? "" : "lg:flex-row-reverse lg:text-right"}`}>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f7cd67] text-[#794f27] shadow-[0_4px_0_#d9a43e] transition group-hover:-translate-y-0.5">
+          <EyebrowIcon aria-hidden="true" size={20} />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            {eyebrow}
+          </span>
+          <span className="mt-1 block truncate text-base font-black text-[#794f27]">
+            {item.title}
+          </span>
+          <span className="mt-1 block text-xs font-bold leading-5 text-[#9f927d]">
+            {item.meta}
+          </span>
+        </span>
+      </div>
+    </Link>
+  );
 }
 
 function DetailNav({ returnHref }: { returnHref: string }) {
@@ -408,6 +723,10 @@ function normalizeReturnType(value: string | null) {
   return value === "expense" || value === "income" ? value : null;
 }
 
+function normalizeRecordTypeFilter(value: string | null): LedgerRecordTypeFilter {
+  return value === "expense" || value === "income" ? value : "all";
+}
+
 function normalizeReturnText(value: string | null, maxLength: number) {
   const trimmed = value?.trim();
 
@@ -434,6 +753,16 @@ function formatDateOnly(date: string) {
 
 function getMonthKeyFromDateOnly(date: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(0, 7) : null;
+}
+
+function formatLedgerEntryType(entryType: LedgerRecord["entryType"]) {
+  return entryType === "income" ? "收入" : "支出";
+}
+
+function formatLedgerRecordAmount(record: LedgerRecord) {
+  const prefix = record.entryType === "income" ? "+" : "-";
+
+  return `${prefix}${formatMoney(record.amount)}`;
 }
 
 function formatDateTime(value: string) {
