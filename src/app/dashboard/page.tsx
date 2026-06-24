@@ -19,6 +19,7 @@ import {
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
 import {
@@ -875,23 +876,20 @@ function EmptyLedgerState({
   iconName: "icon-chat" | "icon-diy" | "icon-shopping";
 }) {
   return (
-    <div className="mt-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-6 text-sm font-bold leading-7 text-[#725d42] shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-      <div className="mx-auto flex max-w-md flex-col items-center text-center">
-        <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#82d5bb] shadow-[0_5px_0_#5fb89f]">
-          <Icon name={iconName} size={30} bounce />
-        </span>
-        <p className="mt-4 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">{eyebrow}</p>
-        <p className="mt-2 text-lg font-black text-[#794f27]">{title}</p>
-        <p className="mt-2">{body}</p>
-        <IslandLink
-          href={actionHref}
-          className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-        >
-          <PlusCircle aria-hidden="true" size={17} />
-          {actionLabel}
-        </IslandLink>
-      </div>
-    </div>
+    <NotebookEmptyState
+      action={{
+        href: actionHref,
+        label: actionLabel,
+        icon: <PlusCircle aria-hidden="true" size={17} />
+      }}
+      className="mt-5"
+      dataAttributes={{ "data-dashboard-empty-state": title }}
+      description={body}
+      eyebrow={eyebrow}
+      iconName={iconName}
+      title={title}
+      tone={iconName === "icon-shopping" ? "yellow" : "teal"}
+    />
   );
 }
 

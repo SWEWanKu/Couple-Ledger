@@ -19,6 +19,7 @@ import {
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
@@ -318,28 +319,19 @@ function HistoryCard({ item }: { item: SettlementHistoryItem }) {
 
 function EmptyHistoryState() {
   return (
-    <Card type="dashed" color="default" className="p-6 sm:p-8">
-      <div className="mx-auto flex max-w-lg flex-col items-center text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
-          <Icon name="icon-chat" size={34} bounce />
-        </span>
-        <div className="mt-5">
-          <Title size="small" color="app-yellow">
-            还没有留下结算便签
-          </Title>
-        </div>
-        <p className="mt-4 text-sm font-bold leading-7 text-[#725d42]">
-          等某个月在结算页提出过便签后，这里会像手账归档一样，把每个月的总支出、转账建议和盖章进度贴出来。
-        </p>
-        <IslandLink
-          href="/settlement"
-          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-        >
-          <ArrowLeft aria-hidden="true" size={17} />
-          回到结算页
-        </IslandLink>
-      </div>
-    </Card>
+    <NotebookEmptyState
+      action={{
+        href: "/settlement",
+        label: "回到结算页",
+        icon: <ArrowLeft aria-hidden="true" size={17} />
+      }}
+      dataAttributes={{ "data-settlement-history-empty-state": "true" }}
+      description="等某个月在结算页提出过便签后，这里会像手账归档一样，把每个月的总支出、转账建议和盖章进度贴出来。"
+      eyebrow="Archive Memo"
+      iconName="icon-chat"
+      title="还没有留下结算便签"
+      tone="teal"
+    />
   );
 }
 

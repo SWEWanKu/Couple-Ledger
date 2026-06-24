@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   CalendarDays,
   Coins,
-  FileWarning,
   ReceiptText,
   Save,
   Split,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getRecordDetail, type RecordDetail } from "@/lib/ledger/get-record-detail";
@@ -468,13 +468,15 @@ function BlockedEditState({
       : "还没有读到完整的小岛成员或分类，先不保存修改。";
 
   return (
-    <div className="mt-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-6 text-sm font-bold leading-7 text-[#725d42]">
-      <p className="flex items-center gap-2 text-lg font-black text-[#794f27]">
-        <FileWarning aria-hidden="true" size={20} />
-        {availability.heading}
-      </p>
-      <p className="mt-2">{setupMessage}</p>
-    </div>
+    <NotebookEmptyState
+      className="mt-5"
+      dataAttributes={{ "data-record-edit-blocked-state": availability.state }}
+      description={setupMessage}
+      eyebrow="Edit Memo"
+      iconName="icon-diy"
+      title={availability.heading}
+      tone={availability.tone === "error" ? "red" : "yellow"}
+    />
   );
 }
 

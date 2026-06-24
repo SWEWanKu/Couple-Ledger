@@ -12,6 +12,7 @@ import {
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
@@ -529,15 +530,25 @@ function BlockedSetupState({
   hasCategories: boolean;
   hasMembers: boolean;
 }) {
+  const readiness = `${hasMembers ? "小岛成员已经准备好。" : "还没有读取到小岛成员。"}${
+    hasCategories ? " 分类已经准备好。" : " 还没有读取到分类。"
+  }`;
+
   return (
-    <div className="mt-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-6 text-sm font-bold leading-7 text-[#725d42]">
-      <p className="text-lg font-black text-[#794f27]">暂时还不能记账</p>
-      <p className="mt-2">
-        {hasMembers ? "小岛成员已经准备好。" : "还没有读取到小岛成员。"}
-        {hasCategories ? " 分类已经准备好。" : " 还没有读取到分类。"}
-      </p>
-      <p className="mt-2">等成员和分类都准备好后，再回来记录第一笔账。</p>
-    </div>
+    <NotebookEmptyState
+      className="mt-5"
+      dataAttributes={{ "data-record-new-blocked-state": "true" }}
+      description={
+        <>
+          <p>{readiness}</p>
+          <p className="mt-2">等成员和分类都准备好后，再回来记录第一笔账。</p>
+        </>
+      }
+      eyebrow="Setup Memo"
+      iconName="icon-map"
+      title="暂时还不能记账"
+      tone="yellow"
+    />
   );
 }
 

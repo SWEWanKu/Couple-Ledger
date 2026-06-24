@@ -22,6 +22,7 @@ import {
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
@@ -884,38 +885,45 @@ function EmptyRecordsState({
   monthLabel: string;
   newRecordHref: string;
 }) {
+  const title = hasActiveFilters ? "这张筛选贴纸下还没有账单" : "这个月小岛账本还空空的";
+  const description = hasActiveFilters
+    ? `${monthLabel} 里有些筛选条件没有匹配到账单，可以撕掉这张筛选贴纸重新看看。`
+    : `${monthLabel} 还没有账单流水。等有记录写入后，这里会按日期把最近的记录贴出来。`;
+
   return (
-    <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-8 text-center">
-      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
-        <Tags aria-hidden="true" size={25} />
-      </span>
-      <h2 className="mt-5 text-2xl font-black text-[#794f27]">
-        {hasActiveFilters ? "这张筛选贴纸下还没有账单" : "这个月还没有记录"}
-      </h2>
-      <p className="mx-auto mt-3 max-w-lg text-sm font-bold leading-7 text-[#725d42]">
-        {hasActiveFilters
-          ? `${monthLabel} 里有些筛选条件没有匹配到账单，可以撕掉筛选贴纸重新看看。`
-          : `${monthLabel} 还没有账单流水。等有记录写入后，这里会按日期把最近的记录排出来。`}
-      </p>
-      <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        {hasActiveFilters ? (
-          <RecordsQueryLink
-            href={clearHref}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-5 py-2 text-sm font-black text-[#8a6420] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.14)] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-          >
-            <XCircle aria-hidden="true" size={17} />
-            撕掉筛选贴纸
-          </RecordsQueryLink>
-        ) : null}
-        <IslandLink
-          href={newRecordHref}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-        >
-          <Plus aria-hidden="true" size={18} />
-          记第一笔账
-        </IslandLink>
-      </div>
-    </div>
+    <NotebookEmptyState
+      dataAttributes={{
+        "data-records-empty-state": "true",
+        "data-records-empty-filtered": String(hasActiveFilters)
+      }}
+      description={description}
+      eyebrow={hasActiveFilters ? "Filtered Sticker" : "Empty Month"}
+      iconName={hasActiveFilters ? "icon-diy" : "icon-chat"}
+      title={title}
+      tone={hasActiveFilters ? "yellow" : "teal"}
+      action={
+        hasActiveFilters
+          ? {
+              href: clearHref,
+              label: "撕掉筛选贴纸",
+              icon: <XCircle aria-hidden="true" size={17} />
+            }
+          : {
+              href: newRecordHref,
+              label: "记第一笔账",
+              icon: <Plus aria-hidden="true" size={18} />
+            }
+      }
+      secondaryAction={
+        hasActiveFilters
+          ? {
+              href: newRecordHref,
+              label: "记第一笔账",
+              icon: <Plus aria-hidden="true" size={18} />
+            }
+          : undefined
+      }
+    />
   );
 }
 

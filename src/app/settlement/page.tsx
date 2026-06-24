@@ -28,6 +28,7 @@ import {
 } from "@/app/settlement/actions";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   buildSettlementSnapshotPayload,
@@ -934,15 +935,14 @@ function NoTransferState({ status }: { status: SettlementCalculationResult["stat
 
 function EmptySettlementState() {
   return (
-    <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-8 text-center">
-      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
-        <Icon name="icon-map" size={28} bounce />
-      </span>
-      <h2 className="mt-5 text-2xl font-black text-[#794f27]">这个月小岛还没有要结算的支出</h2>
-      <p className="mx-auto mt-3 max-w-lg text-sm font-bold leading-7 text-[#725d42]">
-        等账本里有本月支出和分摊行后，这里会自动长出成员纸条。
-      </p>
-    </div>
+    <NotebookEmptyState
+      dataAttributes={{ "data-settlement-empty-state": "true" }}
+      description="等账本里有本月支出和分摊行后，这里会自动长出成员纸条。"
+      eyebrow="Quiet Island"
+      iconName="icon-map"
+      title="这个月小岛还没有要结算的支出"
+      tone="green"
+    />
   );
 }
 

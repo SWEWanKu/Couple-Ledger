@@ -19,6 +19,7 @@ import {
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
+import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
@@ -456,28 +457,19 @@ function ArchiveReadOnlyNote({ detail }: { detail: SettlementSnapshotDetail }) {
 
 function NotFoundState() {
   return (
-    <Card type="dashed" color="default" className="p-6 sm:p-8">
-      <div className="mx-auto flex max-w-lg flex-col items-center text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
-          <Icon name="icon-map" size={34} bounce />
-        </span>
-        <div className="mt-5">
-          <Title size="small" color="app-yellow">
-            没找到这张结算便签
-          </Title>
-        </div>
-        <p className="mt-4 text-sm font-bold leading-7 text-[#725d42]">
-          它可能不属于当前小岛，或者已经不是可读的归档记录。回到结算归档页再翻一张吧。
-        </p>
-        <IslandLink
-          href="/settlement/history"
-          className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-        >
-          <ArrowLeft aria-hidden="true" size={17} />
-          返回结算归档
-        </IslandLink>
-      </div>
-    </Card>
+    <NotebookEmptyState
+      action={{
+        href: "/settlement/history",
+        label: "返回结算归档",
+        icon: <ArrowLeft aria-hidden="true" size={17} />
+      }}
+      dataAttributes={{ "data-settlement-snapshot-not-found-state": "true" }}
+      description="它可能不属于当前小岛，或者已经不是可读的归档记录。回到结算归档页再翻一张吧。"
+      eyebrow="Missing Memo"
+      iconName="icon-map"
+      title="没找到这张结算便签"
+      tone="yellow"
+    />
   );
 }
 
