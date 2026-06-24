@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   AlertCircle,
   ArrowLeft,
+  BadgeCheck,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -46,6 +47,7 @@ type RecordsPageProps = {
     category?: string | string[];
     member?: string | string[];
     q?: string | string[];
+    created?: string | string[];
   }>;
 };
 
@@ -93,6 +95,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     householdId: membership.household_id,
     month: range.month
   });
+  const showCreateSuccess = getSingleParam(params.created) === "1";
 
   return (
     <AppShell
@@ -119,7 +122,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
                 </IslandLink>
               ) : null}
               <IslandLink
-                href="/records/new"
+                href={getNewRecordHref(range.month, recordsFilters)}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
               >
                 <Plus aria-hidden="true" size={18} />
@@ -177,6 +180,9 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
 
             {householdWarning ? <PageNotice message={householdWarning} /> : null}
             {recordsWarning ? <PageNotice message={recordsWarning} /> : null}
+            {showCreateSuccess ? (
+              <RecordsCreatedSuccessSticker cleanHref={getRecordsHref(range.month, recordsFilters)} />
+            ) : null}
             <RecordsSettlementAwareness
               statusResult={settlementStatus}
               context="list"
@@ -191,6 +197,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
                   clearHref={getRecordsHref(range.month)}
                   hasActiveFilters={hasActiveRecordsFilters(recordsFilters)}
                   monthLabel={range.monthLabel}
+                  newRecordHref={getNewRecordHref(range.month, recordsFilters)}
                 />
               )}
             </div>
@@ -648,11 +655,13 @@ function RecordsList({
 function EmptyRecordsState({
   clearHref,
   hasActiveFilters,
-  monthLabel
+  monthLabel,
+  newRecordHref
 }: {
   clearHref: string;
   hasActiveFilters: boolean;
   monthLabel: string;
+  newRecordHref: string;
 }) {
   return (
     <div className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-8 text-center">
@@ -678,7 +687,7 @@ function EmptyRecordsState({
           </RecordsQueryLink>
         ) : null}
         <IslandLink
-          href="/records/new"
+          href={newRecordHref}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
         >
           <Plus aria-hidden="true" size={18} />
@@ -727,6 +736,32 @@ function PageNotice({ message }: { message: string }) {
     <div className="mt-4 flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
       <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
       <span>{message}</span>
+    </div>
+  );
+}
+
+function RecordsCreatedSuccessSticker({ cleanHref }: { cleanHref: string }) {
+  return (
+    <div
+      role="status"
+      data-records-create-success="true"
+      className="mt-4 rounded-[26px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-4 py-3 text-sm font-black leading-6 text-[#1f7a70] shadow-[0_5px_0_rgba(31,122,112,0.1)]"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-start gap-3">
+          <BadgeCheck aria-hidden="true" size={19} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="sr-only">Success Sticker: </span>
+            新账单已经贴回这个月的小岛账本啦。
+          </span>
+        </p>
+        <RecordsQueryLink
+          href={cleanHref}
+          className="inline-flex min-h-9 items-center justify-center rounded-full border border-[#82d5bb] bg-white px-4 py-1.5 text-xs font-black text-[#1f7a70] shadow-[0_3px_0_rgba(31,122,112,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_5px_0_rgba(31,122,112,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/20"
+        >
+          收好这张贴纸
+        </RecordsQueryLink>
+      </div>
     </div>
   );
 }
@@ -852,6 +887,12 @@ function getRecordsHref(month?: string | null, filters: LedgerRecordFilters = {}
   const query = getRecordsQuery(month, filters);
 
   return query ? `/records?${query}` : "/records";
+}
+
+function getNewRecordHref(month?: string | null, filters: LedgerRecordFilters = {}) {
+  const query = getRecordsQuery(month, filters);
+
+  return query ? `/records/new?${query}` : "/records/new";
 }
 
 function getRecordDetailHref(recordId: string, month: string, filters: LedgerRecordFilters = {}) {

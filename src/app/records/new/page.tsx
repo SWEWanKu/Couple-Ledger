@@ -20,15 +20,30 @@ import {
   type RecordCategoryOption,
   type RecordMemberOption
 } from "@/lib/ledger/create-record";
+import { normalizeRecordsMonth } from "@/lib/ledger/list-records";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 
 type NewRecordPageProps = {
-  searchParams?: Promise<{
-    error?: string | string[];
-    month?: string | string[];
-  }>;
+  searchParams?: Promise<NewRecordSearchParams>;
+};
+
+type NewRecordSearchParams = {
+  error?: string | string[];
+  month?: string | string[];
+  type?: string | string[];
+  category?: string | string[];
+  member?: string | string[];
+  q?: string | string[];
+};
+
+type ReturnContextParams = {
+  month: string | null;
+  type: "expense" | "income" | null;
+  category: string | null;
+  member: string | null;
+  q: string | null;
 };
 
 type HouseholdMembershipRow = {
@@ -38,7 +53,7 @@ type HouseholdMembershipRow = {
 
 export default async function NewRecordPage({ searchParams }: NewRecordPageProps) {
   const params = searchParams ? await searchParams : {};
-  const selectedMonth = getSingleParam(params.month);
+  const selectedMonth = normalizeRecordsMonth(getSingleParam(params.month));
   const errorMessage = getCreateRecordErrorMessage(getSingleParam(params.error));
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary, warning } = await getDashboardHouseholdSummary(supabase, {
@@ -46,9 +61,13 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
     currentUserId: user.id
   });
   const today = getTodayDateOnly();
+  const defaultMonth = selectedMonth ?? today.slice(0, 7);
+  const returnParams = getReturnContextParams(params, defaultMonth);
+  const returnHref = getRecordsReturnHref(returnParams);
+  const defaultRecordDate = getDefaultRecordDate(defaultMonth, today);
   const settlementStatus = await getSettlementSnapshotStatus(supabase, {
     householdId: membership.household_id,
-    month: selectedMonth ?? today.slice(0, 7)
+    month: defaultMonth
   });
   const canCreateRecord = summary.categories.length > 0 && summary.members.length > 0;
 
@@ -57,11 +76,11 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
         <div className="mx-auto grid max-w-6xl gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <IslandLink
-              href="/dashboard"
+              href={returnHref}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
             >
               <ArrowLeft aria-hidden="true" size={17} />
-              回到看板
+              返回账本列表
             </IslandLink>
             <span className="inline-flex items-center gap-2 rounded-full bg-[#e6f6ee] px-4 py-2 text-sm font-black text-[#2f7a5a] shadow-[0_4px_0_rgba(47,122,90,0.12)]">
               <Icon name="icon-map" size={22} bounce />
@@ -102,6 +121,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
 
               {canCreateRecord ? (
                 <form action={saveRecordAction} className="mt-5 grid gap-5" noValidate>
+                  <ReturnContextHiddenInputs returnParams={returnParams} />
                   <fieldset className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4">
                     <legend className="px-2 text-sm font-black text-[#794f27]">账单类型</legend>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -173,7 +193,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
                         name="occurred_on"
                         type="date"
                         required
-                        defaultValue={today}
+                        defaultValue={defaultRecordDate}
                         className={inputClassName}
                       />
                     </FormField>
@@ -320,6 +340,7 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
 async function saveRecordAction(formData: FormData) {
   "use server";
 
+  const returnParams = getReturnContextFromFormData(formData);
   const { supabase, user, membership } = await requireHouseholdAccess();
   const { summary } = await getDashboardHouseholdSummary(supabase, {
     householdId: membership.household_id,
@@ -341,10 +362,94 @@ async function saveRecordAction(formData: FormData) {
   );
 
   if (!result.ok) {
-    redirect(`/records/new?error=${result.errorCode}`);
+    redirect(getNewRecordHref(returnParams, result.errorCode));
   }
 
-  redirect("/dashboard");
+  redirect(getRecordsReturnHref(returnParams, { created: true }));
+}
+
+function ReturnContextHiddenInputs({ returnParams }: { returnParams: ReturnContextParams }) {
+  return (
+    <>
+      {returnParams.month ? <input type="hidden" name="return_month" value={returnParams.month} /> : null}
+      {returnParams.type ? <input type="hidden" name="return_type" value={returnParams.type} /> : null}
+      {returnParams.category ? <input type="hidden" name="return_category" value={returnParams.category} /> : null}
+      {returnParams.member ? <input type="hidden" name="return_member" value={returnParams.member} /> : null}
+      {returnParams.q ? <input type="hidden" name="return_q" value={returnParams.q} /> : null}
+    </>
+  );
+}
+
+function getReturnContextParams(params: NewRecordSearchParams, fallbackMonth: string): ReturnContextParams {
+  return {
+    month: normalizeRecordsMonth(getSingleParam(params.month)) ?? fallbackMonth,
+    type: normalizeReturnType(getSingleParam(params.type)),
+    category: normalizeReturnText(getSingleParam(params.category), 120),
+    member: normalizeReturnText(getSingleParam(params.member), 120),
+    q: normalizeReturnText(getSingleParam(params.q), 80)
+  };
+}
+
+function getReturnContextFromFormData(formData: FormData): ReturnContextParams {
+  const today = getTodayDateOnly();
+
+  return {
+    month: normalizeRecordsMonth(getFormString(formData, "return_month")) ?? today.slice(0, 7),
+    type: normalizeReturnType(getFormString(formData, "return_type")),
+    category: normalizeReturnText(getFormString(formData, "return_category"), 120),
+    member: normalizeReturnText(getFormString(formData, "return_member"), 120),
+    q: normalizeReturnText(getFormString(formData, "return_q"), 80)
+  };
+}
+
+function getRecordsReturnHref(returnParams: ReturnContextParams, options: { created?: boolean } = {}) {
+  const query = getReturnContextQuery(returnParams);
+
+  if (options.created) {
+    query.set("created", "1");
+  }
+
+  const queryString = query.toString();
+
+  return queryString ? `/records?${queryString}` : "/records";
+}
+
+function getNewRecordHref(returnParams: ReturnContextParams, errorCode?: string) {
+  const query = getReturnContextQuery(returnParams);
+
+  if (errorCode) {
+    query.set("error", errorCode);
+  }
+
+  const queryString = query.toString();
+
+  return queryString ? `/records/new?${queryString}` : "/records/new";
+}
+
+function getReturnContextQuery(returnParams: ReturnContextParams) {
+  const query = new URLSearchParams();
+
+  if (returnParams.month) {
+    query.set("month", returnParams.month);
+  }
+
+  if (returnParams.type) {
+    query.set("type", returnParams.type);
+  }
+
+  if (returnParams.category) {
+    query.set("category", returnParams.category);
+  }
+
+  if (returnParams.member) {
+    query.set("member", returnParams.member);
+  }
+
+  if (returnParams.q) {
+    query.set("q", returnParams.q);
+  }
+
+  return query;
 }
 
 async function requireHouseholdAccess() {
@@ -468,6 +573,30 @@ function getSingleParam(value: string | string[] | undefined) {
   }
 
   return value ?? null;
+}
+
+function getFormString(formData: FormData, key: string) {
+  const value = formData.get(key);
+
+  return typeof value === "string" ? value : "";
+}
+
+function normalizeReturnType(value: string | null) {
+  return value === "expense" || value === "income" ? value : null;
+}
+
+function normalizeReturnText(value: string | null, maxLength: number) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed.slice(0, maxLength) : null;
+}
+
+function getDefaultRecordDate(month: string, today: string) {
+  if (today.startsWith(`${month}-`)) {
+    return today;
+  }
+
+  return `${month}-01`;
 }
 
 function getTodayDateOnly() {
