@@ -57,9 +57,22 @@ type NormalizedRecordInput = {
   note: string | null;
 };
 
-type LedgerEntryInsertResult = {
-  id: string;
+type CreateLedgerRecordRpcResult = {
+  status?: unknown;
+  recordId?: unknown;
 };
+
+const rpcErrorStatuses = new Set<CreateRecordErrorCode>([
+  "invalid_entry_type",
+  "invalid_amount",
+  "invalid_category",
+  "invalid_handler",
+  "invalid_split_mode",
+  "invalid_date",
+  "missing_members",
+  "entry_insert_failed",
+  "split_insert_failed"
+]);
 
 const maxAmountCents = 999999999999;
 
@@ -95,48 +108,46 @@ export async function createRecord(
   }
 
   const record = normalized.record;
-  const { data: entry, error: entryError } = await supabase
-    .from("ledger_entries")
-    .insert({
-      household_id: context.householdId,
-      amount: record.amount,
-      entry_type: record.entryType,
-      category_id: record.categoryId,
-      paid_by: record.paidBy,
-      split_mode: record.splitMode,
-      occurred_on: record.occurredOn,
-      note: record.note,
-      created_by: context.currentUserId
-    })
-    .select("id")
-    .single();
+  const { data, error } = await supabase.rpc("create_ledger_record_v1", {
+    p_household_id: context.householdId,
+    p_amount: record.amount,
+    p_entry_type: record.entryType,
+    p_category_id: record.categoryId,
+    p_paid_by: record.paidBy,
+    p_split_mode: record.splitMode,
+    p_occurred_on: record.occurredOn,
+    p_note: record.note
+  });
 
-  if (entryError || !entry) {
+  if (error) {
     return { ok: false, errorCode: "entry_insert_failed" };
   }
 
-  const entryId = (entry as LedgerEntryInsertResult).id;
-  const splits = buildRecordSplitRows({
-    entryId,
-    amountCents: record.amountCents,
-    members: context.members,
-    paidBy: record.paidBy,
-    splitMode: record.splitMode
-  });
+  return normalizeCreateRecordRpcResult(data);
+}
 
-  const { error: splitError } = await supabase.from("ledger_entry_splits").insert(splits);
+function normalizeCreateRecordRpcResult(value: unknown): CreateRecordResult {
+  const result = (value ?? {}) as CreateLedgerRecordRpcResult;
 
-  if (splitError) {
-    await supabase
-      .from("ledger_entries")
-      .delete()
-      .eq("id", entryId)
-      .eq("household_id", context.householdId);
-
-    return { ok: false, errorCode: "split_insert_failed" };
+  if (result.status === "created" && typeof result.recordId === "string") {
+    return {
+      ok: true,
+      entryId: result.recordId
+    };
   }
 
-  return { ok: true, entryId };
+  if (
+    typeof result.status === "string" &&
+    rpcErrorStatuses.has(result.status as CreateRecordErrorCode)
+  ) {
+    return { ok: false, errorCode: result.status as CreateRecordErrorCode };
+  }
+
+  if (result.status === "not_household_member" || result.status === "unauthenticated") {
+    return { ok: false, errorCode: "invalid_handler" };
+  }
+
+  return { ok: false, errorCode: "entry_insert_failed" };
 }
 
 export function buildRecordSplitRows({
