@@ -23,6 +23,11 @@ import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
 import {
+  getDashboardRecentActivity,
+  type DashboardRecentActivityRecord,
+  type DashboardRecentActivityResult
+} from "@/lib/dashboard/recent-activity";
+import {
   getMonthlyLedgerSummary,
   type MonthlyLedgerCategoryBreakdownItem,
   type MonthlyLedgerPayerBreakdownItem,
@@ -106,6 +111,13 @@ export default async function DashboardPage() {
     householdId: membership.household_id,
     month: ledgerSummary.monthStart.slice(0, 7)
   });
+  const recentActivity = await getDashboardRecentActivity(supabase, {
+    householdId: membership.household_id,
+    currentUserId: user.id,
+    categories: householdSummary.categories,
+    members: householdSummary.members,
+    limit: 6
+  });
   const ledgerStats = createLedgerStats(ledgerSummary);
 
   return (
@@ -141,6 +153,12 @@ export default async function DashboardPage() {
           <CategoryBreakdownCard items={ledgerSummary.categoryBreakdown} />
           <RecentRecordsCard records={ledgerSummary.recentRecords} />
         </section>
+
+        <RecentIslandActivityCard
+          activity={recentActivity}
+          currentUserId={user.id}
+          settlementStatus={settlementStatus}
+        />
 
         <SettlementEntryCard
           currentUserId={user.id}
@@ -734,6 +752,210 @@ function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
       )}
     </Card>
   );
+}
+
+function RecentIslandActivityCard({
+  activity,
+  currentUserId,
+  settlementStatus
+}: {
+  activity: DashboardRecentActivityResult;
+  currentUserId: string;
+  settlementStatus: GetSettlementSnapshotStatusResult;
+}) {
+  const memo = getRecentActivitySettlementMemo(settlementStatus, currentUserId);
+  const MemoIcon = memo.icon;
+
+  return (
+    <Card
+      type="dashed"
+      color="default"
+      pattern="app-yellow"
+      className="relative overflow-visible p-5 sm:p-6"
+      data-dashboard-recent-activity="true"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+      <span
+        aria-hidden="true"
+        className="absolute -bottom-3 right-12 h-7 w-24 rotate-2 rounded-[10px] bg-[#fff1a8]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Icon name="icon-chat" size={18} bounce />
+            Island Activity
+          </p>
+          <div className="mt-3">
+            <Title size="small" color="app-yellow">
+              最近小岛动态
+            </Title>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
+            把最近写进账本的小纸条贴在这里，快速回到每一张真实记录。
+          </p>
+        </div>
+
+        <div
+          className={`rounded-[28px] border-2 border-dashed px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${memo.className}`}
+          data-dashboard-recent-activity-settlement="true"
+        >
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+            <MemoIcon aria-hidden="true" size={16} />
+            Settlement Note
+          </p>
+          <p className="mt-2 text-base font-black text-[#794f27]">{memo.title}</p>
+          <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">{memo.body}</p>
+        </div>
+      </div>
+
+      <Divider type="wave-yellow" className="my-5" />
+
+      {activity.warning ? (
+        <div className="mb-4 flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
+          <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+          <span>{activity.warning}</span>
+        </div>
+      ) : null}
+
+      {activity.records.length > 0 ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {activity.records.map((record) => (
+            <RecentIslandActivityItem key={record.id} record={record} />
+          ))}
+        </div>
+      ) : (
+        <NotebookEmptyState
+          action={{
+            href: "/records/new",
+            label: "记一张新便签",
+            icon: <PlusCircle aria-hidden="true" size={17} />
+          }}
+          className="mt-5"
+          dataAttributes={{ "data-dashboard-recent-activity-empty": "true" }}
+          description="记下第一笔账后，这里会贴出刚刚写进账本的小纸条。"
+          eyebrow="Empty Activity"
+          iconName="icon-chat"
+          title="还没有最近小岛动态"
+          tone="teal"
+        />
+      )}
+    </Card>
+  );
+}
+
+function RecentIslandActivityItem({ record }: { record: DashboardRecentActivityRecord }) {
+  const amountClassName = record.entryType === "income" ? "text-[#1f7a70]" : "text-[#b66a2c]";
+
+  return (
+    <IslandLink
+      href={record.detailHref}
+      ariaLabel={`打开 ${record.typeLabel} 记录`}
+      className="group relative block rounded-[26px] border-2 border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+      data-dashboard-recent-activity-link="true"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute -top-2 right-5 h-4 w-14 rotate-2 rounded-[7px] bg-[#82d5bb]/55"
+      />
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-base font-black text-[#794f27]">
+            {record.note?.trim() || "未命名账单"}
+          </p>
+          <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
+            {record.typeLabel} · {formatShortDate(record.occurredOn)}
+          </p>
+        </div>
+        <p className={`shrink-0 text-base font-black ${amountClassName}`}>{record.amountLabel}</p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-full border-2 border-[#d9c49b] bg-white/85 px-3 py-1 text-xs font-black text-[#725d42] shadow-[0_3px_0_rgba(121,79,39,0.08)]">
+          {record.categoryIcon ? `${record.categoryIcon} ` : ""}
+          {record.categoryName}
+        </span>
+        <span className="rounded-full border-2 border-[#d9c49b] bg-[#e9fbf4] px-3 py-1 text-xs font-black text-[#1f7a70] shadow-[0_3px_0_rgba(121,79,39,0.08)]">
+          {record.paidByLabel}
+        </span>
+      </div>
+
+      <p className="mt-4 inline-flex items-center gap-2 text-xs font-black text-[#8a7556] transition group-hover:text-[#1f7a70]">
+        <ReceiptText aria-hidden="true" size={15} />
+        打开这张账单
+      </p>
+    </IslandLink>
+  );
+}
+
+function getRecentActivitySettlementMemo(
+  status: GetSettlementSnapshotStatusResult,
+  currentUserId: string
+): {
+  title: string;
+  body: string;
+  icon: LucideIcon;
+  className: string;
+} {
+  if (status.status === "error") {
+    return {
+      title: "结算便签暂时没翻到",
+      body: `${status.month.monthLabel} 的账本动态仍可查看，结算状态稍后再刷新。`,
+      icon: AlertCircle,
+      className: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  if (status.pendingReplacement) {
+    const progress = `${status.pendingReplacement.confirmedCount}/${status.pendingReplacement.requiredConfirmationCount}`;
+
+    return {
+      title: "有一张新版结算便签",
+      body: `${status.month.monthLabel} 的新版便签正在等待盖章，当前进度 ${progress}。`,
+      icon: Hourglass,
+      className: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  if (status.status === "no_snapshot") {
+    return {
+      title: "本月还没有结算便签",
+      body: `${status.month.monthLabel} 暂时只有实时账本动态，还没有生成结算存档。`,
+      icon: ArrowRightLeft,
+      className: "border-[#d9c49b] bg-[#fffdf3]"
+    };
+  }
+
+  const confirmedUserIds = new Set(status.confirmations.map((confirmation) => confirmation.confirmed_by));
+  const progress = `${confirmedUserIds.size}/${status.requiredConfirmationCount}`;
+
+  if (status.status === "fully_confirmed") {
+    return {
+      title: "本月结算已经对齐",
+      body: `${status.month.monthLabel} 已经 ${progress} 盖章完成，动态列表只负责带你回看账单。`,
+      icon: CheckCircle2,
+      className: "border-[#82d5bb] bg-[#e9fbf4]"
+    };
+  }
+
+  if (confirmedUserIds.has(currentUserId)) {
+    return {
+      title: "你已确认，等对方盖章",
+      body: `${status.month.monthLabel} 的结算进度是 ${progress}，这里不提供新的确认操作。`,
+      icon: BadgeCheck,
+      className: "border-[#f7cd67] bg-[#fff8da]"
+    };
+  }
+
+  return {
+    title: "结算便签等待确认",
+    body: `${status.month.monthLabel} 的结算进度是 ${progress}，需要处理时再去结算页。`,
+    icon: Hourglass,
+    className: "border-[#f7cd67] bg-[#fff8da]"
+  };
 }
 
 function SettlementEntryCard({
