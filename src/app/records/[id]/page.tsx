@@ -4,21 +4,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   AlertCircle,
   ArrowLeft,
+  Ban,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  FileWarning,
   Plus,
   ReceiptText,
+  StickyNote,
   Split,
   Tags,
   UserRound,
   WalletCards
 } from "lucide-react";
-import { Card, Divider, Icon, Title } from "animal-island-ui";
+import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
+import { voidLedgerRecordAction } from "./actions";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getRecordDetail, type RecordDetail } from "@/lib/ledger/get-record-detail";
 import {
@@ -30,7 +34,10 @@ import {
   type LedgerRecordTypeFilter
 } from "@/lib/ledger/list-records";
 import { getRecordDetailHref } from "@/lib/ledger/records-query";
-import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
+import {
+  getSettlementSnapshotStatus,
+  type GetSettlementSnapshotStatusResult
+} from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardHouseholdSummary } from "@/types/dashboard";
 
@@ -52,6 +59,23 @@ type RecordDetailSearchParams = {
 type HouseholdMembershipRow = {
   household_id: string;
   role: string;
+};
+
+type VoidReturnContextParams = {
+  month: string | null;
+  type: "expense" | "income" | null;
+  category: string | null;
+  member: string | null;
+  q: string | null;
+};
+
+type RecordVoidState = {
+  status: "ready" | "settled" | "blocked_pending_replacement" | "status_error";
+  disabled: boolean;
+  badge: string;
+  heading: string;
+  body: string;
+  toneClassName: string;
 };
 
 export default async function RecordDetailPage({ params, searchParams }: RecordDetailPageProps) {
@@ -104,6 +128,8 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
     householdId: membership.household_id,
     month: recordMonth
   });
+  const voidReturnContext = getVoidReturnContext(returnParams, recordMonth);
+  const voidState = getRecordVoidState(settlementStatus);
 
   return (
     <AppShell
@@ -214,6 +240,12 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
           <RecordsSettlementAwareness statusResult={settlementStatus} context="detail" />
 
           <SplitBreakdown record={record} />
+
+          <SoftVoidCard
+            record={record}
+            returnContext={voidReturnContext}
+            state={voidState}
+          />
         </div>
     </AppShell>
   );
@@ -561,6 +593,112 @@ function DetailNav({ returnHref }: { returnHref: string }) {
   );
 }
 
+function SoftVoidCard({
+  record,
+  returnContext,
+  state
+}: {
+  record: RecordDetail;
+  returnContext: VoidReturnContextParams;
+  state: RecordVoidState;
+}) {
+  return (
+    <Card
+      type="dashed"
+      color="default"
+      className="relative overflow-visible p-5 sm:p-7"
+      data-record-soft-void="true"
+      data-record-soft-void-state={state.status}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute -top-3 left-8 h-7 w-28 rotate-1 rounded-[10px] bg-[#fc736d]/45 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
+            <Icon name="icon-diy" size={18} bounce />
+            Record Mutation V1
+          </p>
+          <div className="mt-3">
+            <Title size="small" color="app-red" style={{ fontSize: 20 }}>
+              作废这笔账
+            </Title>
+          </div>
+          <p className="mt-3 max-w-3xl text-sm font-bold leading-7 text-[#725d42]">
+            作废后，这笔账会从普通账本、小结和实时结算里消失；不会删除历史结算便签，也不会改写已经保存的金额。
+          </p>
+        </div>
+        <span className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-dashed border-[#d46a5b] bg-[#fff1ed] px-4 py-2 text-xs font-black text-[#b14c46] shadow-[0_4px_0_rgba(177,76,70,0.12)]">
+          <FileWarning aria-hidden="true" size={16} />
+          {state.badge}
+        </span>
+      </div>
+
+      <Divider type="dashed-brown" className="my-5" />
+
+      <div
+        data-record-soft-void-warning="true"
+        className={`rounded-[24px] border-2 border-dashed px-4 py-3 text-sm font-black leading-7 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${state.toneClassName}`}
+      >
+        <p className="flex items-start gap-3">
+          <AlertCircle aria-hidden="true" size={18} className="mt-1 shrink-0" />
+          <span>
+            <span className="block">{state.heading}</span>
+            <span className="mt-1 block font-bold">{state.body}</span>
+          </span>
+        </p>
+      </div>
+
+      <form action={voidLedgerRecordAction} className="mt-5 grid gap-4">
+        <input type="hidden" name="record_id" value={record.id} />
+        <VoidReturnContextHiddenInputs returnContext={returnContext} />
+        <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="record-void-reason">
+          <span className="flex items-center gap-2">
+            <StickyNote aria-hidden="true" size={17} className="text-[#9f927d]" />
+            作废原因
+            <span className="text-xs text-[#9f927d]">可选</span>
+          </span>
+          <textarea
+            id="record-void-reason"
+            name="void_reason"
+            maxLength={180}
+            disabled={state.disabled}
+            placeholder="例如：重复记录、记错月份、这笔后来不需要计入账本"
+            className="min-h-24 w-full resize-y rounded-[24px] border-2 border-[#d9c49b] bg-[#fffdf3] px-4 py-3 text-sm font-black leading-6 text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 disabled:cursor-not-allowed disabled:opacity-60 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25"
+          />
+        </label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-bold leading-6 text-[#9f927d]">
+            这不是硬删除。分摊行会保留在数据库里，之后普通页面只是不再把这笔账算进去。
+          </p>
+          <Button
+            type="primary"
+            danger
+            htmlType="submit"
+            disabled={state.disabled}
+            icon={<Ban aria-hidden="true" size={17} />}
+          >
+            作废这笔账
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
+function VoidReturnContextHiddenInputs({ returnContext }: { returnContext: VoidReturnContextParams }) {
+  return (
+    <>
+      {returnContext.month ? <input type="hidden" name="return_month" value={returnContext.month} /> : null}
+      {returnContext.type ? <input type="hidden" name="return_type" value={returnContext.type} /> : null}
+      {returnContext.category ? <input type="hidden" name="return_category" value={returnContext.category} /> : null}
+      {returnContext.member ? <input type="hidden" name="return_member" value={returnContext.member} /> : null}
+      {returnContext.q ? <input type="hidden" name="return_q" value={returnContext.q} /> : null}
+    </>
+  );
+}
+
 function SplitBreakdown({ record }: { record: RecordDetail }) {
   return (
     <Card color="default" pattern="app-yellow" className="p-5 sm:p-7">
@@ -666,6 +804,63 @@ function PageNotice({
       <span>{message}</span>
     </div>
   );
+}
+
+function getVoidReturnContext(
+  params: RecordDetailSearchParams,
+  fallbackMonth: string | null
+): VoidReturnContextParams {
+  return {
+    month: normalizeReturnMonth(getSingleParam(params.month)) ?? fallbackMonth,
+    type: normalizeReturnType(getSingleParam(params.type)),
+    category: normalizeReturnText(getSingleParam(params.category), 120),
+    member: normalizeReturnText(getSingleParam(params.member), 120),
+    q: normalizeReturnText(getSingleParam(params.q), 80)
+  };
+}
+
+function getRecordVoidState(statusResult: GetSettlementSnapshotStatusResult): RecordVoidState {
+  if (statusResult.pendingReplacement) {
+    return {
+      status: "blocked_pending_replacement",
+      disabled: true,
+      badge: "先处理新便签",
+      heading: "这个月正在重新对齐结算便签。",
+      body: "先处理完新的结算便签再改账。作废按钮会暂时锁住，避免让旧便签和新便签一起变得不稳。",
+      toneClassName: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
+    };
+  }
+
+  if (statusResult.status === "error") {
+    return {
+      status: "status_error",
+      disabled: true,
+      badge: "稍后再试",
+      heading: "结算状态暂时没读完整。",
+      body: "为了避免误操作，先不要作废这笔账。等小岛重新读到结算便签状态后再回来处理。",
+      toneClassName: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
+    };
+  }
+
+  if (statusResult.snapshot) {
+    return {
+      status: "settled",
+      disabled: false,
+      badge: "已留结算便签",
+      heading: "这笔账所在月份已经留下一张结算便签。",
+      body: "作废后不会改写旧便签，结算页会提示账本变化；之后可以用新的结算便签重新对齐。",
+      toneClassName: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+    };
+  }
+
+  return {
+    status: "ready",
+    disabled: false,
+    badge: "只作废账本记录",
+    heading: "这次只给账本记录盖上作废章。",
+    body: "普通账本、小结和实时结算会在下次读取时自动排除它；历史结算便签和分摊行不会被删除。",
+    toneClassName: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+  };
 }
 
 function getRecordsReturnHref(params: RecordDetailSearchParams, fallbackMonth: string | null) {

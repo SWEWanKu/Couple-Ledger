@@ -54,7 +54,14 @@ type RecordsPageProps = {
     member?: string | string[];
     q?: string | string[];
     created?: string | string[];
+    voided?: string | string[];
   }>;
+};
+
+type RecordsVoidFeedback = {
+  tone: "success" | "warning" | "error";
+  message: string;
+  actionLabel: string;
 };
 
 type HouseholdMembershipRow = {
@@ -102,6 +109,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     month: range.month
   });
   const showCreateSuccess = getSingleParam(params.created) === "1";
+  const voidFeedback = getRecordsVoidFeedback(getSingleParam(params.voided));
 
   return (
     <AppShell
@@ -188,6 +196,12 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
             {recordsWarning ? <PageNotice message={recordsWarning} /> : null}
             {showCreateSuccess ? (
               <RecordsCreatedSuccessSticker cleanHref={getRecordsHref(range.month, recordsFilters)} />
+            ) : null}
+            {voidFeedback ? (
+              <RecordsVoidFeedbackSticker
+                cleanHref={getRecordsHref(range.month, recordsFilters)}
+                feedback={voidFeedback}
+              />
             ) : null}
             <RecordsSettlementAwareness
               statusResult={settlementStatus}
@@ -973,6 +987,47 @@ function RecordsCreatedSuccessSticker({ cleanHref }: { cleanHref: string }) {
   );
 }
 
+function RecordsVoidFeedbackSticker({
+  cleanHref,
+  feedback
+}: {
+  cleanHref: string;
+  feedback: RecordsVoidFeedback;
+}) {
+  const classes: Record<RecordsVoidFeedback["tone"], string> = {
+    success: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]",
+    warning: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]",
+    error: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+  };
+  const IconComponent =
+    feedback.tone === "success" ? BadgeCheck : feedback.tone === "warning" ? AlertCircle : XCircle;
+
+  return (
+    <div
+      role={feedback.tone === "error" ? "alert" : "status"}
+      data-records-void-feedback="true"
+      data-records-void-feedback-tone={feedback.tone}
+      className={`mt-4 rounded-[26px] border-2 border-dashed px-4 py-3 text-sm font-black leading-6 shadow-[0_5px_0_rgba(121,79,39,0.1)] ${classes[feedback.tone]}`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-start gap-3">
+          <IconComponent aria-hidden="true" size={19} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="sr-only">Record Void Sticker: </span>
+            {feedback.message}
+          </span>
+        </p>
+        <RecordsQueryLink
+          href={cleanHref}
+          className="inline-flex min-h-9 items-center justify-center rounded-full border border-current bg-white px-4 py-1.5 text-xs font-black shadow-[0_3px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_5px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/20"
+        >
+          {feedback.actionLabel}
+        </RecordsQueryLink>
+      </div>
+    </div>
+  );
+}
+
 function createRecordsFilters(
   params: Awaited<NonNullable<RecordsPageProps["searchParams"]>>,
   householdSummary: DashboardHouseholdSummary
@@ -992,6 +1047,42 @@ function createRecordsFilters(
       : null,
     keyword
   };
+}
+
+function getRecordsVoidFeedback(value: string | null): RecordsVoidFeedback | null {
+  if (value === "1") {
+    return {
+      tone: "success",
+      message: "这笔账已经盖上作废章，普通账本、小结和实时结算都不会再把它算进去。",
+      actionLabel: "收好这张贴纸"
+    };
+  }
+
+  if (value === "already_voided") {
+    return {
+      tone: "warning",
+      message: "这笔账之前已经作废了，当前列表会继续只显示还在生效的账本记录。",
+      actionLabel: "知道啦"
+    };
+  }
+
+  if (value === "blocked_pending_replacement") {
+    return {
+      tone: "warning",
+      message: "这个月正在重新对齐结算便签，先处理完新的结算便签再回来改账会更稳。",
+      actionLabel: "先留着"
+    };
+  }
+
+  if (value === "error") {
+    return {
+      tone: "error",
+      message: "作废这笔账没有成功，小岛刚才没能安全写入作废章，请稍后再试。",
+      actionLabel: "收起提示"
+    };
+  }
+
+  return null;
 }
 
 function normalizeRecordTypeFilter(value: string | null): LedgerRecordTypeFilter {
