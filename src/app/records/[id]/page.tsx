@@ -5,11 +5,13 @@ import {
   AlertCircle,
   ArrowLeft,
   Ban,
+  BadgeCheck,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock3,
   FileWarning,
+  PencilLine,
   Plus,
   ReceiptText,
   StickyNote,
@@ -33,7 +35,7 @@ import {
   type LedgerRecordFilters,
   type LedgerRecordTypeFilter
 } from "@/lib/ledger/list-records";
-import { getRecordDetailHref } from "@/lib/ledger/records-query";
+import { getRecordDetailHref, getRecordEditHref } from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
@@ -54,6 +56,7 @@ type RecordDetailSearchParams = {
   category?: string | string[];
   member?: string | string[];
   q?: string | string[];
+  updated?: string | string[];
 };
 
 type HouseholdMembershipRow = {
@@ -76,6 +79,13 @@ type RecordVoidState = {
   heading: string;
   body: string;
   toneClassName: string;
+};
+
+type RecordEditState = {
+  status: "ready" | "settled" | "blocked_pending_replacement" | "status_error" | "custom_split";
+  disabled: boolean;
+  label: string;
+  message: string;
 };
 
 export default async function RecordDetailPage({ params, searchParams }: RecordDetailPageProps) {
@@ -116,6 +126,18 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
   const record = detail.record;
   const recordMonth = getMonthKeyFromDateOnly(record.occurredOn);
   const returnHref = getRecordsReturnHref(returnParams, recordMonth);
+  const editContext = createRecordPagerContext(returnParams, recordMonth, summary);
+  const editHref = getRecordEditHref(
+    record.id,
+    editContext.month ?? recordMonth ?? "",
+    editContext.filters
+  );
+  const cleanDetailHref = getRecordDetailHref(
+    record.id,
+    editContext.month ?? recordMonth ?? "",
+    editContext.filters
+  );
+  const showUpdateSuccess = getSingleParam(returnParams.updated) === "1";
   const recordPager = await getRecordPager(supabase, {
     currentRecordId: record.id,
     currentUserId: user.id,
@@ -130,6 +152,7 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
   });
   const voidReturnContext = getVoidReturnContext(returnParams, recordMonth);
   const voidState = getRecordVoidState(settlementStatus);
+  const editState = getRecordEditState(record, settlementStatus);
 
   return (
     <AppShell
@@ -137,9 +160,11 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
       subtitle="只读查看这张小岛流水，不会修改任何账本数据。"
     >
         <div className="mx-auto grid max-w-6xl gap-6">
-          <DetailNav returnHref={returnHref} />
+          <DetailNav editHref={editHref} editState={editState} returnHref={returnHref} />
 
           <RecordPager pager={recordPager} />
+
+          {showUpdateSuccess ? <RecordUpdatedNotice cleanHref={cleanDetailHref} /> : null}
 
           <Card
             color="default"
@@ -570,7 +595,15 @@ function PagerSlot({
   );
 }
 
-function DetailNav({ returnHref }: { returnHref: string }) {
+function DetailNav({
+  editHref,
+  editState,
+  returnHref
+}: {
+  editHref?: string;
+  editState?: RecordEditState;
+  returnHref: string;
+}) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <Link
@@ -582,13 +615,60 @@ function DetailNav({ returnHref }: { returnHref: string }) {
         <ArrowLeft aria-hidden="true" size={17} />
         返回账本列表
       </Link>
-      <IslandLink
-        href="/records/new"
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-      >
-        <Plus aria-hidden="true" size={18} />
-        记一笔账
-      </IslandLink>
+      <div className="flex flex-wrap items-center gap-3">
+        {editHref && editState ? (
+          editState.disabled ? (
+            <span
+              data-record-detail-edit-disabled="true"
+              data-record-detail-edit-disabled-state={editState.status}
+              className="inline-flex min-h-10 max-w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-2 text-sm font-black text-[#8a6420] shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+              title={editState.message}
+            >
+              <FileWarning aria-hidden="true" size={17} />
+              {editState.label}
+            </span>
+          ) : (
+            <IslandLink
+              href={editHref}
+              data-record-detail-edit="true"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#82d5bb] px-5 py-2 text-sm font-black text-white shadow-[0_5px_0_#5fb89f] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#5fb89f] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <PencilLine aria-hidden="true" size={18} />
+              修改这笔账
+            </IslandLink>
+          )
+        ) : null}
+        <IslandLink
+          href="/records/new"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+        >
+          <Plus aria-hidden="true" size={18} />
+          记一笔账
+        </IslandLink>
+      </div>
+    </div>
+  );
+}
+
+function RecordUpdatedNotice({ cleanHref }: { cleanHref: string }) {
+  return (
+    <div
+      role="status"
+      data-record-detail-update-success="true"
+      className="rounded-[26px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-4 py-3 text-sm font-black leading-6 text-[#1f7a70] shadow-[0_5px_0_rgba(31,122,112,0.1)]"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="flex items-start gap-3">
+          <BadgeCheck aria-hidden="true" size={19} className="mt-0.5 shrink-0" />
+          这笔账已经修改好啦，账单和分摊行都通过小岛 RPC 重新对齐了。
+        </p>
+        <Link
+          href={cleanHref}
+          className="inline-flex min-h-9 items-center justify-center rounded-full bg-white px-4 py-1.5 text-xs font-black text-[#1f7a70] shadow-[0_4px_0_rgba(31,122,112,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          收好这张贴纸
+        </Link>
+      </div>
     </div>
   );
 }
@@ -860,6 +940,54 @@ function getRecordVoidState(statusResult: GetSettlementSnapshotStatusResult): Re
     heading: "这次只给账本记录盖上作废章。",
     body: "普通账本、小结和实时结算会在下次读取时自动排除它；历史结算便签和分摊行不会被删除。",
     toneClassName: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+  };
+}
+
+function getRecordEditState(
+  record: RecordDetail,
+  statusResult: GetSettlementSnapshotStatusResult
+): RecordEditState {
+  if (record.splitMode === "custom") {
+    return {
+      status: "custom_split",
+      disabled: true,
+      label: "自定义分摊暂不能改",
+      message: "V1 修改只支持两人平分和个人承担，自定义分摊会等后续单独设计。"
+    };
+  }
+
+  if (statusResult.pendingReplacement) {
+    return {
+      status: "blocked_pending_replacement",
+      disabled: true,
+      label: "先处理新便签",
+      message: "这个月正在重新对齐结算便签，先处理完新的结算便签再改账。"
+    };
+  }
+
+  if (statusResult.status === "error") {
+    return {
+      status: "status_error",
+      disabled: true,
+      label: "稍后再改",
+      message: "结算状态暂时没有读完整，为了避免误操作，先不修改这笔账。"
+    };
+  }
+
+  if (statusResult.snapshot) {
+    return {
+      status: "settled",
+      disabled: false,
+      label: "修改这笔账",
+      message: "这笔账所在月份已经留下结算便签，修改后不会改写旧便签。"
+    };
+  }
+
+  return {
+    status: "ready",
+    disabled: false,
+    label: "修改这笔账",
+    message: "可以修改这笔账。"
   };
 }
 

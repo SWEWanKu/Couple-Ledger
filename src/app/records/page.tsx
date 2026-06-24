@@ -157,7 +157,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
                   </Title>
                 </div>
                 <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
-                  这里只读 {range.monthLabel} 的真实账本记录，最多显示 50 条。分摊明细、结算、编辑和删除会在后续功能里单独接入。
+                  这里按手账列表翻看 {range.monthLabel} 的真实账本记录，最多显示 50 条。点击账单可以查看分摊明细，也可以从详情页进入修改或作废流程。
                 </p>
               </div>
               <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_7px_0_#5fb89f]">

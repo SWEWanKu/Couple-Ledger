@@ -27,6 +27,12 @@ export function getRecordDetailHref(recordId: string, month: string, filters: Le
   return query ? `/records/${recordId}?${query}` : `/records/${recordId}`;
 }
 
+export function getRecordEditHref(recordId: string, month: string, filters: LedgerRecordFilters = {}) {
+  const query = getRecordsQuery(month, filters);
+
+  return query ? `/records/${recordId}/edit?${query}` : `/records/${recordId}/edit`;
+}
+
 function getRecordsQuery(month?: string | null, filters: LedgerRecordFilters = {}) {
   const params = new URLSearchParams();
   const safeMonth = normalizeRecordsMonth(month);
