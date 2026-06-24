@@ -1,4 +1,5 @@
 import {
+  getCurrentMonthRange,
   normalizeRecordsMonth,
   type LedgerRecordFilters,
   type LedgerRecordTypeFilter
@@ -8,6 +9,10 @@ export function getRecordsHref(month?: string | null, filters: LedgerRecordFilte
   const query = getRecordsQuery(month, filters);
 
   return query ? `/records?${query}` : "/records";
+}
+
+export function getCurrentRecordsHref(filters: LedgerRecordFilters = {}, now: Date = new Date()) {
+  return getRecordsHref(getCurrentMonthRange(now).month, filters);
 }
 
 export function getNewRecordHref(month?: string | null, filters: LedgerRecordFilters = {}) {

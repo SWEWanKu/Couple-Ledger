@@ -37,6 +37,7 @@ import {
   type RecordsMonthRange
 } from "@/lib/ledger/list-records";
 import {
+  getCurrentRecordsHref,
   getNewRecordHref,
   getRecordDetailHref,
   getRecordsHref
@@ -213,17 +214,28 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
 }
 
 function MonthNavigator({ filters, range }: { filters: LedgerRecordFilters; range: RecordsMonthRange }) {
+  const currentMonthHref = getCurrentRecordsHref(filters);
+
   return (
-    <div className="mb-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3">
+    <div
+      data-records-month-navigation="true"
+      data-records-month-current={range.month}
+      className="mb-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+    >
       <div className="grid gap-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
         <RecordsQueryLink
           href={getRecordsHref(range.previousMonth, filters)}
+          ariaLabel={`Previous month ${range.previousMonth}`}
+          dataMonthNav="previous"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
         >
           <ChevronLeft aria-hidden="true" size={17} />
           上个月
         </RecordsQueryLink>
-        <div className="rounded-[22px] bg-white px-4 py-3 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+        <div
+          data-records-month-selected="true"
+          className="rounded-[22px] bg-white px-4 py-3 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]"
+        >
           <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
             Selected Month
           </p>
@@ -231,6 +243,8 @@ function MonthNavigator({ filters, range }: { filters: LedgerRecordFilters; rang
         </div>
         <RecordsQueryLink
           href={getRecordsHref(range.nextMonth, filters)}
+          ariaLabel={`Next month ${range.nextMonth}`}
+          dataMonthNav="next"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
         >
           下个月
@@ -258,7 +272,9 @@ function MonthNavigator({ filters, range }: { filters: LedgerRecordFilters; rang
           </Button>
         </form>
         <RecordsQueryLink
-          href={getRecordsHref(null, filters)}
+          href={currentMonthHref}
+          ariaLabel="Current month"
+          dataMonthNav="current"
           className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
         >
           本月
@@ -458,15 +474,17 @@ function RecordsQueryLink({
   href,
   children,
   className,
-  ariaLabel
+  ariaLabel,
+  dataMonthNav
 }: {
   href: string;
   children: ReactNode;
   className?: string;
   ariaLabel?: string;
+  dataMonthNav?: "previous" | "current" | "next";
 }) {
   return (
-    <Link href={href} aria-label={ariaLabel} className={className}>
+    <Link href={href} aria-label={ariaLabel} className={className} data-records-month-nav={dataMonthNav}>
       {children}
     </Link>
   );
