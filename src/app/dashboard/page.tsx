@@ -189,6 +189,7 @@ function DashboardMonthHero({
   const memoBody = hasNoRecords
     ? "从一笔小小的日常开始，给小岛留下今天的生活痕迹。"
     : "这些数字只来自本月真实流水，后面继续记账时会自动更新这张月记。";
+  const reportHref = `/reports/monthly?month=${summary.monthStart.slice(0, 7)}`;
 
   return (
     <Card color="default" pattern="app-teal" className="relative overflow-visible px-4 py-6 sm:px-7 sm:py-8">
@@ -264,6 +265,14 @@ function DashboardMonthHero({
             >
               <ReceiptText aria-hidden="true" size={18} />
               查看流水
+            </IslandLink>
+            <IslandLink
+              href={reportHref}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#e9fbf4] px-5 py-3 text-sm font-black text-[#1f7a70] shadow-[0_5px_0_rgba(31,122,112,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(31,122,112,0.16)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+              data-dashboard-monthly-report-link="true"
+            >
+              <ChartPie aria-hidden="true" size={18} />
+              打开月报
             </IslandLink>
           </div>
         </div>
