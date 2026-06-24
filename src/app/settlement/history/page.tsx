@@ -20,6 +20,7 @@ import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
@@ -62,6 +63,16 @@ export default async function SettlementHistoryPage() {
       subtitle="只读翻阅已经留下的结算便签，不会提出、确认或改写任何账本。"
     >
       <div className="mx-auto grid max-w-6xl gap-6">
+        <PrivateIslandTrail
+          items={[
+            { label: islandTrailLabels.home, href: "/dashboard" },
+            { label: islandTrailLabels.records, href: "/records" },
+            { label: islandTrailLabels.settlement, href: "/settlement" },
+            { label: islandTrailLabels.settlementHistory, current: true },
+            { label: islandTrailLabels.monthlyReport, href: "/reports/monthly" }
+          ]}
+        />
+
         <HistoryNav />
 
         <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">

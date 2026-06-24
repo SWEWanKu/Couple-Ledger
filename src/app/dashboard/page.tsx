@@ -20,6 +20,7 @@ import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
 import {
@@ -119,6 +120,7 @@ export default async function DashboardPage() {
     limit: 6
   });
   const ledgerStats = createLedgerStats(ledgerSummary);
+  const currentMonth = ledgerSummary.monthStart.slice(0, 7);
 
   return (
     <AppShell
@@ -126,6 +128,15 @@ export default async function DashboardPage() {
       subtitle={`已通过 ${householdSummary.householdName} 成员检查，当前角色：${formatMemberRole(membership.role)}。`}
     >
       <div className="mx-auto grid max-w-6xl gap-6">
+        <PrivateIslandTrail
+          items={[
+            { label: islandTrailLabels.home, current: true },
+            { label: islandTrailLabels.records, href: getRecordsHref(currentMonth) },
+            { label: islandTrailLabels.settlement, href: `/settlement?month=${currentMonth}` },
+            { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(currentMonth) }
+          ]}
+        />
+
         <DashboardMonthHero
           householdName={householdSummary.householdName}
           role={membership.role}

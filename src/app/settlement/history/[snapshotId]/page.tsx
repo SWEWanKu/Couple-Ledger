@@ -20,7 +20,9 @@ import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
+import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
 import type { SettlementSnapshotJson } from "@/lib/settlement/build-settlement-snapshot-payload";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
 import {
@@ -71,6 +73,15 @@ export default async function SettlementSnapshotDetailPage({
         subtitle="这张归档便签没有在当前小岛里找到。"
       >
         <div className="mx-auto grid max-w-5xl gap-6">
+          <PrivateIslandTrail
+            items={[
+              { label: islandTrailLabels.home, href: "/dashboard" },
+              { label: islandTrailLabels.records, href: "/records" },
+              { label: islandTrailLabels.settlement, href: "/settlement" },
+              { label: islandTrailLabels.settlementHistory, href: "/settlement/history" },
+              { label: islandTrailLabels.settlementNote, current: true }
+            ]}
+          />
           <DetailNav />
           {householdWarning ? <PageNotice message={householdWarning} tone="warning" /> : null}
           <NotFoundState />
@@ -86,6 +97,15 @@ export default async function SettlementSnapshotDetailPage({
         subtitle="这张归档便签暂时没有读完整。"
       >
         <div className="mx-auto grid max-w-5xl gap-6">
+          <PrivateIslandTrail
+            items={[
+              { label: islandTrailLabels.home, href: "/dashboard" },
+              { label: islandTrailLabels.records, href: "/records" },
+              { label: islandTrailLabels.settlement, href: "/settlement" },
+              { label: islandTrailLabels.settlementHistory, href: "/settlement/history" },
+              { label: islandTrailLabels.settlementNote, current: true }
+            ]}
+          />
           <DetailNav />
           {householdWarning ? <PageNotice message={householdWarning} tone="warning" /> : null}
           <PageNotice
@@ -105,6 +125,17 @@ export default async function SettlementSnapshotDetailPage({
       subtitle="只读查看当时保存下来的结算快照、金额纸条和确认章。"
     >
       <div className="mx-auto grid max-w-6xl gap-6">
+        <PrivateIslandTrail
+          items={[
+            { label: islandTrailLabels.home, href: "/dashboard" },
+            { label: islandTrailLabels.records, href: getRecordsHref(detail.monthKey) },
+            { label: islandTrailLabels.settlement, href: `/settlement?month=${detail.monthKey}` },
+            { label: islandTrailLabels.settlementHistory, href: "/settlement/history" },
+            { label: islandTrailLabels.settlementNote, current: true },
+            { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(detail.monthKey) }
+          ]}
+        />
+
         <DetailNav monthKey={detail.monthKey} />
 
         {householdWarning ? <PageNotice message={householdWarning} tone="warning" /> : null}

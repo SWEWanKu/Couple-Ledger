@@ -24,6 +24,7 @@ import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
@@ -120,6 +121,15 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
       subtitle="看看这个月一起记下的账"
     >
         <div className="mx-auto grid max-w-6xl gap-6">
+          <PrivateIslandTrail
+            items={[
+              { label: islandTrailLabels.home, href: "/dashboard" },
+              { label: islandTrailLabels.records, current: true },
+              { label: islandTrailLabels.settlement, href: `/settlement?month=${range.month}` },
+              { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(range.month) }
+            ]}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <IslandLink
               href="/dashboard"

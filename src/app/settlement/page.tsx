@@ -30,8 +30,9 @@ import {
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
-import { getMonthlyReportHref } from "@/lib/ledger/records-query";
+import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
 import {
   buildSettlementSnapshotPayload,
   createSettlementSnapshotSourceFingerprint,
@@ -109,6 +110,16 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
       subtitle="实时计算保持只读，结算便签可以盖章存档并等待两个人确认。"
     >
       <div className="mx-auto grid max-w-6xl gap-6">
+        <PrivateIslandTrail
+          items={[
+            { label: islandTrailLabels.home, href: "/dashboard" },
+            { label: islandTrailLabels.records, href: getRecordsHref(range.month) },
+            { label: islandTrailLabels.settlement, current: true },
+            { label: islandTrailLabels.settlementHistory, href: "/settlement/history" },
+            { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(range.month) }
+          ]}
+        />
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <IslandLink
             href="/dashboard"

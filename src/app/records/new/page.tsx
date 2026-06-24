@@ -13,6 +13,7 @@ import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
@@ -22,6 +23,7 @@ import {
   type RecordMemberOption
 } from "@/lib/ledger/create-record";
 import { normalizeRecordsMonth } from "@/lib/ledger/list-records";
+import { getMonthlyReportHref } from "@/lib/ledger/records-query";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
@@ -73,8 +75,18 @@ export default async function NewRecordPage({ searchParams }: NewRecordPageProps
   const canCreateRecord = summary.categories.length > 0 && summary.members.length > 0;
 
   return (
-    <AppShell title={`${summary.householdName} 记一笔账`} subtitle="把今天的小岛流水记下来">
+      <AppShell title={`${summary.householdName} 记一笔账`} subtitle="把今天的小岛流水记下来">
         <div className="mx-auto grid max-w-6xl gap-6">
+          <PrivateIslandTrail
+            items={[
+              { label: islandTrailLabels.home, href: "/dashboard" },
+              { label: islandTrailLabels.records, href: returnHref },
+              { label: islandTrailLabels.newRecord, current: true },
+              { label: islandTrailLabels.settlement, href: `/settlement?month=${defaultMonth}` },
+              { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(defaultMonth) }
+            ]}
+          />
+
           <div className="flex flex-wrap items-center justify-between gap-3">
             <IslandLink
               href={returnHref}

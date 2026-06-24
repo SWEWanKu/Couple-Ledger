@@ -23,6 +23,7 @@ import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   getMonthlyLedgerSummary,
@@ -99,6 +100,15 @@ export default async function MonthlyReportPage({ searchParams }: MonthlyReportP
       subtitle={`${range.monthLabel} 的只读手账页，只整理真实账本和结算便签。`}
     >
       <div className="mx-auto grid max-w-6xl gap-6" data-monthly-report="true" data-monthly-report-month={range.month}>
+        <PrivateIslandTrail
+          items={[
+            { label: islandTrailLabels.home, href: "/dashboard" },
+            { label: islandTrailLabels.records, href: getRecordsHref(range.month) },
+            { label: islandTrailLabels.settlement, href: getSettlementHref(range.month) },
+            { label: islandTrailLabels.monthlyReport, current: true }
+          ]}
+        />
+
         <ReportNav range={range} />
 
         <ReportHero

@@ -16,10 +16,12 @@ import {
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
+import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getRecordDetail, type RecordDetail } from "@/lib/ledger/get-record-detail";
 import { normalizeRecordsMonth } from "@/lib/ledger/list-records";
+import { getMonthlyReportHref } from "@/lib/ledger/records-query";
 import { getUpdateLedgerRecordErrorMessage } from "@/lib/ledger/update-ledger-record";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
@@ -92,6 +94,14 @@ export default async function EditRecordPage({ params, searchParams }: EditRecor
     return (
       <AppShell title={`${summary.householdName} 修改账单`} subtitle="这张账单暂时没有读完整">
         <div className="mx-auto grid max-w-4xl gap-6">
+          <PrivateIslandTrail
+            items={[
+              { label: islandTrailLabels.home, href: "/dashboard" },
+              { label: islandTrailLabels.records, href: getRecordsReturnHref(returnParams) },
+              { label: islandTrailLabels.recordDetail, href: detailHref },
+              { label: islandTrailLabels.editRecord, current: true }
+            ]}
+          />
           <EditNav detailHref={detailHref} listHref={getRecordsReturnHref(returnParams)} />
           <Card color="default" pattern="app-yellow" className="p-5 sm:p-7">
             <FormNotice message={detail.warning} tone="error" />
@@ -118,6 +128,17 @@ export default async function EditRecordPage({ params, searchParams }: EditRecor
       subtitle="只改这张小岛流水，不改写已经归档的结算便签"
     >
       <div className="mx-auto grid max-w-6xl gap-6">
+        <PrivateIslandTrail
+          items={[
+            { label: islandTrailLabels.home, href: "/dashboard" },
+            { label: islandTrailLabels.records, href: getRecordsReturnHref(returnParams) },
+            { label: islandTrailLabels.recordDetail, href: detailHref },
+            { label: islandTrailLabels.editRecord, current: true },
+            { label: islandTrailLabels.settlement, href: recordMonth ? `/settlement?month=${recordMonth}` : "/settlement" },
+            { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(recordMonth) }
+          ]}
+        />
+
         <EditNav detailHref={detailHref} listHref={getRecordsReturnHref(returnParams)} />
 
         <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
