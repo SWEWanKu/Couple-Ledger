@@ -27,6 +27,7 @@ import {
   type MonthlyLedgerPayerBreakdownItem,
   type MonthlyLedgerSummaryResult
 } from "@/lib/ledger/get-monthly-ledger-summary";
+import { getRecordsHref } from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
@@ -371,6 +372,7 @@ function DashboardHouseholdSummaryCard({
 
 function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryResult }) {
   const summary = result.summary;
+  const month = summary.range.month;
   const topCategories = summary.categoryBreakdown.slice(0, 4);
   const payerBreakdown = summary.payerBreakdown.slice(0, 2);
 
@@ -419,8 +421,20 @@ function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryRes
 
         <div className="grid gap-4">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <MiniLedgerMetric label="支出小票" value={formatMoney(summary.expenseTotal)} helper={`${summary.expenseCount} 笔`} tone="coral" />
-            <MiniLedgerMetric label="收入便签" value={formatMoney(summary.incomeTotal)} helper={`${summary.incomeCount} 笔`} tone="teal" />
+            <MiniLedgerMetric
+              href={getRecordsHref(month, { type: "expense" })}
+              label="支出小票"
+              value={formatMoney(summary.expenseTotal)}
+              helper={`${summary.expenseCount} 笔`}
+              tone="coral"
+            />
+            <MiniLedgerMetric
+              href={getRecordsHref(month, { type: "income" })}
+              label="收入便签"
+              value={formatMoney(summary.incomeTotal)}
+              helper={`${summary.incomeCount} 笔`}
+              tone="teal"
+            />
             <MiniLedgerMetric label="本月净额" value={formatSignedMoney(summary.netAmount)} helper="收入减支出" tone="amber" />
             <MiniLedgerMetric label="总流水" value={`${summary.entryCount} 条`} helper="只读统计" tone="ink" />
           </div>
@@ -434,7 +448,7 @@ function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryRes
               <div className="mt-3 grid gap-2">
                 {topCategories.length > 0 ? (
                   topCategories.map((category) => (
-                    <MonthlyCategoryRow key={category.categoryId ?? "uncategorized"} category={category} />
+                    <MonthlyCategoryRow key={category.categoryId ?? "uncategorized"} category={category} month={month} />
                   ))
                 ) : (
                   <p className="rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-white/70 px-4 py-3 text-sm font-bold leading-6 text-[#725d42]">
@@ -452,7 +466,7 @@ function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryRes
               <div className="mt-3 grid gap-2">
                 {payerBreakdown.length > 0 ? (
                   payerBreakdown.map((payer) => (
-                    <MonthlyPayerRow key={payer.userId} payer={payer} />
+                    <MonthlyPayerRow key={payer.userId} month={month} payer={payer} />
                   ))
                 ) : (
                   <p className="rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-white/70 px-4 py-3 text-sm font-bold leading-6 text-[#725d42]">
@@ -469,18 +483,21 @@ function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryRes
 }
 
 function MiniLedgerMetric({
+  href,
   label,
   value,
   helper,
   tone
 }: {
+  href?: string;
   label: string;
   value: string;
   helper: string;
   tone: LedgerStat["tone"];
 }) {
-  return (
-    <div className={`relative rounded-[24px] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${statToneClasses[tone]}`}>
+  const className = `relative block rounded-[24px] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.1)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 ${statToneClasses[tone]}`;
+  const content = (
+    <>
       <span
         aria-hidden="true"
         className={`absolute -top-2 right-5 h-4 w-12 rotate-2 rounded-[7px] ${statToneTapeClasses[tone]}`}
@@ -488,13 +505,36 @@ function MiniLedgerMetric({
       <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">{label}</p>
       <p className="mt-2 break-words text-xl font-black text-[#794f27]">{value}</p>
       <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">{helper}</p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <IslandLink href={href} ariaLabel={`${label} records filter`} className={className}>
+        {content}
+      </IslandLink>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }
 
-function MonthlyCategoryRow({ category }: { category: MonthlyLedgerCategoryBreakdownItem }) {
-  return (
-    <div className="rounded-[22px] border-2 border-[#ead9b8] bg-white/75 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.06)]">
+function MonthlyCategoryRow({
+  category,
+  month
+}: {
+  category: MonthlyLedgerCategoryBreakdownItem;
+  month: string;
+}) {
+  const href = category.categoryId ? getRecordsHref(month, { categoryId: category.categoryId }) : null;
+  const className =
+    "block rounded-[22px] border-2 border-[#ead9b8] bg-white/75 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.06)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
+  const content = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <p className="min-w-0 font-black text-[#794f27]">
           {category.categoryIcon ? `${category.categoryIcon} ` : ""}
@@ -505,13 +545,37 @@ function MonthlyCategoryRow({ category }: { category: MonthlyLedgerCategoryBreak
       <p className="mt-1 text-xs font-bold leading-5 text-[#9f927d]">
         支出 {formatMoney(category.expenseTotal)} · 收入 {formatMoney(category.incomeTotal)} · {category.recordCount} 条
       </p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <IslandLink href={href} ariaLabel={`${category.categoryName} records filter`} className={className}>
+        {content}
+      </IslandLink>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
 }
 
-function MonthlyPayerRow({ payer }: { payer: MonthlyLedgerPayerBreakdownItem }) {
+function MonthlyPayerRow({
+  month,
+  payer
+}: {
+  month: string;
+  payer: MonthlyLedgerPayerBreakdownItem;
+}) {
+  const href = getRecordsHref(month, { paidBy: payer.userId });
+  const className =
+    "block rounded-[22px] border-2 border-[#ead9b8] bg-white/75 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.06)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
+
   return (
-    <div className="rounded-[22px] border-2 border-[#ead9b8] bg-white/75 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.06)]">
+    <IslandLink href={href} ariaLabel={`${payer.userLabel} records filter`} className={className}>
       <div className="flex items-start justify-between gap-3">
         <p className="min-w-0 font-black text-[#794f27]">{payer.userLabel}</p>
         <p className="shrink-0 text-sm font-black text-[#794f27]">{formatMoney(payer.totalHandled)}</p>
@@ -519,7 +583,7 @@ function MonthlyPayerRow({ payer }: { payer: MonthlyLedgerPayerBreakdownItem }) 
       <p className="mt-1 text-xs font-bold leading-5 text-[#9f927d]">
         支出经手 {formatMoney(payer.expenseTotal)} · 收入经手 {formatMoney(payer.incomeTotal)} · {payer.recordCount} 条
       </p>
-    </div>
+    </IslandLink>
   );
 }
 

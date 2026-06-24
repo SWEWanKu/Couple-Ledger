@@ -36,6 +36,11 @@ import {
   type LedgerRecord,
   type RecordsMonthRange
 } from "@/lib/ledger/list-records";
+import {
+  getNewRecordHref,
+  getRecordDetailHref,
+  getRecordsHref
+} from "@/lib/ledger/records-query";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember, DashboardHouseholdSummary } from "@/types/dashboard";
@@ -165,7 +170,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
               displayedRecordCount={records.length}
             />
 
-            <RecordsMonthlySummaryNote result={monthlyLedgerSummary} />
+            <RecordsMonthlySummaryNote filters={recordsFilters} result={monthlyLedgerSummary} />
 
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div className="flex flex-wrap gap-3">
@@ -467,10 +472,21 @@ function RecordsQueryLink({
   );
 }
 
-function RecordsMonthlySummaryNote({ result }: { result: MonthlyLedgerSummaryResult }) {
+function RecordsMonthlySummaryNote({
+  filters,
+  result
+}: {
+  filters: LedgerRecordFilters;
+  result: MonthlyLedgerSummaryResult;
+}) {
   const summary = result.summary;
   const topCategory = summary.categoryBreakdown[0] ?? null;
   const topPayer = summary.payerBreakdown[0] ?? null;
+  const month = summary.range.month;
+  const topCategoryHref = topCategory?.categoryId
+    ? getRecordsHref(month, { ...filters, categoryId: topCategory.categoryId })
+    : null;
+  const topPayerHref = topPayer ? getRecordsHref(month, { ...filters, paidBy: topPayer.userId }) : null;
 
   return (
     <div className="mb-5 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
@@ -490,8 +506,18 @@ function RecordsMonthlySummaryNote({ result }: { result: MonthlyLedgerSummaryRes
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[520px]">
-          <SummaryNotePill label="支出" value={formatMoney(summary.expenseTotal)} helper={`${summary.expenseCount} 笔`} />
-          <SummaryNotePill label="收入" value={formatMoney(summary.incomeTotal)} helper={`${summary.incomeCount} 笔`} />
+          <SummaryNotePill
+            href={getRecordsHref(month, { ...filters, type: "expense" })}
+            label="支出"
+            value={formatMoney(summary.expenseTotal)}
+            helper={`${summary.expenseCount} 笔`}
+          />
+          <SummaryNotePill
+            href={getRecordsHref(month, { ...filters, type: "income" })}
+            label="收入"
+            value={formatMoney(summary.incomeTotal)}
+            helper={`${summary.incomeCount} 笔`}
+          />
           <SummaryNotePill label="净额" value={formatSignedMoney(summary.netAmount)} helper="收入减支出" />
           <SummaryNotePill label="流水" value={`${summary.entryCount} 条`} helper="只读小结" />
         </div>
@@ -499,22 +525,24 @@ function RecordsMonthlySummaryNote({ result }: { result: MonthlyLedgerSummaryRes
 
       {result.status !== "empty" ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <div className="rounded-[22px] bg-white/75 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">Top Sticker</p>
-            <p className="mt-1 text-sm font-black leading-6 text-[#794f27]">
-              {topCategory
+          <SummaryNoteSpotlight
+            href={topCategoryHref}
+            eyebrow="Top Sticker"
+            value={
+              topCategory
                 ? `${topCategory.categoryIcon ? `${topCategory.categoryIcon} ` : ""}${topCategory.categoryName} · ${formatMoney(topCategory.totalAmount)}`
-                : "这个月还没有分类贴纸。"}
-            </p>
-          </div>
-          <div className="rounded-[22px] bg-white/75 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">Main Handler</p>
-            <p className="mt-1 text-sm font-black leading-6 text-[#794f27]">
-              {topPayer
+                : "这个月还没有分类贴纸。"
+            }
+          />
+          <SummaryNoteSpotlight
+            href={topPayerHref}
+            eyebrow="Main Handler"
+            value={
+              topPayer
                 ? `${topPayer.userLabel} · 经手 ${formatMoney(topPayer.totalHandled)}`
-                : "这个月还没有成员经手流水。"}
-            </p>
-          </div>
+                : "这个月还没有成员经手流水。"
+            }
+          />
         </div>
       ) : null}
     </div>
@@ -522,21 +550,68 @@ function RecordsMonthlySummaryNote({ result }: { result: MonthlyLedgerSummaryRes
 }
 
 function SummaryNotePill({
+  href,
   label,
   value,
   helper
 }: {
+  href?: string;
   label: string;
   value: string;
   helper: string;
 }) {
-  return (
-    <div className="rounded-[22px] bg-white px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
+  const className =
+    "block rounded-[22px] bg-white px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)] transition hover:-translate-y-0.5 hover:bg-[#fff8da] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
+  const content = (
+    <>
       <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">{label}</p>
       <p className="mt-1 break-words text-base font-black text-[#794f27]">{value}</p>
       <p className="mt-0.5 text-xs font-bold text-[#9f927d]">{helper}</p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <RecordsQueryLink href={href} className={className} ariaLabel={`${label} records filter`}>
+        {content}
+      </RecordsQueryLink>
+    );
+  }
+
+  return (
+    <div className={className}>
+      {content}
     </div>
   );
+}
+
+function SummaryNoteSpotlight({
+  href,
+  eyebrow,
+  value
+}: {
+  href: string | null;
+  eyebrow: string;
+  value: string;
+}) {
+  const className =
+    "block rounded-[22px] bg-white/75 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
+  const content = (
+    <>
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">{eyebrow}</p>
+      <p className="mt-1 text-sm font-black leading-6 text-[#794f27]">{value}</p>
+    </>
+  );
+
+  if (href) {
+    return (
+      <RecordsQueryLink href={href} className={className} ariaLabel={`${eyebrow} records filter`}>
+        {content}
+      </RecordsQueryLink>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
 async function requireHouseholdAccess() {
@@ -881,50 +956,6 @@ const filterInputClassName =
 
 function formatRangeLabel(range: RecordsMonthRange) {
   return `${range.monthStart} 至 ${range.nextMonthStart}`;
-}
-
-function getRecordsHref(month?: string | null, filters: LedgerRecordFilters = {}) {
-  const query = getRecordsQuery(month, filters);
-
-  return query ? `/records?${query}` : "/records";
-}
-
-function getNewRecordHref(month?: string | null, filters: LedgerRecordFilters = {}) {
-  const query = getRecordsQuery(month, filters);
-
-  return query ? `/records/new?${query}` : "/records/new";
-}
-
-function getRecordDetailHref(recordId: string, month: string, filters: LedgerRecordFilters = {}) {
-  const query = getRecordsQuery(month, filters);
-
-  return query ? `/records/${recordId}?${query}` : `/records/${recordId}`;
-}
-
-function getRecordsQuery(month?: string | null, filters: LedgerRecordFilters = {}) {
-  const params = new URLSearchParams();
-
-  if (month) {
-    params.set("month", month);
-  }
-
-  if (filters.type && filters.type !== "all") {
-    params.set("type", filters.type);
-  }
-
-  if (filters.categoryId) {
-    params.set("category", filters.categoryId);
-  }
-
-  if (filters.paidBy) {
-    params.set("member", filters.paidBy);
-  }
-
-  if (filters.keyword) {
-    params.set("q", filters.keyword);
-  }
-
-  return params.toString();
 }
 
 function getSingleParam(value: string | string[] | undefined) {
