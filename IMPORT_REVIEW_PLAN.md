@@ -82,6 +82,86 @@ V1 does not include:
 - real transfer behavior;
 - settlement snapshot mutation.
 
+## Import Review V1 Locked Decisions
+
+These decisions are locked for the first Import Review V1 implementation unless
+a later explicit decision document changes them.
+
+1. Product name and framing: V1 is `共同对账模式`. It is a human-confirmed
+   review workflow, not `一键自动记账`.
+2. Entry points: V1 may add `/imports` for upload/history and
+   `/imports/[batchId]/review` for the card-by-card review queue.
+3. Supported sources: V1 supports WeChat Pay `.xlsx` and Alipay `.csv` exports.
+   Bank PDF, OCR, encrypted zip extraction, voice recognition, and AI final
+   decisions are deferred.
+4. Original files: V1 must store parsed rows, source metadata, and `file_sha256`.
+   Long-term original-file archival is not required for the first slice.
+5. Personal expenses: only `共同支出` confirms into the official shared ledger in
+   V1. `我的个人` and `她的个人` are reviewed as non-ledger personal outcomes,
+   keep the source trail, and do not create normal shared ledger expenses. If
+   schema keeps only four item statuses, represent this as `skipped` with a
+   reason/copy; a separate `personal_skipped` status is deferred unless a later
+   schema decision explicitly adds it.
+6. Ignored items: obvious non-ledger rows such as wallet transfer, cash
+   withdrawal, repayment noise, or closed/reversed source rows should become
+   skipped review outcomes and must not create official ledger records.
+7. Need-discussion items: `待确认` is a first-class review outcome. It creates no
+   ledger entry, remains visible for later discussion, and can count as reviewed
+   for batch completion if no `pending` items remain.
+8. Review vocabulary: item statuses are `pending`, `imported`, `skipped`, and
+   `need_discussion` for V1. Batch statuses are `parsed`, `reviewing`, and
+   `completed`.
+9. Review buttons: the card classification buttons are `共同支出`, `我的个人`,
+   `她的个人`, `忽略`, and `待确认`. Navigation/actions are `上一条`, `下一条`,
+   `标记待确认`, `忽略此条`, and `确认入账并下一条`.
+10. Confirm-to-ledger: confirming one import item creates exactly one official
+    `ledger_entries` record plus its split rows, updates the import item, and
+    updates any stored batch counters in one transaction. Parser/upload steps
+    never create ledger records.
+11. Split behavior: V1 supports the existing equal and personal split model only.
+    Custom split is deferred.
+12. Category behavior: V1 may use existing household categories and parser
+    suggestions, but suggestions are advisory and never final without human
+    confirmation.
+13. Duplicate handling: V1 must prevent duplicate ledger records from the same
+    already imported source item. Use server-side `file_sha256` for duplicate
+    batch/file detection, `source + source_transaction_id` when available, and a
+    normalized source fingerprint when the export lacks a stable id. The exact
+    normalized fingerprint fields still need a human decision before migration
+    or parser implementation. `duplicate_suspected` is deferred unless a later
+    schema decision explicitly adds it.
+14. Settlement-aware month behavior: if the target month has no settlement
+    snapshot, confirm may proceed. If it has active proposed, partially
+    confirmed, or fully confirmed settlement state, confirm may proceed with a
+    strong warning that saved snapshots are immutable and the live month may
+    become outdated. If the month has `pending_replacement`, confirm is blocked
+    until the replacement is resolved.
+15. Refunds and reversals: V1 does not auto-link refunds or import them as income.
+    Parser suggestions should steer them to `忽略` or `待确认` until a later rule
+    locks refund handling.
+16. Reversibility: V1 does not include an undo-imported-item flow in the first
+    schema/action slice. Created records can later follow the existing
+    edit/soft-void record flows, while import source trail remains. Reopening
+    skipped or need-discussion items is planned after MVP.
+17. Batch counters: counters may be stored for UX, but correctness must not rely
+    only on stale counters. Recompute when needed, and update stored counters in
+    the same transaction as item status changes if counters exist.
+18. RLS/security: all future import tables and actions must be household-scoped.
+    Only authenticated household members may read/review. `uploaded_by`,
+    `reviewed_by`, and ledger actor fields must derive from `auth.uid()` on the
+    server/RPC side. Do not trust client-supplied `householdId` or user ids. Do
+    not use service role, Supabase admin API, RLS bypass, `localStorage`, or
+    `sessionStorage` as the data source.
+19. Parser direction: parsers should be pure/testable where possible, preserve
+    source `raw_json`, output suggested classification/category only, and never
+    write official ledger records.
+20. UI direction: the review flow is a friendly Animal-Island/scrapbook
+    card-by-card workflow, not a dense admin table. Keyboard shortcuts are useful
+    polish after the core V1 path exists.
+21. Rollout order: implement schema/RLS first, then parser tests, upload/parse,
+    review read page, single-item confirm action, duplicate/idempotency guards,
+    and finally the scrapbook UI polish.
+
 ## 5. Database Plan
 
 This section proposes future schema only. Do not create these tables in this
@@ -179,9 +259,10 @@ Item status:
 - `need_discussion`: set aside for the two people to decide later; no official
   ledger entry exists yet.
 
-V1 should avoid extra status vocabulary until duplicate and undo behavior is
-locked. If duplicate detection is not final, keep `duplicate_suspected` as a
-future decision rather than silently expanding the first status model.
+V1 should keep the first status vocabulary small. Duplicate source transactions
+are blocked from creating duplicate official ledger records, while an explicit
+`duplicate_suspected` status remains deferred unless a later schema decision
+adds it.
 
 ## 7. RLS And Security Direction
 
@@ -257,13 +338,20 @@ Goals:
   is reviewed twice;
 - keep duplicate behavior explainable to users.
 
-V1 still needs one locked product rule:
+V1 locked rule:
 
-- skip duplicate import items during parse; or
-- import them but mark them as duplicate suspected and ask the user.
+- repeated files for the same household/source are detected by server-side
+  `file_sha256`;
+- a source transaction that was already imported must not create a duplicate
+  official `ledger_entries` record;
+- when the source provides `source_transaction_id`, dedupe uses
+  `source + source_transaction_id`;
+- when no stable source id exists, dedupe uses a normalized transaction
+  fingerprint, but the exact fingerprint fields still need human approval
+  before migration/parser implementation.
 
-If source data is not reliable enough, keep this as a future decision and start
-with a conservative duplicate warning rather than auto-importing ambiguous rows.
+`duplicate_suspected` remains deferred unless a later schema decision explicitly
+adds that status.
 
 ## 10. Review Card UX
 
@@ -533,18 +621,85 @@ npm run build
 Interpret mutation matches in context. Confirm-to-ledger is an intentional
 future write path only when a dedicated implementation task adds it.
 
-## 20. Open Questions
+## 20. Decision Status
 
-1. Should personal expense be imported into the shared ledger or skipped?
-2. If personal expense is imported, how should split/share be represented?
-3. Should `她自己的` create a ledger entry or be skipped as non-shared?
-4. Should upload store the original file or only parsed rows?
-5. Should duplicate source transactions be blocked or marked duplicate?
-6. Should refunds be ignored, linked, or imported as income?
-7. Should custom split be allowed in V1 review?
-8. Should pending-replacement months block confirm or only warn?
-9. Should need-discussion items appear in the main queue or a separate tab?
-10. Should batch completion be automatic when all items are reviewed?
+### Resolved For V1
+
+1. Feature framing is locked as `共同对账模式`: card-by-card human review, no
+   automatic ledger creation during parse/upload, and no AI final decision.
+2. V1 routes may use `/imports` for upload/history and `/imports/[batchId]/review`
+   for the review queue.
+3. V1 sources are WeChat Pay `.xlsx` and Alipay `.csv` only.
+4. V1 stores parsed rows, source metadata, and `file_sha256`; original-file
+   archival is not required for the first slice.
+5. `共同支出` creates official shared ledger records. `我的个人` and `她的个人`
+   become non-ledger skipped/personal outcomes with source trail retained.
+6. Ignored transfer/withdrawal/noise/closed rows become skipped non-ledger
+   outcomes with source trail retained.
+7. `待确认` is a first-class non-ledger review outcome, remains revisitable, and
+   can count as reviewed once no pending rows remain.
+8. V1 item statuses are `pending`, `imported`, `skipped`, and
+   `need_discussion`; V1 batch statuses are `parsed`, `reviewing`, and
+   `completed`.
+9. Confirming one item creates one official ledger entry and split rows through
+   the dedicated future write path; parser/upload never writes official ledger
+   rows.
+10. V1 split behavior uses existing equal/personal logic only.
+11. Category suggestions are advisory and use existing household categories.
+12. Duplicate official ledger records from already imported source items are
+    prohibited; dedupe uses `file_sha256`, stable source ids, and a future
+    approved normalized fingerprint.
+13. Settlement behavior is locked: no snapshot proceeds; active proposed,
+    partial, or fully confirmed months may proceed with a strong immutable
+    snapshot/outdated-live warning; `pending_replacement` months block confirm.
+14. Refunds/reversals are not auto-linked and are not imported as income in V1;
+    suggest `忽略` or `待确认`.
+15. No imported-item undo/reopen flow in the first slice; created records use the
+    existing edit/soft-void flows and source trail remains.
+16. Batch counters may be stored, but correctness must be recomputable and
+    counter updates must be transaction-safe with item status changes.
+17. Future import RLS/security must stay household-scoped, derive actors from
+    `auth.uid()`, and avoid service role, admin API, RLS bypass, client-trusted
+    household/user ids, `localStorage`, and `sessionStorage`.
+18. Parsers preserve `raw_json`, emit advisory suggestions, stay testable, and do
+    not create official ledger records.
+19. Review UI is Animal-Island/scrapbook card-by-card, not a dense admin table.
+20. Rollout order is schema/RLS, parser tests, upload/parse, review read page,
+    single-item confirm, idempotency/dedupe guards, then UI polish.
+
+### Deferred Beyond V1
+
+1. Encrypted zip unpacking, bank PDF parsing, OCR, voice recognition, and AI
+   final decision.
+2. Custom split support, personal ledger support, and importing personal expenses
+   as normal shared ledger entries.
+3. Long-term original-file archival.
+4. Refund auto-linking, automatic income import for refunds, and complex reversal
+   reconciliation.
+5. Imported-item undo/reopen flows for imported, skipped, or need-discussion
+   rows.
+6. Extra statuses such as `duplicate_suspected` or `personal_skipped`, unless a
+   later schema decision explicitly adds them.
+7. Batch confirm-all, dense table-first/admin review, realtime presence, complex
+   reports, payment/provider flows, and real transfer behavior.
+8. Generated Supabase database types and package/script changes, unless a later
+   implementation task explicitly requires them.
+
+### Still Needs Human Decision
+
+1. Exact normalized transaction fingerprint fields when the source lacks a stable
+   `source_transaction_id`.
+2. Whether schema stores skip/review reasons as fields or introduces additional
+   statuses for personal/duplicate outcomes.
+3. Whether original file archival should be added after MVP.
+4. Exact Chinese microcopy for settlement warnings, personal outcomes, ignored
+   outcomes, and duplicate detection.
+5. Whether `need_discussion` items stay in the main queue or appear in a separate
+   tab after the core queue exists.
+6. Whether batch completion is automatic once no pending items remain or requires
+   a manual close action.
+7. Accepted upload file size limits and upload failure copy.
+8. Whether a future refund-as-income rule is allowed.
 
 ## Current Task Verification Checklist
 
