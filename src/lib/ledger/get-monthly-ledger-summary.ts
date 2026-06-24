@@ -94,6 +94,7 @@ export async function getMonthlyLedgerSummary(
     .from("ledger_entries")
     .select("id, amount, entry_type, category_id, paid_by, occurred_on, created_at")
     .eq("household_id", householdId)
+    .is("voided_at", null)
     .gte("occurred_on", range.monthStart)
     .lt("occurred_on", range.nextMonthStart)
     .order("occurred_on", { ascending: false })

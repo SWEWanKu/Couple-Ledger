@@ -89,6 +89,7 @@ export async function getLedgerRecords(
     .from("ledger_entries")
     .select("id, amount, entry_type, category_id, paid_by, split_mode, occurred_on, note, created_at")
     .eq("household_id", householdId)
+    .is("voided_at", null)
     .gte("occurred_on", range.monthStart)
     .lt("occurred_on", range.nextMonthStart)
     .order("occurred_on", { ascending: false })

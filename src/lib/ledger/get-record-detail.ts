@@ -108,6 +108,7 @@ export async function getRecordDetail(
     )
     .eq("id", recordId)
     .eq("household_id", householdId)
+    .is("voided_at", null)
     .maybeSingle();
 
   if (entryError) {

@@ -87,6 +87,7 @@ export async function getSettlementSummary(
     .select("id, amount, entry_type, paid_by, occurred_on, created_at")
     .eq("household_id", householdId)
     .eq("entry_type", "expense")
+    .is("voided_at", null)
     .gte("occurred_on", monthMetadata.monthStart)
     .lt("occurred_on", monthMetadata.nextMonthStart)
     .order("occurred_on", { ascending: false })
