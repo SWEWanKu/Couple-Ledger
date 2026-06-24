@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   BadgeCheck,
   CalendarDays,
+  ChartPie,
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
@@ -39,6 +40,7 @@ import {
 } from "@/lib/ledger/list-records";
 import {
   getCurrentRecordsHref,
+  getMonthlyReportHref,
   getNewRecordHref,
   getRecordDetailHref,
   getRecordsHref
@@ -136,6 +138,14 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
                   清理 Codex 测试记录
                 </IslandLink>
               ) : null}
+              <IslandLink
+                href={getMonthlyReportHref(range.month)}
+                data-records-monthly-report-link="true"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#e9fbf4] px-4 py-2 text-sm font-black text-[#1f7a70] shadow-[0_5px_0_rgba(31,122,112,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(31,122,112,0.14)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+              >
+                <ChartPie aria-hidden="true" size={17} />
+                {"\u67e5\u770b\u5c0f\u5c9b\u6708\u62a5"}
+              </IslandLink>
               <IslandLink
                 href={getNewRecordHref(range.month, recordsFilters)}
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"

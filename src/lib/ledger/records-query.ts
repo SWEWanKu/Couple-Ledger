@@ -15,6 +15,16 @@ export function getCurrentRecordsHref(filters: LedgerRecordFilters = {}, now: Da
   return getRecordsHref(getCurrentMonthRange(now).month, filters);
 }
 
+export function getMonthlyReportHref(month?: string | null) {
+  const safeMonth = normalizeRecordsMonth(month);
+
+  return safeMonth ? `/reports/monthly?month=${safeMonth}` : "/reports/monthly";
+}
+
+export function getCurrentMonthlyReportHref(now: Date = new Date()) {
+  return getMonthlyReportHref(getCurrentMonthRange(now).month);
+}
+
 export function getNewRecordHref(month?: string | null, filters: LedgerRecordFilters = {}) {
   const query = getRecordsQuery(month, filters);
 

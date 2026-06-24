@@ -6,6 +6,7 @@ import {
   ArrowRightLeft,
   BadgeCheck,
   CalendarDays,
+  ChartPie,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -30,6 +31,7 @@ import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
+import { getMonthlyReportHref } from "@/lib/ledger/records-query";
 import {
   buildSettlementSnapshotPayload,
   createSettlementSnapshotSourceFingerprint,
@@ -122,6 +124,14 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
             >
               <NotebookTabs aria-hidden="true" size={17} />
               翻翻结算手账
+            </IslandLink>
+            <IslandLink
+              href={getMonthlyReportHref(range.month)}
+              data-settlement-monthly-report-link="true"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#e9fbf4] px-4 py-2 text-sm font-black text-[#1f7a70] shadow-[0_5px_0_rgba(31,122,112,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(31,122,112,0.14)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <ChartPie aria-hidden="true" size={17} />
+              {"\u67e5\u770b\u5c0f\u5c9b\u6708\u62a5"}
             </IslandLink>
             <span className="inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
               <ShieldCheck aria-hidden="true" size={16} />

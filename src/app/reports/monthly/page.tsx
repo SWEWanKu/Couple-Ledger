@@ -36,7 +36,12 @@ import {
   type LedgerRecord,
   type RecordsMonthRange
 } from "@/lib/ledger/list-records";
-import { getRecordDetailHref, getRecordsHref } from "@/lib/ledger/records-query";
+import {
+  getCurrentMonthlyReportHref,
+  getMonthlyReportHref,
+  getRecordDetailHref,
+  getRecordsHref
+} from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
@@ -188,19 +193,26 @@ function ReportNav({ range }: { range: RecordsMonthRange }) {
       >
         <IslandLink
           href={getMonthlyReportHref(range.previousMonth)}
+          data-monthly-report-previous-link="true"
+          data-monthly-report-month-nav="previous"
           className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
         >
           <ChevronLeft aria-hidden="true" size={15} />
           上个月
         </IslandLink>
-        <span
+        <IslandLink
+          href={getCurrentMonthlyReportHref()}
+          data-monthly-report-current-link="true"
+          data-monthly-report-month-nav="current"
           data-monthly-report-month-selected="true"
-          className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_#d9a43e]"
+          className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_#d9a43e] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
         >
-          {range.month}
-        </span>
+          {"\u672c\u6708"}
+        </IslandLink>
         <IslandLink
           href={getMonthlyReportHref(range.nextMonth)}
+          data-monthly-report-next-link="true"
+          data-monthly-report-month-nav="next"
           className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
         >
           下个月
@@ -771,10 +783,6 @@ function formatShortDate(date: string) {
 
 function getSettlementHref(month: string) {
   return `/settlement?month=${encodeURIComponent(month)}`;
-}
-
-function getMonthlyReportHref(month: string) {
-  return `/reports/monthly?month=${encodeURIComponent(month)}`;
 }
 
 function getSingleParam(value: string | string[] | undefined) {

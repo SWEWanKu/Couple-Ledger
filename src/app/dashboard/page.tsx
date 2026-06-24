@@ -33,7 +33,7 @@ import {
   type MonthlyLedgerPayerBreakdownItem,
   type MonthlyLedgerSummaryResult
 } from "@/lib/ledger/get-monthly-ledger-summary";
-import { getRecordsHref } from "@/lib/ledger/records-query";
+import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
@@ -189,7 +189,7 @@ function DashboardMonthHero({
   const memoBody = hasNoRecords
     ? "从一笔小小的日常开始，给小岛留下今天的生活痕迹。"
     : "这些数字只来自本月真实流水，后面继续记账时会自动更新这张月记。";
-  const reportHref = `/reports/monthly?month=${summary.monthStart.slice(0, 7)}`;
+  const reportHref = getMonthlyReportHref(summary.monthStart.slice(0, 7));
 
   return (
     <Card color="default" pattern="app-teal" className="relative overflow-visible px-4 py-6 sm:px-7 sm:py-8">
