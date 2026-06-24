@@ -642,6 +642,15 @@ async function requireHouseholdAccess() {
   };
 }
 
+type RecordsDayGroup = {
+  date: string;
+  records: LedgerRecord[];
+  expenseTotal: number;
+  incomeTotal: number;
+  recordCount: number;
+  netAmount: number;
+};
+
 function RecordsList({
   filters,
   records,
@@ -651,8 +660,10 @@ function RecordsList({
   records: LedgerRecord[];
   returnMonth: string;
 }) {
+  const dayGroups = groupRecordsByDate(records);
+
   return (
-    <div className="grid gap-3">
+    <div data-records-day-timeline="true" className="grid gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
         <span className="inline-flex items-center gap-2">
           <Icon name="icon-chat" size={18} bounce />
@@ -664,7 +675,43 @@ function RecordsList({
         </span>
       </div>
 
-      {records.map((record) => (
+      {dayGroups.map((group) => (
+        <section
+          key={group.date}
+          data-record-day-group="true"
+          data-record-day={group.date}
+          className="relative grid gap-3 rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3]/75 p-3 shadow-[0_7px_0_rgba(121,79,39,0.07)] sm:p-4"
+        >
+          <span
+            aria-hidden="true"
+            className="absolute -top-2 left-8 h-5 w-20 -rotate-2 rounded-[8px] bg-[#82d5bb]/65 shadow-[0_4px_0_rgba(121,79,39,0.08)]"
+          />
+          <div className="rounded-[26px] bg-white/85 px-4 py-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,560px)] xl:items-center">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f7cd67] text-[#794f27] shadow-[0_5px_0_#d9a43e]">
+                  <CalendarDays aria-hidden="true" size={22} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+                    Daily Ledger
+                  </p>
+                  <h2 className="mt-1 truncate text-xl font-black text-[#794f27]">
+                    {formatLongDate(group.date)}
+                  </h2>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <DaySummaryPill metric="expense" label="支出" value={formatMoney(group.expenseTotal)} tone="coral" />
+                <DaySummaryPill metric="income" label="收入" value={formatMoney(group.incomeTotal)} tone="teal" />
+                <DaySummaryPill metric="net" label="净额" value={formatSignedMoney(group.netAmount)} tone="amber" />
+                <DaySummaryPill metric="count" label="记录" value={`${group.recordCount} 条`} tone="ink" />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            {group.records.map((record) => (
         <IslandLink
           key={record.id}
           href={getRecordDetailHref(record.id, returnMonth, filters)}
@@ -721,10 +768,77 @@ function RecordsList({
             <MetaPill icon={<UserRound aria-hidden="true" size={14} />} label={record.paidByLabel} />
             <MetaPill icon={<Split aria-hidden="true" size={14} />} label={record.splitModeLabel} />
           </div>
-        </IslandLink>
+              </IslandLink>
+            ))}
+          </div>
+        </section>
       ))}
     </div>
   );
+}
+
+function DaySummaryPill({
+  label,
+  metric,
+  tone,
+  value
+}: {
+  label: string;
+  metric: "expense" | "income" | "net" | "count";
+  tone: "coral" | "teal" | "amber" | "ink";
+  value: string;
+}) {
+  const toneClasses: Record<typeof tone, string> = {
+    coral: "bg-[#fff1ed] text-[#b14c46]",
+    teal: "bg-[#e9fbf4] text-[#1f7a70]",
+    amber: "bg-[#fff8da] text-[#8a6420]",
+    ink: "bg-[#fffdf3] text-[#794f27]"
+  };
+
+  return (
+    <div
+      data-record-day-metric={metric}
+      className={`rounded-[20px] px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.58)] ${toneClasses[tone]}`}
+    >
+      <p className="text-[11px] font-black uppercase tracking-[0.12em] opacity-75">{label}</p>
+      <p className="mt-1 break-words text-sm font-black tracking-normal">{value}</p>
+    </div>
+  );
+}
+
+function groupRecordsByDate(records: LedgerRecord[]): RecordsDayGroup[] {
+  const dayGroups: RecordsDayGroup[] = [];
+  const groupsByDate = new Map<string, RecordsDayGroup>();
+
+  records.forEach((record) => {
+    let group = groupsByDate.get(record.occurredOn);
+
+    if (!group) {
+      group = {
+        date: record.occurredOn,
+        records: [],
+        expenseTotal: 0,
+        incomeTotal: 0,
+        recordCount: 0,
+        netAmount: 0
+      };
+      groupsByDate.set(record.occurredOn, group);
+      dayGroups.push(group);
+    }
+
+    group.records.push(record);
+    group.recordCount += 1;
+
+    if (record.entryType === "income") {
+      group.incomeTotal += record.amount;
+    } else {
+      group.expenseTotal += record.amount;
+    }
+
+    group.netAmount = group.incomeTotal - group.expenseTotal;
+  });
+
+  return dayGroups;
 }
 
 function EmptyRecordsState({
