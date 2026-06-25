@@ -47,6 +47,7 @@ import {
   type ImportReviewItem,
   type ImportReviewStatusFilter
 } from "@/lib/import-review/review-items";
+import { suggestImportReviewFields } from "@/lib/import-review/suggestions";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
@@ -540,7 +541,7 @@ function ImportItemCard({
             skipFormId={shortcutTargetIds.skipForm}
           />
           <CardNavigator batchId={batch.id} state={state} />
-          <SuggestionPanel item={item} />
+          <SuggestionPanel canQuickApplyStatus={canUseStatusShortcut} item={item} />
           <ReviewDecisionControls
             batch={batch}
             categories={householdSummary.categories}
@@ -634,10 +635,20 @@ function PagerSlot({
   );
 }
 
-function SuggestionPanel({ item }: { item: ImportReviewItem }) {
+function SuggestionPanel({
+  canQuickApplyStatus,
+  item
+}: {
+  canQuickApplyStatus: boolean;
+  item: ImportReviewItem;
+}) {
+  const suggestion = getImportItemDisplaySuggestion(item);
+  const quickApply = getSuggestedQuickApplyAction(item, canQuickApplyStatus, suggestion.reviewAction);
+
   return (
     <div
       data-import-review-suggestion="true"
+      data-import-review-suggested-action={suggestion.reviewAction ?? "none"}
       className="rounded-[28px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
     >
       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a6420]">
@@ -645,15 +656,52 @@ function SuggestionPanel({ item }: { item: ImportReviewItem }) {
         系统建议
       </p>
       <div className="mt-3 grid gap-2">
-        <SuggestionLine label="建议分类" value={item.suggestedCategory ?? "暂无分类建议"} />
+        <SuggestionLine label="建议分类" value={suggestion.category ?? "暂无分类建议"} />
         <SuggestionLine
           label="建议动作"
-          value={item.suggestedReviewAction ? getSuggestedReviewActionLabel(item.suggestedReviewAction) : "暂无明确动作"}
+          value={suggestion.reviewAction ? getSuggestedReviewActionLabel(suggestion.reviewAction) : "暂无明确动作"}
         />
       </div>
       <p className="mt-3 rounded-[20px] bg-white/75 px-3 py-2 text-xs font-bold leading-6 text-[#8a6420]">
         这些只是辅助判断的小便签，不会自动入账；最后仍需要你们确认。
       </p>
+      {quickApply ? (
+        <div
+          className="mt-4 rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-3 shadow-[0_5px_0_rgba(31,122,112,0.1)]"
+          data-import-review-suggestion-quick-apply={quickApply.reviewStatus}
+        >
+          <p className="flex items-center gap-2 text-sm font-black leading-6 text-[#1f7a70]">
+            {quickApply.reviewStatus === "skipped" ? (
+              <ReceiptText aria-hidden="true" size={17} />
+            ) : (
+              <Hourglass aria-hidden="true" size={17} />
+            )}
+            {quickApply.headline}
+          </p>
+          <p className="mt-2 text-xs font-bold leading-6 text-[#725d42]">
+            {quickApply.examples}
+          </p>
+          <p className="mt-2 rounded-[18px] bg-white/75 px-3 py-2 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]">
+            建议只是小岛便签，最终仍由你们决定；按建议处理只会复用现有状态操作，不会创建正式账本流水。
+          </p>
+          <Button
+            block
+            form={quickApply.formId}
+            htmlType="submit"
+            icon={
+              quickApply.reviewStatus === "skipped" ? (
+                <ReceiptText aria-hidden="true" size={18} />
+              ) : (
+                <Hourglass aria-hidden="true" size={18} />
+              )
+            }
+            size="large"
+            type="primary"
+          >
+            {quickApply.buttonLabel}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1608,6 +1656,62 @@ function getDirectionLabel(direction: ImportReviewItem["direction"]) {
   }
 
   return "支出";
+}
+
+function getImportItemDisplaySuggestion(item: ImportReviewItem) {
+  if (item.suggestedReviewAction) {
+    return {
+      category: item.suggestedCategory,
+      reviewAction: item.suggestedReviewAction
+    };
+  }
+
+  const fallback = suggestImportReviewFields({
+    direction: item.direction,
+    counterparty: item.counterparty,
+    description: item.description,
+    sourceCategory: item.sourceCategory,
+    sourceStatus: item.sourceStatus,
+    paymentMethod: item.paymentMethod
+  });
+
+  return {
+    category: item.suggestedCategory ?? fallback.suggestedCategory,
+    reviewAction: fallback.suggestedReviewAction
+  };
+}
+
+function getSuggestedQuickApplyAction(
+  item: ImportReviewItem,
+  canQuickApplyStatus: boolean,
+  suggestedReviewAction: ImportReviewItem["suggestedReviewAction"]
+) {
+  if (
+    !canQuickApplyStatus ||
+    item.reviewStatus !== "pending" ||
+    item.ledgerEntryId ||
+    (suggestedReviewAction !== "skip" && suggestedReviewAction !== "need_discussion")
+  ) {
+    return null;
+  }
+
+  if (suggestedReviewAction === "skip") {
+    return {
+      reviewStatus: "skipped" as const,
+      formId: shortcutTargetIds.skipForm,
+      headline: "系统建议：这笔可能不进入共同账本",
+      examples: "常见例子：转账 / 提现 / 充值 / 理财 / 交易关闭。",
+      buttonLabel: "按建议忽略并下一条"
+    };
+  }
+
+  return {
+    reviewStatus: "need_discussion" as const,
+    formId: shortcutTargetIds.needDiscussionForm,
+    headline: "系统建议：这笔需要一起确认",
+    examples: "常见例子：退款 / 状态不明确 / 看不出用途。",
+    buttonLabel: "按建议标记待确认"
+  };
 }
 
 function getSuggestedReviewActionLabel(action: NonNullable<ImportReviewItem["suggestedReviewAction"]>) {
