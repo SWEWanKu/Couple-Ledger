@@ -24,7 +24,7 @@ import {
   UserRound,
   WalletCards
 } from "lucide-react";
-import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
+import { Button, Card, Divider, Icon, Title, type SelectOption } from "animal-island-ui";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
@@ -62,6 +62,7 @@ import type {
   DashboardHouseholdSummary
 } from "@/types/dashboard";
 import { ImportReviewKeyboardShortcuts } from "./ImportReviewKeyboardShortcuts";
+import { AnimalFormSelect } from "./AnimalFormSelect";
 import {
   confirmImportItemToLedgerAction,
   markImportItemPersonalAction,
@@ -371,14 +372,16 @@ function ReviewBatchHeader({
                 style={{ width: `${progress.reviewedPercent}%` }}
               />
             </div>
-            <div className="grid grid-cols-3 gap-1.5 text-center">
+            <div className="grid grid-cols-5 gap-1.5 text-center">
               <CompactMetric
                 label="当前"
                 value={state.selectedItem ? `${selectedPosition}/${state.totalItems}` : "0/0"}
                 dataAttributes={{ "data-import-review-position": `${selectedPosition}/${state.totalItems}` }}
               />
-              <CompactMetric label="待确认" value={batch.pendingCount} />
-              <CompactMetric label="已处理" value={batch.reviewedCount} />
+              <CompactMetric label="待对账" value={batch.pendingCount} />
+              <CompactMetric label="已入账" value={batch.importedCount} />
+              <CompactMetric label="已忽略" value={batch.skippedCount} />
+              <CompactMetric label="待确认" value={batch.needDiscussionCount} />
             </div>
           </div>
         </div>
@@ -558,7 +561,7 @@ function BatchCompletionCard({ batch }: { batch: ImportBatchSummary }) {
     >
       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
         <CheckCircle2 aria-hidden="true" size={18} />
-        Batch Finished
+        对账完成
       </p>
       <h3 className="mt-3 text-xl font-black text-[#1f7a70]">这批账单已经对完啦</h3>
       <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
@@ -643,14 +646,14 @@ function ImportItemCard({
     <Card
       color="default"
       pattern="app-yellow"
-      className="relative overflow-visible p-5 sm:p-7"
+      className="relative overflow-visible p-4 sm:p-5"
       data-import-review-card="true"
     >
       <span
         aria-hidden="true"
         className="absolute -top-4 right-10 h-8 w-28 rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(500px,560px)] lg:items-start">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(470px,560px)] lg:items-start">
         <section>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={item.reviewStatus} />
@@ -665,12 +668,14 @@ function ImportItemCard({
           </div>
 
           <div className="mt-4 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_6px_0_rgba(121,79,39,0.08)]">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Source Memo</p>
+            <p className="text-xs font-black tracking-[0.12em] text-[#9f927d]">本条流水</p>
             <h2 className="mt-2 break-words text-2xl font-black leading-tight text-[#794f27]">
-              {item.description ?? item.counterparty ?? "没有备注的小纸条"}
+              {item.counterparty ?? item.description ?? "未识别对象"}
             </h2>
             <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">
-              {item.counterparty ? `交易对象：${item.counterparty}` : "交易对象还没有识别出来"}
+              {item.description && item.description !== item.counterparty
+                ? `描述：${item.description}`
+                : "这条流水暂时没有更多描述"}
             </p>
             <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-2xl font-black text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.65)]">
               <CircleDollarSign aria-hidden="true" size={24} />
@@ -678,23 +683,16 @@ function ImportItemCard({
             </p>
           </div>
 
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <DetailSticker icon={<CalendarDays aria-hidden="true" size={18} />} label="月份" value={item.monthKey} />
-            <DetailSticker icon={<WalletCards aria-hidden="true" size={18} />} label="方向" value={getDirectionLabel(item.direction)} />
-            <DetailSticker icon={<Tags aria-hidden="true" size={18} />} label="来源分类" value={item.sourceCategory ?? "没有分类"} />
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <DetailSticker icon={<Clock3 aria-hidden="true" size={18} />} label="时间" value={formatImportItemTime(item.transactionTime)} />
             <DetailSticker icon={<ReceiptText aria-hidden="true" size={18} />} label="支付方式" value={item.paymentMethod ?? "未识别"} />
-            <DetailSticker icon={<HelpCircle aria-hidden="true" size={18} />} label="来源状态" value={item.sourceStatus ?? "未识别"} />
-            <DetailSticker
-              icon={<LockKeyhole aria-hidden="true" size={18} />}
-              label="来源流水号"
-              value={maskSourceTransactionId(item.sourceTransactionId)}
-            />
+            <DetailSticker icon={<WalletCards aria-hidden="true" size={18} />} label="类型" value={getDirectionLabel(item.direction)} />
           </div>
           <DirectionExplanation direction={item.direction} />
+          <SourceTraceCollapse item={item} />
         </section>
 
         <aside className="grid content-start gap-3">
-          <SuggestionPanel canQuickApplyStatus={canUseStatusShortcut} item={item} />
           <ReviewDecisionControls
             batch={batch}
             categories={householdSummary.categories}
@@ -704,6 +702,7 @@ function ImportItemCard({
             settlementStatus={settlementStatus}
             state={state}
           />
+          <SuggestionPanel batch={batch} canQuickApplyStatus={canUseStatusShortcut} item={item} state={state} />
         </aside>
       </div>
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
@@ -840,6 +839,45 @@ function DirectionExplanation({ direction }: { direction: ImportReviewItem["dire
   );
 }
 
+function SourceTraceCollapse({ item }: { item: ImportReviewItem }) {
+  return (
+    <details
+      className="group mt-3 rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-white/72 px-3 py-2 shadow-[0_4px_0_rgba(121,79,39,0.08)]"
+      data-import-review-source-trace="true"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-[#794f27] marker:hidden">
+        <span className="inline-flex items-center gap-2">
+          <LockKeyhole aria-hidden="true" size={16} />
+          来源线索
+        </span>
+        <ChevronRight
+          aria-hidden="true"
+          className="transition group-open:rotate-90"
+          size={16}
+        />
+      </summary>
+      <div className="grid gap-2 pt-3 sm:grid-cols-2">
+        <DetailSticker icon={<CalendarDays aria-hidden="true" size={18} />} label="月份" value={item.monthKey} />
+        <DetailSticker
+          icon={<Tags aria-hidden="true" size={18} />}
+          label="来源分类"
+          value={formatCategoryDisplayLabel(item.sourceCategory) ?? "没有分类"}
+        />
+        <DetailSticker
+          icon={<HelpCircle aria-hidden="true" size={18} />}
+          label="来源状态"
+          value={formatSourceStatusLabel(item.sourceStatus)}
+        />
+        <DetailSticker
+          icon={<LockKeyhole aria-hidden="true" size={18} />}
+          label="流水号"
+          value={maskSourceTransactionId(item.sourceTransactionId)}
+        />
+      </div>
+    </details>
+  );
+}
+
 function getDirectionExplanation(direction: ImportReviewItem["direction"]) {
   if (direction === "transfer") {
     return {
@@ -869,11 +907,15 @@ function getDirectionExplanation(direction: ImportReviewItem["direction"]) {
 }
 
 function SuggestionPanel({
+  batch,
   canQuickApplyStatus,
-  item
+  item,
+  state
 }: {
+  batch: ImportBatchSummary;
   canQuickApplyStatus: boolean;
   item: ImportReviewItem;
+  state: ImportReviewCardState;
 }) {
   const suggestion = getImportItemDisplaySuggestion(item);
   const quickApply = getSuggestedQuickApplyAction(item, canQuickApplyStatus, suggestion.reviewAction);
@@ -889,7 +931,7 @@ function SuggestionPanel({
         系统建议
       </p>
       <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-        <SuggestionLine label="建议分类" value={suggestion.category ?? "暂无分类建议"} />
+        <SuggestionLine label="建议分类" value={formatCategoryDisplayLabel(suggestion.category) ?? "暂无分类建议"} />
         <SuggestionLine
           label="建议动作"
           value={suggestion.reviewAction ? getSuggestedReviewActionLabel(suggestion.reviewAction) : "暂无明确动作"}
@@ -914,22 +956,29 @@ function SuggestionPanel({
           <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">
             {quickApply.examples}
           </p>
-          <Button
-            block
-            form={quickApply.formId}
-            htmlType="submit"
-            icon={
-              quickApply.reviewStatus === "skipped" ? (
-                <ReceiptText aria-hidden="true" size={18} />
-              ) : (
-                <Hourglass aria-hidden="true" size={18} />
-              )
-            }
-            size="middle"
-            type="primary"
-          >
-            {quickApply.buttonLabel}
-          </Button>
+          <form action={updateImportItemReviewStatusAction} data-import-review-suggestion-quick-form={quickApply.reviewStatus}>
+            <ReviewStatusActionHiddenInputs
+              batch={batch}
+              item={item}
+              reviewStatus={quickApply.reviewStatus}
+              state={state}
+            />
+            <RitualSubmitButton
+              block
+              dataPendingScope={`import-review-suggestion-${quickApply.reviewStatus}`}
+              icon={quickApply.reviewStatus === "skipped" ? "receipt" : "hourglass"}
+              idleLabel={quickApply.buttonLabel}
+              pendingLabel={quickApply.pendingLabel}
+              ritual={{
+                title: quickApply.ritualTitle,
+                description: quickApply.ritualDescription,
+                iconName: quickApply.reviewStatus === "skipped" ? "icon-shopping" : "icon-chat",
+                compact: true
+              }}
+              size="middle"
+              type="primary"
+            />
+          </form>
         </div>
       ) : null}
     </div>
@@ -976,6 +1025,14 @@ function ReviewDecisionControls({
   const defaultPaidBy = getDefaultPaidBy(members, currentUserId);
   const personalActionOptions = getPersonalActionOptions(members, currentUserId);
   const settlementNotice = getImportSettlementNotice(settlementStatus);
+  const categoryOptions: SelectOption[] = categories.map((category) => ({
+    key: category.id,
+    label: formatCategoryOption(category)
+  }));
+  const paidByOptions: SelectOption[] = members.map((member, index) => ({
+    key: member.userId,
+    label: formatMemberOption(member, index)
+  }));
 
   return (
     <div
@@ -1001,25 +1058,31 @@ function ReviewDecisionControls({
         >
           <ConfirmActionHiddenInputs batch={batch} item={item} state={state} />
 
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[20px] bg-white/80 px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.6)]">
+            <p className="flex items-center gap-2 text-sm font-black text-[#1f7a70]">
+              <Coins aria-hidden="true" size={17} />
+              共同支出
+            </p>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f7cd67] px-3 py-1 text-xs font-black text-[#794f27] shadow-[0_3px_0_#d9a43e]">
+              <Split aria-hidden="true" size={15} />
+              两人平分
+            </span>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
             <ConfirmFormField
               id="import-confirm-category"
               label="分类"
               icon={<Tags aria-hidden="true" size={17} />}
             >
-              <select
-                id="import-confirm-category"
-                name="category_id"
-                required
+              <AnimalFormSelect
                 defaultValue={defaultCategoryId}
-                className={inputClassName}
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {formatCategoryOption(category)}
-                  </option>
-                ))}
-              </select>
+                id="import-confirm-category"
+                label="分类"
+                name="category_id"
+                options={categoryOptions}
+                placeholder="选择分类"
+              />
             </ConfirmFormField>
 
             <ConfirmFormField
@@ -1027,42 +1090,29 @@ function ReviewDecisionControls({
               label="谁先付的"
               icon={<UserRound aria-hidden="true" size={17} />}
             >
-              <select
-                id="import-confirm-paid-by"
-                name="paid_by_user_id"
-                required
+              <AnimalFormSelect
                 defaultValue={defaultPaidBy}
-                className={inputClassName}
-              >
-                {members.map((member, index) => (
-                  <option key={member.userId} value={member.userId}>
-                    {formatMemberOption(member, index)}
-                  </option>
-                ))}
-              </select>
+                id="import-confirm-paid-by"
+                label="谁先付的"
+                name="paid_by_user_id"
+                options={paidByOptions}
+                placeholder="选择谁先付"
+              />
             </ConfirmFormField>
 
             <ConfirmFormField id="import-confirm-note" label="备注" optional>
               <input
+                className={inputClassName}
                 id="import-confirm-note"
+                defaultValue={getDefaultConfirmNote(item)}
+                maxLength={80}
                 name="note"
                 type="text"
-                maxLength={80}
-                defaultValue={getDefaultConfirmNote(item)}
-                className={inputClassName}
               />
             </ConfirmFormField>
           </div>
 
           <input name="split_type" type="hidden" value="equal" />
-          <div className="rounded-[20px] bg-white/80 px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.6)]">
-            <p className="flex items-center gap-2 text-sm font-black text-[#794f27]">
-              <Split aria-hidden="true" size={17} />
-              两人平分
-            </p>
-            <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">V1 共同支出默认两人平分。</p>
-          </div>
-
           <RitualSubmitButton
             block
             dataPendingScope="import-review-confirm"
@@ -1092,7 +1142,10 @@ function ReviewDecisionControls({
       )}
 
         </div>
-        <div className="grid content-start gap-2">
+        <div className="grid content-start gap-2 rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-white/70 p-2 shadow-[0_4px_0_rgba(121,79,39,0.08)]">
+        <p className="px-1 text-xs font-black leading-5 text-[#9f927d]">
+          轻量处理，不进正式账本
+        </p>
         <PersonalActionPanel
           batch={batch}
           item={item}
@@ -1118,6 +1171,12 @@ function ReviewDecisionControls({
               icon="receipt"
               idleLabel="忽略此条"
               pendingLabel="正在放进忽略小夹..."
+              ritual={{
+                title: "正在放进忽略小夹...",
+                description: "只保存复核结果，不会写入正式账本。",
+                iconName: "icon-shopping",
+                compact: true
+              }}
               type="dashed"
             />
           </form>
@@ -1139,6 +1198,12 @@ function ReviewDecisionControls({
               icon="hourglass"
               idleLabel="标记待确认"
               pendingLabel="正在放进讨论夹..."
+              ritual={{
+                title: "正在放进讨论夹...",
+                description: "先留给两个人一起确认，不会写入正式账本。",
+                iconName: "icon-chat",
+                compact: true
+              }}
               type="dashed"
             />
           </form>
@@ -1177,7 +1242,7 @@ function PersonalActionPanel({
       className="rounded-[22px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-2 shadow-[0_5px_0_rgba(31,122,112,0.08)]"
       data-import-review-personal-actions="true"
     >
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2">
         {options.map((option) => (
           <form
             key={option.kind}
@@ -1197,7 +1262,13 @@ function PersonalActionPanel({
               disabled={!canMarkPersonal || !option.ownerUserId}
               icon="user"
               idleLabel={option.label}
-              pendingLabel="正在标记个人支出..."
+              pendingLabel={option.kind === "self" ? "正在标记我的个人..." : "正在标记对方个人..."}
+              ritual={{
+                title: option.kind === "self" ? "正在标记我的个人..." : "正在标记对方个人...",
+                description: "只保留导入复核结果，不会进入共同账本。",
+                iconName: "icon-chat",
+                compact: true
+              }}
               type="dashed"
             />
           </form>
@@ -1344,7 +1415,13 @@ function ReviewedOutcomeStatusCard({
           dataPendingScope="import-review-reopen"
           icon="rotate"
           idleLabel={reopenCopy.buttonLabel}
-          pendingLabel="正在放回待确认..."
+          pendingLabel="正在放回待对账..."
+          ritual={{
+            title: "正在放回待对账...",
+            description: "只恢复这张来源小纸条，不会创建或删除正式账本流水。",
+            iconName: "icon-diy",
+            compact: true
+          }}
           type="primary"
         />
       </form>
@@ -1963,7 +2040,10 @@ function getSuggestedQuickApplyAction(
       formId: shortcutTargetIds.skipForm,
       headline: "系统建议：这笔可能不进入共同账本",
       examples: "常见例子：转账 / 提现 / 充值 / 理财 / 交易关闭。",
-      buttonLabel: "按建议忽略并下一条"
+      buttonLabel: "按建议忽略并下一条",
+      pendingLabel: "正在放进忽略小夹...",
+      ritualTitle: "正在放进忽略小夹...",
+      ritualDescription: "只保存复核结果，不会写入正式账本。"
     };
   }
 
@@ -1972,7 +2052,10 @@ function getSuggestedQuickApplyAction(
     formId: shortcutTargetIds.needDiscussionForm,
     headline: "系统建议：这笔需要一起确认",
     examples: "常见例子：退款 / 状态不明确 / 看不出用途。",
-    buttonLabel: "按建议标记待确认"
+    buttonLabel: "按建议标记待确认",
+    pendingLabel: "正在放进讨论夹...",
+    ritualTitle: "正在放进讨论夹...",
+    ritualDescription: "先留给两个人一起确认，不会写入正式账本。"
   };
 }
 
@@ -2156,7 +2239,65 @@ function getDefaultConfirmNote(item: ImportReviewItem) {
 }
 
 function formatCategoryOption(category: DashboardCategory) {
-  return `${category.icon ? `${category.icon} ` : ""}${category.name}`;
+  return formatCategoryDisplayLabel(category.name) ?? "未分类";
+}
+
+const categoryDisplayIconPrefixes = new Set([
+  "utensils",
+  "bus",
+  "shopping-bag",
+  "home",
+  "zap",
+  "sparkles",
+  "map",
+  "heart-pulse",
+  "more-horizontal"
+]);
+
+function formatCategoryDisplayLabel(value: string | null) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+
+  while (parts.length > 1 && categoryDisplayIconPrefixes.has(parts[0].toLowerCase())) {
+    parts.shift();
+  }
+
+  const label = parts.join(" ");
+
+  if (label === "房租") {
+    return "住房";
+  }
+
+  return label;
+}
+
+function formatSourceStatusLabel(value: string | null) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return "未识别";
+  }
+
+  const normalized = trimmed.toLowerCase().replace(/[_\s-]+/g, "");
+
+  if (["success", "succeeded", "completed", "paid"].includes(normalized)) {
+    return "交易成功";
+  }
+
+  if (["closed", "cancelled", "canceled"].includes(normalized)) {
+    return "已关闭";
+  }
+
+  if (["refunded", "refund"].includes(normalized)) {
+    return "已退款";
+  }
+
+  return trimmed;
 }
 
 function formatMemberOption(member: DashboardHouseholdMember, index: number) {
