@@ -27,6 +27,10 @@ import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslan
 import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { voidLedgerRecordAction } from "./actions";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
+import {
+  getImportSourceForLedgerEntry,
+  type ImportLedgerSource
+} from "@/lib/import-review/ledger-source";
 import { getRecordDetail, type RecordDetail } from "@/lib/ledger/get-record-detail";
 import {
   formatMoney,
@@ -161,6 +165,10 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
   const voidReturnContext = getVoidReturnContext(returnParams, recordMonth);
   const voidState = getRecordVoidState(settlementStatus);
   const editState = getRecordEditState(record, settlementStatus);
+  const { source: importSource } = await getImportSourceForLedgerEntry(supabase, {
+    householdId: membership.household_id,
+    ledgerEntryId: record.id
+  });
 
   return (
     <AppShell
@@ -275,6 +283,8 @@ export default async function RecordDetailPage({ params, searchParams }: RecordD
                 {record.note?.trim() || "这张账单没有填写备注。"}
               </p>
             </div>
+
+            <ImportSourceBadge source={importSource} />
 
             {householdWarning ? <PageNotice message={householdWarning} tone="warning" /> : null}
             {detail.warning ? <PageNotice message={detail.warning} tone="warning" /> : null}
@@ -845,6 +855,79 @@ function SplitBreakdown({ record }: { record: RecordDetail }) {
   );
 }
 
+function ImportSourceBadge({ source }: { source: ImportLedgerSource | null }) {
+  if (!source) {
+    return null;
+  }
+
+  return (
+    <div
+      data-record-import-source="true"
+      data-record-import-source-status={source.reviewStatus}
+      className="mt-5 rounded-[28px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-5 py-4 shadow-[0_5px_0_rgba(31,122,112,0.1)]"
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
+            <BadgeCheck aria-hidden="true" size={17} />
+            Import Source
+          </p>
+          <div className="mt-2">
+            <Title size="small" color="app-teal" style={{ fontSize: 20 }}>
+              {recordImportSourceCopy.title}
+            </Title>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
+            {recordImportSourceCopy.body}
+          </p>
+        </div>
+        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
+          <Icon name={source.source === "wechat" ? "icon-chat" : "icon-shopping"} size={28} bounce />
+        </span>
+      </div>
+
+      <Divider type="dashed-teal" className="my-5" />
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <DetailField
+          icon={<WalletCards aria-hidden="true" size={18} />}
+          label={recordImportSourceCopy.sourceLabel}
+          value={formatImportSourceName(source.source)}
+        />
+        <DetailField
+          icon={<Clock3 aria-hidden="true" size={18} />}
+          label={recordImportSourceCopy.timeLabel}
+          value={formatImportSourceTransactionTime(source)}
+        />
+        <DetailField
+          icon={<BadgeCheck aria-hidden="true" size={18} />}
+          label={recordImportSourceCopy.statusLabel}
+          value={formatImportSourceStatus(source.reviewStatus)}
+        />
+        <DetailField
+          icon={<ReceiptText aria-hidden="true" size={18} />}
+          label={recordImportSourceCopy.transactionIdLabel}
+          value={maskSourceTransactionId(source.sourceTransactionId)}
+        />
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs font-bold leading-6 text-[#1f7a70]">
+          {recordImportSourceCopy.readonly}
+        </p>
+        <IslandLink
+          href={getImportReviewItemHref(source)}
+          data-record-import-source-review-link="true"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+        >
+          <ReceiptText aria-hidden="true" size={17} />
+          {recordImportSourceCopy.backLink}
+        </IslandLink>
+      </div>
+    </div>
+  );
+}
+
 function DetailField({
   icon,
   label,
@@ -1106,6 +1189,40 @@ function formatLedgerRecordAmount(record: LedgerRecord) {
   return `${prefix}${formatMoney(record.amount)}`;
 }
 
+function getImportReviewItemHref(source: ImportLedgerSource) {
+  const params = new URLSearchParams();
+  params.set("status", "all");
+  params.set("item", source.importItemId);
+
+  return `/imports/${source.batchId}/review?${params.toString()}`;
+}
+
+function formatImportSourceName(source: ImportLedgerSource["source"]) {
+  return source === "wechat" ? "\u5fae\u4fe1" : "\u652f\u4ed8\u5b9d";
+}
+
+function formatImportSourceStatus(status: ImportLedgerSource["reviewStatus"]) {
+  return status === "imported" ? "\u5df2\u5165\u8d26 / imported" : status;
+}
+
+function formatImportSourceTransactionTime(source: ImportLedgerSource) {
+  const formattedTime = formatDateTime(source.transactionTime);
+
+  return source.monthKey ? `${source.monthKey} · ${formattedTime}` : formattedTime;
+}
+
+function maskSourceTransactionId(value: string | null) {
+  if (!value) {
+    return "\u672a\u63d0\u4f9b";
+  }
+
+  if (value.length <= 8) {
+    return "\u5df2\u6253\u7801";
+  }
+
+  return `${value.slice(0, 4)}****${value.slice(-4)}`;
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
 
@@ -1118,3 +1235,16 @@ function formatDateTime(value: string) {
     timeStyle: "short"
   }).format(date);
 }
+
+const recordImportSourceCopy = {
+  title: "\u6765\u81ea\u5171\u540c\u5bf9\u8d26\u5bfc\u5165",
+  body:
+    "\u8fd9\u5f20\u8d26\u5355\u662f\u4ece\u5bf9\u8d26\u5c0f\u7eb8\u6761\u786e\u8ba4\u8fdb\u6765\u7684\uff0c\u4e0b\u9762\u53ea\u663e\u793a\u6765\u6e90\u7ebf\u7d22\uff0c\u4e0d\u5c55\u5f00\u539f\u59cb\u6d41\u6c34\u7ec6\u8282\u3002",
+  sourceLabel: "\u6765\u6e90",
+  timeLabel: "\u539f\u59cb\u4ea4\u6613\u65f6\u95f4",
+  statusLabel: "\u5bf9\u8d26\u72b6\u6001",
+  transactionIdLabel: "\u6765\u6e90\u6d41\u6c34\u53f7",
+  readonly:
+    "\u53ea\u8bfb\u6765\u6e90\u8bf4\u660e\uff1a\u4e0d\u4f1a\u4fee\u6539\u8d26\u5355\uff0c\u4e0d\u4f1a\u6539\u52a8\u7ed3\u7b97\uff0c\u4e0d\u4f1a\u91cd\u65b0\u5bfc\u5165\u3002",
+  backLink: "\u56de\u5230\u5bf9\u8d26\u5361\u7247"
+} as const;

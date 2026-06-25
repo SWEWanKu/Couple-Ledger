@@ -552,7 +552,11 @@ function ReviewDecisionControls({
   settlementStatus: GetSettlementSnapshotStatusResult | null;
   state: ImportReviewCardState;
 }) {
-  const canUpdateStatus = item.reviewStatus !== "imported" && !item.ledgerEntryId;
+  if (item.reviewStatus === "imported") {
+    return <ImportedLedgerStatusCard item={item} />;
+  }
+
+  const canUpdateStatus = !item.ledgerEntryId;
   const confirmBlockReason = getConfirmBlockReason({ categories, item, members, settlementStatus });
   const canConfirmCommonExpense = !confirmBlockReason;
   const defaultCategoryId = getDefaultCategoryId(categories, item);
@@ -717,6 +721,54 @@ function ReviewDecisionControls({
       </div>
       <p className="mt-3 text-xs font-bold leading-6 text-[#725d42]">
         共同支出确认会创建一笔正式支出流水和等分记录；忽略、待讨论只改待对账状态。个人账、自定义分摊和批量确认仍不开放。
+      </p>
+    </div>
+  );
+}
+
+function ImportedLedgerStatusCard({ item }: { item: ImportReviewItem }) {
+  const ledgerHref = item.ledgerEntryId ? getLedgerRecordHref(item.ledgerEntryId, item.monthKey) : null;
+
+  return (
+    <div
+      data-import-review-imported-status="true"
+      className="rounded-[28px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-4 shadow-[0_5px_0_rgba(31,122,112,0.12)]"
+    >
+      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
+        <BadgeCheck aria-hidden="true" size={17} />
+        {importedLedgerCopy.eyebrow}
+      </p>
+      <div className="mt-3 rounded-[24px] bg-white/80 px-4 py-4 shadow-[inset_0_0_0_2px_rgba(130,213,187,0.55)]">
+        <p className="flex items-center gap-2 text-lg font-black text-[#1f7a70]">
+          <CheckCircle2 aria-hidden="true" size={21} />
+          {importedLedgerCopy.title}
+        </p>
+        <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">
+          {importedLedgerCopy.body}
+        </p>
+      </div>
+      <div className="mt-4 grid gap-2">
+        {ledgerHref ? (
+          <Link
+            href={ledgerHref}
+            data-import-review-ledger-link="true"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+          >
+            <ReceiptText aria-hidden="true" size={18} />
+            {importedLedgerCopy.linkLabel}
+          </Link>
+        ) : (
+          <span
+            data-import-review-ledger-link-missing="true"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-white/80 px-5 py-2 text-sm font-black text-[#9f927d]"
+          >
+            <ReceiptText aria-hidden="true" size={18} />
+            {importedLedgerCopy.linkMissing}
+          </span>
+        )}
+      </div>
+      <p className="mt-3 text-xs font-bold leading-6 text-[#1f7a70]">
+        {importedLedgerCopy.readonly}
       </p>
     </div>
   );
@@ -1084,6 +1136,19 @@ function getReviewHref(
   return `/imports/${batchId}/review?${params.toString()}`;
 }
 
+function getLedgerRecordHref(ledgerEntryId: string, monthKey: string) {
+  const params = new URLSearchParams();
+  const safeMonth = /^\d{4}-\d{2}$/.test(monthKey) ? monthKey : null;
+
+  if (safeMonth) {
+    params.set("month", safeMonth);
+  }
+
+  const query = params.toString();
+
+  return query ? `/records/${ledgerEntryId}?${query}` : `/records/${ledgerEntryId}`;
+}
+
 function getDirectionLabel(direction: ImportReviewItem["direction"]) {
   if (direction === "income") {
     return "收入";
@@ -1277,6 +1342,17 @@ function getSingleParam(value: string | string[] | undefined) {
 
   return value ?? null;
 }
+
+const importedLedgerCopy = {
+  eyebrow: "\u5df2\u5165\u8d26",
+  title: "\u5df2\u5165\u8d26",
+  body:
+    "\u8fd9\u6761\u5bf9\u8d26\u5c0f\u7eb8\u6761\u5df2\u7ecf\u5199\u5165\u6b63\u5f0f\u8d26\u672c\uff0c\u8fd9\u91cc\u53ea\u4fdd\u7559\u6765\u6e90\u7ebf\u7d22\uff0c\u4e0d\u518d\u63d0\u4f9b\u786e\u8ba4\u3001\u5ffd\u7565\u6216\u5f85\u8ba8\u8bba\u64cd\u4f5c\u3002",
+  linkLabel: "\u67e5\u770b\u8d26\u5355\u4fbf\u7b7e",
+  linkMissing: "\u8d26\u5355\u4fbf\u7b7e\u94fe\u63a5\u6682\u4e0d\u53ef\u7528",
+  readonly:
+    "\u53ea\u8bfb\u67e5\u770b\uff1a\u4e0d\u4f1a\u6539\u52a8\u5bfc\u5165\u72b6\u6001\uff0c\u4e0d\u4f1a\u5199\u5165\u65b0\u8d26\u5355\u3002"
+} as const;
 
 const inputClassName =
   "h-12 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] px-4 text-sm font-black text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25";
