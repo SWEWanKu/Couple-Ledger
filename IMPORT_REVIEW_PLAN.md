@@ -98,10 +98,11 @@ a later explicit decision document changes them.
    Long-term original-file archival is not required for the first slice.
 5. Personal expenses: only `共同支出` confirms into the official shared ledger in
    V1. `我的个人` and `她的个人` are reviewed as non-ledger personal outcomes,
-   keep the source trail, and do not create normal shared ledger expenses. If
-   schema keeps only four item statuses, represent this as `skipped` with a
-   reason/copy; a separate `personal_skipped` status is deferred unless a later
-   schema decision explicitly adds it.
+   keep the source trail, and do not create normal shared ledger expenses. The
+   implemented V1 trail uses `review_status = 'skipped'`,
+   `final_owner_user_id`, `final_split_type = 'personal'`, and optional
+   `final_note`; a separate `personal_skipped` status remains deferred unless a
+   later schema decision explicitly adds it.
 6. Ignored items: obvious non-ledger rows such as wallet transfer, cash
    withdrawal, repayment noise, or closed/reversed source rows should become
    skipped review outcomes and must not create official ledger records.
@@ -507,6 +508,9 @@ Reopen-to-pending:
 - supports `need_discussion -> pending`;
 - clears `reviewed_by` and `reviewed_at` because pending items have no review
   actor pair;
+- clears final review fields such as `final_owner_user_id`,
+  `final_paid_by_user_id`, `final_split_type`, `final_note`, and
+  `final_category`;
 - keeps `ledger_entry_id` null;
 - recomputes batch counters transaction-safely.
 
@@ -646,7 +650,9 @@ future write path only when a dedicated implementation task adds it.
 4. V1 stores parsed rows, source metadata, and `file_sha256`; original-file
    archival is not required for the first slice.
 5. `共同支出` creates official shared ledger records. `我的个人` and `她的个人`
-   become non-ledger skipped/personal outcomes with source trail retained.
+   become non-ledger skipped/personal outcomes with source trail retained via
+   `final_owner_user_id`, `final_split_type = 'personal'`, and optional
+   `final_note`.
 6. Ignored transfer/withdrawal/noise/closed rows become skipped non-ledger
    outcomes with source trail retained.
 7. `待确认` is a first-class non-ledger review outcome, remains revisitable, and
@@ -703,8 +709,8 @@ future write path only when a dedicated implementation task adds it.
 
 1. Exact normalized transaction fingerprint fields when the source lacks a stable
    `source_transaction_id`.
-2. Whether schema stores skip/review reasons as fields or introduces additional
-   statuses for personal/duplicate outcomes.
+2. Whether future duplicate handling or richer skip reasons need additional
+   fields/statuses beyond the current personal `final_owner_user_id` trail.
 3. Whether original file archival should be added after MVP.
 4. Exact Chinese microcopy for settlement warnings, personal outcomes, ignored
    outcomes, and duplicate detection.

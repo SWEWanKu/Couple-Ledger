@@ -280,6 +280,15 @@ file as the final private-app release pass.
 - [ ] `skipped` action creates no `ledger_entry_splits` rows.
 - [ ] `need_discussion` action creates no `ledger_entries` row.
 - [ ] `need_discussion` action creates no `ledger_entry_splits` rows.
+- [ ] `我的个人` personal skip works for an eligible non-imported item.
+- [ ] `她的个人` / `对方个人` personal skip works for an eligible non-imported
+      item when the other household member is available.
+- [ ] Personal skip stores `final_owner_user_id`.
+- [ ] Personal skip stores `final_split_type = 'personal'`.
+- [ ] Personal skip creates no `ledger_entries` row.
+- [ ] Personal skip creates no `ledger_entry_splits` rows.
+- [ ] Personal skipped item can reopen to `pending`.
+- [ ] Imported items cannot be personal-skipped.
 - [ ] `skipped -> pending` reopen works.
 - [ ] `need_discussion -> pending` reopen works.
 - [ ] Imported items cannot be reopened.
@@ -363,6 +372,7 @@ file as the final private-app release pass.
   - settlement replacement helpers
   - import batch creation RPC helper
   - import item status RPC helper
+  - import item personal skip RPC helper
   - import confirm-to-ledger RPC helper
 
 Useful static commands:
@@ -385,12 +395,15 @@ known scoped flows.
 - [ ] Use far-future test months such as `2099-10`.
 - [ ] Use only sanitized Import Review fixtures for import smoke.
 - [ ] Use only sanitized import items for reopen smoke.
+- [ ] Use only sanitized import items for personal skip smoke.
 - [ ] Do not use real bill exports for committed tests.
 - [ ] Do not test imported undo as a user flow; imported item undo remains
       deferred.
 - [ ] Prefer creating temporary records through the normal UI.
 - [ ] Importing sanitized fixtures may leave harmless `import_batches` and
       `import_items` rows.
+- [ ] Personal skip smoke verifies `ledger_entries` count does not increase.
+- [ ] Personal skip smoke verifies settlement rows do not change.
 - [ ] Do not cleanup-delete import rows.
 - [ ] Test ledger entries created through Import Review confirm-to-ledger should
       be soft-voided through the existing record detail flow.
@@ -409,7 +422,8 @@ known scoped flows.
 - No Playwright dependency or script is committed.
 - Browser smoke is manual/Codex-run using `LOCAL_SMOKE_GUIDE.md`.
 - Custom split edit is deferred.
-- Personal expense import is deferred.
+- Personal ledger records are deferred.
+- Importing personal expenses into official ledger records is deferred.
 - Import Review custom split is deferred.
 - Refund auto-linking is deferred.
 - Import Review batch confirm-all is deferred.

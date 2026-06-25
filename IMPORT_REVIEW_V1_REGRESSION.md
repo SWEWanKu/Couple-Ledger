@@ -33,6 +33,7 @@ source trail and review queue.
 - `import_batches` and `import_items` schema and RLS.
 - `create_import_batch_v1` RPC.
 - `update_import_item_review_status_v1` RPC.
+- `mark_import_item_personal_v1` RPC.
 - `confirm_import_item_to_ledger_v1` RPC.
 - `reopen_import_item_to_pending_v1` RPC.
 - `/imports`.
@@ -40,10 +41,13 @@ source trail and review queue.
 - `/imports/[batchId]/review`.
 - Common expense + equal split confirm-to-ledger.
 - `skipped` and `need_discussion` status actions.
+- Personal-expense skip actions for `我的个人` and `她的个人` / `对方个人`;
+  these keep source trail fields and create no official ledger record.
 - Reopen `skipped` and `need_discussion` items back to `pending`.
 - Review card keyboard shortcuts for `J`, `K`, `4`, `5`, `1`, `Enter`, and
   `Esc`.
-- No personal expense import yet.
+- No personal ledger records yet.
+- No importing personal expenses into the official ledger yet.
 - No custom split yet.
 - No batch confirm-all yet.
 - No AI final decision, voice recognition, realtime collaboration, payment, or
@@ -145,6 +149,31 @@ Verify:
 - [ ] Creates no `ledger_entry_splits`.
 - [ ] Mutates no settlement tables.
 - [ ] Imported items cannot be changed by this status action.
+
+### `mark_import_item_personal_v1`
+
+- [ ] Function exists.
+- [ ] Function is `SECURITY INVOKER`.
+- [ ] `anon` cannot execute.
+- [ ] `authenticated` can execute.
+- [ ] Authenticated household member can mark an eligible item as personal.
+- [ ] Non-household user cannot mark items.
+- [ ] `owner_user_id` must be a household member for the same household.
+- [ ] Supports only non-imported items in `pending`, `skipped`, or
+      `need_discussion`.
+- [ ] Rejects imported items and items with a non-null `ledger_entry_id`.
+- [ ] Sets `review_status = 'skipped'`.
+- [ ] Sets `final_owner_user_id` to the selected household member.
+- [ ] Sets `final_split_type = 'personal'`.
+- [ ] May set `final_note` to explain the item is personal and outside the
+      shared ledger.
+- [ ] Keeps `ledger_entry_id` null.
+- [ ] Recomputes batch counters in the same transaction.
+- [ ] Creates no `ledger_entries`.
+- [ ] Creates no `ledger_entry_splits`.
+- [ ] Mutates no settlement tables.
+- [ ] Adds no DELETE policy.
+- [ ] Uses no service role or RLS bypass.
 
 ### `confirm_import_item_to_ledger_v1`
 
@@ -250,7 +279,13 @@ Review safety:
 - [ ] Suggestions are shown as advisory only.
 - [ ] `rawJson` is not dumped into the UI.
 - [ ] Source transaction id is masked in the UI.
-- [ ] Personal expense buttons remain disabled/deferred in V1.
+- [ ] `我的个人` is enabled for eligible non-imported items.
+- [ ] `她的个人` / `对方个人` is enabled for eligible non-imported items when the
+      other household member can be identified.
+- [ ] Personal skipped state explains that the item is personal and outside the
+      shared ledger.
+- [ ] Personal skipped state shows owner information when available.
+- [ ] Imported items do not show personal skip buttons.
 - [ ] Custom split is not present as a working V1 path.
 - [ ] The page uses the private scrapbook / island notebook style, not an admin
       table.
@@ -302,6 +337,34 @@ Verify after either status action:
       pending items remain.
 - [ ] Imported items cannot be changed by these actions.
 
+## Personal Expense Skip Checklist
+
+From an eligible non-imported item:
+
+- [ ] `我的个人` marks the item as a personal skipped outcome for the current
+      user.
+- [ ] `她的个人` / `对方个人` marks the item as a personal skipped outcome for the
+      selected other household member.
+
+Verify after either personal action:
+
+- [ ] `review_status` is `skipped`.
+- [ ] `final_owner_user_id` is the selected household member.
+- [ ] `final_split_type` is `personal`.
+- [ ] `final_note` may explain the item is personal and outside the shared
+      ledger.
+- [ ] `reviewed_by` is set from the current authenticated user.
+- [ ] `reviewed_at` is set.
+- [ ] `ledger_entry_id` remains null.
+- [ ] No `ledger_entries` row is created.
+- [ ] No `ledger_entry_splits` row is created.
+- [ ] Batch counters are recomputed transaction-safely.
+- [ ] Page moves to the next pending item, or shows an empty state when no
+      pending items remain.
+- [ ] Personal skipped state is visible and shows owner information when
+      available.
+- [ ] Imported items do not show personal skip buttons.
+
 ## Reopen-To-Pending Checklist
 
 From a skipped item:
@@ -318,6 +381,11 @@ Verify after either reopen action:
 
 - [ ] `reviewed_by` is cleared.
 - [ ] `reviewed_at` is cleared.
+- [ ] `final_owner_user_id` is cleared.
+- [ ] `final_paid_by_user_id` is cleared.
+- [ ] `final_split_type` is cleared.
+- [ ] `final_note` is cleared.
+- [ ] `final_category` is cleared.
 - [ ] `ledger_entry_id` remains null.
 - [ ] Batch counters are recomputed transaction-safely.
 - [ ] Item returns to the pending queue.
@@ -405,6 +473,9 @@ Always verify:
 - [ ] Do not cleanup-delete import rows.
 - [ ] Import tables have no DELETE policy.
 - [ ] Reopen smoke uses sanitized import items only.
+- [ ] Personal skip smoke uses sanitized import items only.
+- [ ] Personal skip smoke verifies `ledger_entries` count does not increase.
+- [ ] Personal skip smoke verifies settlement rows do not change.
 - [ ] Do not test imported undo as a user flow; imported item undo remains
       deferred.
 - [ ] If sanitized import batches/items remain in the DB, record them as
@@ -447,6 +518,12 @@ Authenticated smoke:
 - [ ] `1` focuses or highlights the common-expense confirmation area.
 - [ ] `Enter` confirms only when the confirm form exists and is valid.
 - [ ] Shortcuts do not fire while typing in note, category, or paid-by fields.
+- [ ] `我的个人` works for an eligible non-imported item.
+- [ ] `她的个人` / `对方个人` works for an eligible non-imported item when the
+      other household member is available.
+- [ ] Personal skip stores `final_owner_user_id`.
+- [ ] Personal skip creates no `ledger_entries` or `ledger_entry_splits`.
+- [ ] Personal skipped item can reopen to `pending`.
 
 ## Security And Static Checklist
 
@@ -472,17 +549,18 @@ Useful static searches for future Import Review code changes:
 ```powershell
 rg -n "service_role|SUPABASE_SERVICE|auth\.admin|localStorage|sessionStorage|allowed_user_emails" src supabase
 rg -n "insert\(|update\(|delete\(|upsert\(" src/app/imports src/lib/import-review
-rg -n "settlement_snapshots|settlement_confirmations" src/app/imports src/lib/import-review supabase/migrations/20260624_add_import_item_confirm_rpc.sql
+rg -n "settlement_snapshots|settlement_confirmations" src/app/imports src/lib/import-review supabase/migrations/20260624_add_import_item_confirm_rpc.sql supabase/migrations/20260624_add_import_item_personal_skip_rpc.sql
 ```
 
 Interpret mutation matches in context. Import Review V1 intentionally writes
-through the three constrained RPCs listed above; parser/upload should not create
+through the four constrained RPCs listed above; parser/upload should not create
 official ledger rows, and settlement rows should not be mutated by import
 review.
 
 ## Known Limitations
 
-- Personal expense import is deferred.
+- Personal ledger records are deferred.
+- Importing personal expenses into official ledger records is deferred.
 - Custom split is deferred.
 - Refund auto-linking is deferred.
 - Batch confirm-all is deferred.
@@ -506,7 +584,8 @@ Update this checklist when:
 - upload behavior changes;
 - review card behavior changes;
 - settlement interaction behavior changes;
-- personal expense import is added;
+- personal skip behavior changes;
+- personal ledger support is added;
 - custom split is added;
 - keyboard shortcuts are added;
 - realtime collaboration is added;
