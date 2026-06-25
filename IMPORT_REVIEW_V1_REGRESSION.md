@@ -1,0 +1,463 @@
+# Import Review V1 Regression Checklist
+
+This is the regression checklist for Import Review V1 / `共同对账模式`.
+It documents the completed MVP and its safety boundaries. It does not add
+runtime behavior, schema changes, RLS changes, SQL execution, API routes,
+helpers, server actions, UI changes, package changes, generated types, or test
+data.
+
+## Purpose
+
+Import Review V1 is a human-confirmed card-by-card reconciliation workflow, not
+one-click automatic bookkeeping.
+
+The MVP verifies this path:
+
+- parse WeChat or Alipay bill exports;
+- upload parsed rows into the import review pool;
+- review one source transaction card at a time;
+- skip rows that should not enter the official ledger;
+- mark uncertain rows as `need_discussion`;
+- confirm one common expense into the official ledger;
+- keep settlement snapshots and confirmations safe.
+
+The official ledger remains the source of truth for `/records`, `/dashboard`,
+monthly reports, and live settlement. Import tables are a private household
+source trail and review queue.
+
+## Current Completed Scope
+
+- WeChat `.xlsx` parser.
+- Alipay `.csv` parser.
+- Alipay UTF-8 and GBK/GB18030-compatible CSV decoding.
+- `import_batches` and `import_items` schema and RLS.
+- `create_import_batch_v1` RPC.
+- `update_import_item_review_status_v1` RPC.
+- `confirm_import_item_to_ledger_v1` RPC.
+- `/imports`.
+- `/imports/new`.
+- `/imports/[batchId]/review`.
+- Common expense + equal split confirm-to-ledger.
+- `skipped` and `need_discussion` status actions.
+- No personal expense import yet.
+- No custom split yet.
+- No batch confirm-all yet.
+- No AI final decision, voice recognition, realtime collaboration, payment, or
+  real transfer behavior.
+
+## Parser Checklist
+
+Run:
+
+```powershell
+npx --yes tsx scripts/verify-import-review-parsers.ts
+```
+
+Verify:
+
+- [ ] Alipay UTF-8 fixture parses.
+- [ ] Alipay GBK/GB18030 fixture parses.
+- [ ] WeChat `.xlsx` fixture parses.
+- [ ] `amountCents` values are integers.
+- [ ] `monthKey` is `YYYY-MM`.
+- [ ] `rawJson` is preserved as an object.
+- [ ] `reviewStatus` defaults to `pending`.
+- [ ] Suggested category/action values are advisory only.
+- [ ] Transfer/top-up/wealth style rows can suggest `skip`.
+- [ ] Refund/closed/reversal style rows can suggest `need_discussion`.
+- [ ] Parser/upload code never creates `ledger_entries`.
+
+Privacy rules for real samples:
+
+- [ ] Keep real exports in ignored private folders only.
+- [ ] Do not commit real bill files.
+- [ ] Do not print transaction details, merchants, notes, transaction ids, or
+      real file names.
+- [ ] Report only aggregates such as row counts and parser success/failure.
+
+Committed sanitized fixtures:
+
+- `fixtures/import-review/alipay-sample.csv`
+- `fixtures/import-review/alipay-gbk-sample.csv.b64`
+- `fixtures/import-review/wechat-sample.xlsx`
+
+## Schema And RLS Checklist
+
+Verify:
+
+- [ ] `import_batches` exists.
+- [ ] `import_items` exists.
+- [ ] RLS is enabled on `import_batches`.
+- [ ] RLS is enabled on `import_items`.
+- [ ] Household-scoped SELECT policy exists for `import_batches`.
+- [ ] Household-scoped INSERT policy exists for `import_batches`.
+- [ ] Household-scoped UPDATE policy exists for `import_batches`.
+- [ ] Household-scoped SELECT policy exists for `import_items`.
+- [ ] Household-scoped INSERT policy exists for pending `import_items`.
+- [ ] Household-scoped UPDATE policy exists for `import_items`.
+- [ ] No DELETE policy exists on import tables.
+- [ ] Batch dedupe constraint exists for
+      `household_id + source + file_sha256`.
+- [ ] Source transaction dedupe partial unique index exists for
+      `household_id + source + source_transaction_id` when
+      `source_transaction_id` is present.
+- [ ] `import_items.review_status` supports only:
+      `pending`, `imported`, `skipped`, `need_discussion`.
+- [ ] `import_batches.status` supports only:
+      `parsed`, `reviewing`, `completed`.
+- [ ] Imported items require a non-null `ledger_entry_id`.
+- [ ] Non-imported items require `ledger_entry_id` to remain null.
+- [ ] Reviewed non-pending items require `reviewed_by` and `reviewed_at`.
+
+## RPC Checklist
+
+### `create_import_batch_v1`
+
+- [ ] Function is `SECURITY INVOKER`.
+- [ ] `anon` cannot execute.
+- [ ] `authenticated` can execute.
+- [ ] Authenticated household member can create a batch.
+- [ ] Actor is derived from `auth.uid()`.
+- [ ] Creates one `import_batches` row and matching pending `import_items`
+      atomically.
+- [ ] Duplicate file returns `already_exists`.
+- [ ] Duplicate source transaction fails safely without a partial batch.
+- [ ] Creates no `ledger_entries`.
+- [ ] Creates no `ledger_entry_splits`.
+- [ ] Mutates no settlement tables.
+- [ ] Uses no service role or RLS bypass.
+
+### `update_import_item_review_status_v1`
+
+- [ ] Function is `SECURITY INVOKER`.
+- [ ] `anon` cannot execute.
+- [ ] `authenticated` can execute.
+- [ ] Supports `skipped` and `need_discussion` only.
+- [ ] Rejects unsupported review statuses.
+- [ ] Updates `reviewed_by` from `auth.uid()`.
+- [ ] Updates `reviewed_at`.
+- [ ] Recomputes batch counters in the same transaction.
+- [ ] Creates no `ledger_entries`.
+- [ ] Creates no `ledger_entry_splits`.
+- [ ] Mutates no settlement tables.
+- [ ] Imported items cannot be changed by this status action.
+
+### `confirm_import_item_to_ledger_v1`
+
+- [ ] Function is `SECURITY INVOKER`.
+- [ ] `anon` cannot execute.
+- [ ] `authenticated` can execute.
+- [ ] Supports pending expense items only.
+- [ ] Supports common expense only.
+- [ ] Supports equal split only.
+- [ ] Validates category belongs to the household.
+- [ ] Validates `paid_by` is a household member.
+- [ ] Creates exactly one `ledger_entries` row.
+- [ ] Creates `ledger_entry_splits` rows.
+- [ ] Split row count matches the current household member count.
+- [ ] Split total equals the parent entry amount in cents.
+- [ ] Marks the import item as `imported`.
+- [ ] Sets `ledger_entry_id` to the created record.
+- [ ] Sets `reviewed_by` from `auth.uid()`.
+- [ ] Sets `reviewed_at`.
+- [ ] Stores final category, paid-by user, split type, and note.
+- [ ] Recomputes batch counters in the same transaction.
+- [ ] Returns the next pending item id when one exists.
+- [ ] Blocks a `pending_replacement` settlement month.
+- [ ] Does not mutate `settlement_snapshots`.
+- [ ] Does not mutate `settlement_confirmations`.
+- [ ] Uses no service role or RLS bypass.
+
+## Upload Flow Checklist
+
+- [ ] `/imports` is auth-protected.
+- [ ] `/imports/new` is auth-protected.
+- [ ] `/imports/[batchId]/review` is auth-protected.
+- [ ] `/imports` lists existing import batches for the current household.
+- [ ] `/imports/new` explains that uploaded bills enter the pending review pool.
+- [ ] `/imports/new` explains that nothing enters the official ledger until
+      confirmed.
+- [ ] Source selector supports `wechat`.
+- [ ] Source selector supports `alipay`.
+- [ ] File type check requires WeChat `.xlsx`.
+- [ ] File type check requires Alipay `.csv`.
+- [ ] Upload size limit is enforced by the server helper.
+- [ ] Server computes SHA-256 for the uploaded bytes.
+- [ ] Server derives the current user and household.
+- [ ] Server calls `create_import_batch_v1`.
+- [ ] Original file is not stored long-term by the V1 app flow.
+- [ ] Transaction detail is not printed to logs or UI as debug output.
+- [ ] Duplicate file flow returns the existing batch with friendly copy.
+- [ ] Upload/parse creates no official ledger records.
+- [ ] Upload/parse mutates no settlement tables.
+
+## Review Card Checklist
+
+`/imports/[batchId]/review` should show:
+
+- [ ] Batch summary.
+- [ ] Source label.
+- [ ] Batch status.
+- [ ] Progress counts.
+- [ ] `第 N / M 条`.
+- [ ] Status filters:
+      `pending`, `imported`, `skipped`, `need_discussion`, `all`.
+- [ ] Previous navigation.
+- [ ] Next navigation.
+- [ ] Transaction time.
+- [ ] Month.
+- [ ] Counterparty.
+- [ ] Description.
+- [ ] Direction.
+- [ ] Amount.
+- [ ] Source.
+- [ ] Payment method.
+- [ ] Source category.
+- [ ] Source status.
+- [ ] Masked source transaction id.
+- [ ] Suggestion panel.
+- [ ] Current item result feedback after an action.
+- [ ] Empty state when the selected filter has no items.
+
+Review safety:
+
+- [ ] Suggestions are shown as advisory only.
+- [ ] `rawJson` is not dumped into the UI.
+- [ ] Source transaction id is masked in the UI.
+- [ ] Personal expense buttons remain disabled/deferred in V1.
+- [ ] Custom split is not present as a working V1 path.
+- [ ] The page uses the private scrapbook / island notebook style, not an admin
+      table.
+
+## Status Action Checklist
+
+From a pending item:
+
+- [ ] `忽略此条` changes status to `skipped`.
+- [ ] `标记待确认` changes status to `need_discussion`.
+
+Verify after either status action:
+
+- [ ] `reviewed_by` is set.
+- [ ] `reviewed_at` is set.
+- [ ] `ledger_entry_id` remains null.
+- [ ] No `ledger_entries` row is created.
+- [ ] No `ledger_entry_splits` row is created.
+- [ ] Batch counters update.
+- [ ] Page moves to the next pending item, or shows an empty state when no
+      pending items remain.
+- [ ] Imported items cannot be changed by these actions.
+
+## Confirm-To-Ledger Checklist
+
+Pick a sanitized pending expense item. Confirm it as:
+
+- `共同支出`;
+- a selected household category;
+- a selected `paid_by` household member;
+- equal split;
+- a harmless note.
+
+Verify:
+
+- [ ] Exactly one `ledger_entries` row is created.
+- [ ] `ledger_entries.entry_type` is `expense`.
+- [ ] `ledger_entries.split_mode` is `equal`.
+- [ ] `ledger_entry_splits` rows are created.
+- [ ] Split rows total the entry amount.
+- [ ] Import item status becomes `imported`.
+- [ ] Import item `ledger_entry_id` points to the created record.
+- [ ] Import item final category is stored.
+- [ ] Import item final paid-by user is stored.
+- [ ] Import item final split type is `equal`.
+- [ ] `reviewed_by` is set.
+- [ ] `reviewed_at` is set.
+- [ ] Batch counters update.
+- [ ] Page moves to the next pending item, or shows an empty state when no
+      pending items remain.
+- [ ] Created record appears in `/records` for that month.
+- [ ] Record detail opens.
+- [ ] Record can be soft-voided through the existing record detail flow if it is
+      test data.
+- [ ] Import item remains `imported` and linked after the official record is
+      soft-voided.
+- [ ] No hard delete is used.
+- [ ] No settlement snapshot or confirmation row is mutated.
+
+## Settlement Interaction Checklist
+
+### Unsettled Month
+
+- [ ] Confirm-to-ledger proceeds normally.
+- [ ] Live dashboard, records, monthly report, and settlement reads update from
+      the official ledger on the next read.
+- [ ] No stored settlement snapshot is created or changed by import review.
+
+### Active / Proposed / Partially Confirmed / Fully Confirmed Snapshot Month
+
+- [ ] UI shows a warning that a saved settlement note already exists.
+- [ ] Confirm may proceed.
+- [ ] Stored settlement snapshot remains immutable.
+- [ ] Stored settlement confirmations remain immutable.
+- [ ] Live settlement may become outdated after the new official record.
+
+### `pending_replacement` Month
+
+- [ ] UI explains the month is blocked for confirm-to-ledger.
+- [ ] `confirm_import_item_to_ledger_v1` returns
+      `blocked_pending_replacement`.
+- [ ] No ledger entry is created.
+- [ ] No split rows are created.
+- [ ] Import item remains unimported.
+
+Always verify:
+
+- [ ] No `settlement_snapshots` row is mutated.
+- [ ] No `settlement_confirmations` row is mutated.
+- [ ] `calculateSettlement` is unchanged.
+- [ ] `getSettlementSummary` is unchanged unless explicitly approved by a later
+      task.
+
+## Safe Smoke Data Rules
+
+- [ ] Prefer sanitized fixture imports.
+- [ ] Do not use real bill data for committed tests.
+- [ ] Do not print real transaction details, merchants, notes, transaction ids,
+      or file names.
+- [ ] Do not cleanup-delete import rows.
+- [ ] Import tables have no DELETE policy.
+- [ ] If sanitized import batches/items remain in the DB, record them as
+      harmless test artifacts.
+- [ ] For created test ledger entries, use the existing soft-void flow rather
+      than hard delete.
+- [ ] Do not edit or void important real household records during routine smoke.
+
+## App Regression Smoke
+
+Use `LOCAL_SMOKE_GUIDE.md` for Windows process and port handling.
+
+Anonymous protection:
+
+- [ ] `/imports`.
+- [ ] `/imports/new`.
+- [ ] `/imports/[batchId]/review`.
+- [ ] `/dashboard`.
+- [ ] `/records`.
+- [ ] `/settlement`.
+- [ ] `/reports/monthly?month=2026-06`.
+
+Authenticated smoke:
+
+- [ ] Primary Dev Login works.
+- [ ] Partner Dev Login works if configured.
+- [ ] `/dashboard` renders.
+- [ ] `/records?month=2026-06` renders.
+- [ ] `/records/new?month=2026-06` renders.
+- [ ] `/settlement?month=2026-06` renders.
+- [ ] `/settlement/history` renders.
+- [ ] Settlement snapshot detail renders.
+- [ ] `/reports/monthly?month=2026-06` renders.
+- [ ] `/imports` renders.
+- [ ] `/imports/new` renders.
+- [ ] `/imports/[batchId]/review` renders for an existing batch.
+
+## Security And Static Checklist
+
+- [ ] No service role usage.
+- [ ] No Supabase admin API usage.
+- [ ] No RLS bypass.
+- [ ] No `localStorage` or `sessionStorage` as a data source.
+- [ ] No `.env.local` commit.
+- [ ] No `SUPABASE_DB_URL` printing.
+- [ ] No generated Supabase Database types.
+- [ ] No real bill files committed.
+- [ ] No DELETE policy on import tables.
+- [ ] No hard delete.
+- [ ] No settlement snapshot mutation.
+- [ ] No settlement confirmation mutation.
+- [ ] No payment or real transfer behavior.
+- [ ] No one-click batch import into the official ledger.
+- [ ] No batch confirm-all behavior.
+- [ ] No package changes unless a later explicit task asks for them.
+
+Useful static searches for future Import Review code changes:
+
+```powershell
+rg -n "service_role|SUPABASE_SERVICE|auth\.admin|localStorage|sessionStorage|allowed_user_emails" src supabase
+rg -n "insert\(|update\(|delete\(|upsert\(" src/app/imports src/lib/import-review
+rg -n "settlement_snapshots|settlement_confirmations" src/app/imports src/lib/import-review supabase/migrations/20260624_add_import_item_confirm_rpc.sql
+```
+
+Interpret mutation matches in context. Import Review V1 intentionally writes
+through the three constrained RPCs listed above; parser/upload should not create
+official ledger rows, and settlement rows should not be mutated by import
+review.
+
+## Known Limitations
+
+- Personal expense import is deferred.
+- Custom split is deferred.
+- Refund auto-linking is deferred.
+- Batch confirm-all is deferred.
+- Undo/reopen imported item is deferred.
+- Reopen skipped or need-discussion item is deferred.
+- Keyboard shortcuts are deferred.
+- Realtime collaboration is deferred.
+- AI final decision is not supported.
+- Voice recognition is not supported.
+- No original file archive is stored.
+- Normalized transaction fingerprint for rows without stable source ids remains
+  a future product/schema decision.
+
+## When To Update This File
+
+Update this checklist when:
+
+- parser behavior changes;
+- import schema/RLS changes;
+- `create_import_batch_v1` changes;
+- `update_import_item_review_status_v1` changes;
+- `confirm_import_item_to_ledger_v1` changes;
+- upload behavior changes;
+- review card behavior changes;
+- settlement interaction behavior changes;
+- personal expense import is added;
+- custom split is added;
+- keyboard shortcuts are added;
+- realtime collaboration is added;
+- deployment or smoke procedure changes;
+- `package.json` gains dedicated `lint`, `typecheck`, or `test` scripts.
+
+## Verification Commands For This Document
+
+For documentation-only updates to this checklist:
+
+```powershell
+git diff --name-only
+git diff --check
+git diff --cached --check
+git status --short -- .env.local package.json package-lock.json supabase src fixtures
+```
+
+Expected documentation-only result:
+
+- only `IMPORT_REVIEW_V1_REGRESSION.md` changes;
+- no `src/**` changes;
+- no `supabase/**` changes;
+- no fixture or real bill file changes;
+- no SQL execution;
+- no RLS changes;
+- no API route added;
+- no server action added;
+- no helper changed;
+- no package changes;
+- no generated Supabase Database types;
+- no `.env.local` commit;
+- no real bill file commit;
+- no service role, Supabase admin API, RLS bypass, `localStorage`,
+  `sessionStorage`, payment-provider, or real-transfer change;
+- no `calculateSettlement` change;
+- no `getSettlementSummary` change.
+
+`npm run build` is optional for this doc-only checklist. If skipped, report that
+it was skipped because only Markdown changed.
