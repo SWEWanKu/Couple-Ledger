@@ -440,6 +440,12 @@ or replace the mouse/touch buttons.
 The system may suggest a category or ignore state from deterministic rules.
 Suggestions are never final.
 
+V1 now shows quick-apply buttons for advisory `skip` and `need_discussion`
+suggestions on `/imports/[batchId]/review`. These buttons reuse the existing
+review status forms/actions, never auto-confirm into the ledger, and do not
+create official ledger records. `review` and category-only suggestions keep the
+normal common-expense confirmation flow unchanged.
+
 Example rule direction:
 
 - `美团` / `大众点评` / `外卖` -> `餐饮`
@@ -664,7 +670,10 @@ future write path only when a dedicated implementation task adds it.
    the dedicated future write path; parser/upload never writes official ledger
    rows.
 10. V1 split behavior uses existing equal/personal logic only.
-11. Category suggestions are advisory and use existing household categories.
+11. Category and review-action suggestions are advisory and use existing
+    household categories. V1 may show quick-apply for `skip` and
+    `need_discussion` by reusing existing status actions, but suggestions never
+    auto-confirm official ledger records.
 12. Duplicate official ledger records from already imported source items are
     prohibited; dedupe uses `file_sha256`, stable source ids, and a future
     approved normalized fingerprint.

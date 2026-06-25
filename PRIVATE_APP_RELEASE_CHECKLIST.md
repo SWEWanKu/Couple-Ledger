@@ -280,6 +280,13 @@ file as the final private-app release pass.
 - [ ] `skipped` action creates no `ledger_entry_splits` rows.
 - [ ] `need_discussion` action creates no `ledger_entries` row.
 - [ ] `need_discussion` action creates no `ledger_entry_splits` rows.
+- [ ] Suggested `skip` quick apply works.
+- [ ] Suggested `need_discussion` quick apply works.
+- [ ] Suggested quick apply creates no `ledger_entries` row.
+- [ ] Suggested quick apply creates no `ledger_entry_splits` rows.
+- [ ] Quick-applied items can reopen to `pending`.
+- [ ] Manual status, personal, and common-expense controls still work.
+- [ ] Keyboard shortcuts still work after suggested quick-apply polish.
 - [ ] `我的个人` personal skip works for an eligible non-imported item.
 - [ ] `她的个人` / `对方个人` personal skip works for an eligible non-imported
       item when the other household member is available.
@@ -396,6 +403,7 @@ known scoped flows.
 - [ ] Use only sanitized Import Review fixtures for import smoke.
 - [ ] Use only sanitized import items for reopen smoke.
 - [ ] Use only sanitized import items for personal skip smoke.
+- [ ] Use only sanitized import items for suggested quick-apply smoke.
 - [ ] Do not use real bill exports for committed tests.
 - [ ] Do not test imported undo as a user flow; imported item undo remains
       deferred.
@@ -404,6 +412,9 @@ known scoped flows.
       `import_items` rows.
 - [ ] Personal skip smoke verifies `ledger_entries` count does not increase.
 - [ ] Personal skip smoke verifies settlement rows do not change.
+- [ ] Suggested quick-apply smoke verifies `ledger_entries` count does not
+      increase for `skip` or `need_discussion`.
+- [ ] Suggested quick-apply smoke verifies settlement rows do not change.
 - [ ] Do not cleanup-delete import rows.
 - [ ] Test ledger entries created through Import Review confirm-to-ledger should
       be soft-voided through the existing record detail flow.

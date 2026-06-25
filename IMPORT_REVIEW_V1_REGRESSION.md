@@ -41,6 +41,9 @@ source trail and review queue.
 - `/imports/[batchId]/review`.
 - Common expense + equal split confirm-to-ledger.
 - `skipped` and `need_discussion` status actions.
+- Suggested `skip` / `need_discussion` quick-apply buttons on the review card;
+  they reuse the existing status forms/actions and create no official ledger
+  record.
 - Personal-expense skip actions for `我的个人` and `她的个人` / `对方个人`;
   these keep source trail fields and create no official ledger record.
 - Reopen `skipped` and `need_discussion` items back to `pending`.
@@ -271,12 +274,20 @@ Verify:
 - [ ] Source status.
 - [ ] Masked source transaction id.
 - [ ] Suggestion panel.
+- [ ] Suggested `skip` items show a prominent `按建议忽略并下一条` button.
+- [ ] Suggested `need_discussion` items show a prominent `按建议标记待确认`
+      button.
 - [ ] Current item result feedback after an action.
 - [ ] Empty state when the selected filter has no items.
 
 Review safety:
 
 - [ ] Suggestions are shown as advisory only.
+- [ ] Final review decisions remain human-confirmed by the two users.
+- [ ] Suggested category/review action never auto-creates official ledger
+      records.
+- [ ] Suggested `review` / common expense / category-only items keep the normal
+      common-expense confirmation flow unchanged.
 - [ ] `rawJson` is not dumped into the UI.
 - [ ] Source transaction id is masked in the UI.
 - [ ] `我的个人` is enabled for eligible non-imported items.
@@ -336,6 +347,37 @@ Verify after either status action:
 - [ ] Page moves to the next pending item, or shows an empty state when no
       pending items remain.
 - [ ] Imported items cannot be changed by these actions.
+
+## Suggested Action Quick Apply Checklist
+
+From a pending, non-imported item with `ledger_entry_id` still null:
+
+- [ ] Suggested `skip` shows `按建议忽略并下一条`.
+- [ ] Suggested `need_discussion` shows `按建议标记待确认`.
+- [ ] Quick-apply `skip` submits the existing skip form/action.
+- [ ] Quick-apply `need_discussion` submits the existing need-discussion
+      form/action.
+- [ ] Quick-apply `skip` creates no `ledger_entries` row.
+- [ ] Quick-apply `skip` creates no `ledger_entry_splits` rows.
+- [ ] Quick-apply `need_discussion` creates no `ledger_entries` row.
+- [ ] Quick-apply `need_discussion` creates no `ledger_entry_splits` rows.
+- [ ] Batch counters update through the existing status action behavior.
+- [ ] Reopen-to-pending still works after either quick-apply outcome.
+- [ ] Manual `忽略此条` and `标记待确认` buttons remain available.
+- [ ] Manual `我的个人` / `她的个人` / `对方个人` buttons remain available where
+      eligible.
+- [ ] Manual `共同支出` confirmation remains available where eligible.
+- [ ] Keyboard shortcuts `J` / `K` / `4` / `5` / `1` / `Enter` / `Esc` remain
+      unchanged.
+
+Safety expectations:
+
+- [ ] Suggestions are advisory only.
+- [ ] Final decision remains human-confirmed.
+- [ ] Suggested category/review action does not auto-create official ledger
+      records.
+- [ ] No new RPC, server action, migration, API route, parser behavior, or
+      backend write behavior is added for quick apply.
 
 ## Personal Expense Skip Checklist
 
@@ -473,6 +515,10 @@ Always verify:
 - [ ] Do not cleanup-delete import rows.
 - [ ] Import tables have no DELETE policy.
 - [ ] Reopen smoke uses sanitized import items only.
+- [ ] Suggested quick-apply smoke uses sanitized import items only.
+- [ ] Suggested quick-apply smoke verifies `ledger_entries` count does not
+      increase for `skip` or `need_discussion`.
+- [ ] Suggested quick-apply smoke verifies settlement rows do not change.
 - [ ] Personal skip smoke uses sanitized import items only.
 - [ ] Personal skip smoke verifies `ledger_entries` count does not increase.
 - [ ] Personal skip smoke verifies settlement rows do not change.
@@ -518,6 +564,14 @@ Authenticated smoke:
 - [ ] `1` focuses or highlights the common-expense confirmation area.
 - [ ] `Enter` confirms only when the confirm form exists and is valid.
 - [ ] Shortcuts do not fire while typing in note, category, or paid-by fields.
+- [ ] Suggested `skip` quick apply appears and marks the item `skipped` without
+      creating a ledger entry.
+- [ ] Suggested `need_discussion` quick apply appears and marks the item
+      `need_discussion` without creating a ledger entry.
+- [ ] Quick-applied `skipped` and `need_discussion` items can reopen to
+      `pending`.
+- [ ] Manual status, personal, and common-expense controls remain available
+      after quick-apply polish.
 - [ ] `我的个人` works for an eligible non-imported item.
 - [ ] `她的个人` / `对方个人` works for an eligible non-imported item when the
       other household member is available.
