@@ -72,6 +72,40 @@ export type UpdateImportItemReviewStatusResult =
         | "error";
     };
 
+export type ConfirmImportItemToLedgerResult =
+  | {
+      status: "confirmed";
+      batchId: string;
+      itemId: string;
+      ledgerEntryId: string;
+      nextItemId: string | null;
+      reviewedCount: number;
+      importedCount: number;
+      skippedCount: number;
+      needDiscussionCount: number;
+      batchStatus: string | null;
+    }
+  | {
+      status:
+        | "unauthenticated"
+        | "not_household_member"
+        | "not_found"
+        | "already_reviewed"
+        | "invalid_input"
+        | "invalid_category"
+        | "invalid_paid_by"
+        | "invalid_split_type"
+        | "unsupported_direction"
+        | "invalid_amount"
+        | "missing_members"
+        | "blocked_pending_replacement"
+        | "entry_insert_failed"
+        | "split_insert_failed"
+        | "item_update_failed"
+        | "batch_update_failed"
+        | "error";
+    };
+
 type ListImportItemsForReviewInput = {
   householdId: string;
   batchId: string;
@@ -103,6 +137,19 @@ type UpdateImportItemReviewStatusRpcResult = {
   batch_id?: unknown;
   item_id?: unknown;
   review_status?: unknown;
+  next_item_id?: unknown;
+  reviewed_count?: unknown;
+  imported_count?: unknown;
+  skipped_count?: unknown;
+  need_discussion_count?: unknown;
+  batch_status?: unknown;
+};
+
+type ConfirmImportItemToLedgerRpcResult = {
+  status?: unknown;
+  batch_id?: unknown;
+  item_id?: unknown;
+  ledger_entry_id?: unknown;
   next_item_id?: unknown;
   reviewed_count?: unknown;
   imported_count?: unknown;
@@ -238,6 +285,56 @@ export async function updateImportItemReviewStatus(
   }
 
   return normalizeUpdateImportItemReviewStatusRpcResult(data);
+}
+
+export async function confirmImportItemToLedger(
+  supabase: SupabaseClient,
+  {
+    batchId,
+    itemId,
+    categoryId,
+    paidByUserId,
+    splitType,
+    note
+  }: {
+    batchId: string | null;
+    itemId: string | null;
+    categoryId: string | null;
+    paidByUserId: string | null;
+    splitType: string | null;
+    note: string | null;
+  }
+): Promise<ConfirmImportItemToLedgerResult> {
+  if (!isUuid(batchId) || !isUuid(itemId)) {
+    return { status: "not_found" };
+  }
+
+  if (!isUuid(categoryId)) {
+    return { status: "invalid_category" };
+  }
+
+  if (!isUuid(paidByUserId)) {
+    return { status: "invalid_paid_by" };
+  }
+
+  if (splitType !== "equal") {
+    return { status: "invalid_split_type" };
+  }
+
+  const { data, error } = await supabase.rpc("confirm_import_item_to_ledger_v1", {
+    p_batch_id: batchId,
+    p_item_id: itemId,
+    p_category: categoryId,
+    p_paid_by_user_id: paidByUserId,
+    p_note: note,
+    p_split_type: splitType
+  });
+
+  if (error) {
+    return { status: "error" };
+  }
+
+  return normalizeConfirmImportItemToLedgerRpcResult(data);
 }
 
 function getSelectedIndex(
@@ -401,6 +498,57 @@ function normalizeUpdateImportItemReviewStatusRpcResult(
     result.status === "invalid_status" ||
     result.status === "invalid_transition" ||
     result.status === "invalid_input"
+  ) {
+    return {
+      status: result.status
+    };
+  }
+
+  return { status: "error" };
+}
+
+function normalizeConfirmImportItemToLedgerRpcResult(
+  value: unknown
+): ConfirmImportItemToLedgerResult {
+  const result = (value ?? {}) as ConfirmImportItemToLedgerRpcResult;
+
+  if (
+    result.status === "confirmed" &&
+    isUuidValue(result.batch_id) &&
+    isUuidValue(result.item_id) &&
+    isUuidValue(result.ledger_entry_id)
+  ) {
+    return {
+      status: "confirmed",
+      batchId: result.batch_id,
+      itemId: result.item_id,
+      ledgerEntryId: result.ledger_entry_id,
+      nextItemId: isUuidValue(result.next_item_id) ? result.next_item_id : null,
+      reviewedCount: toSafeCount(result.reviewed_count),
+      importedCount: toSafeCount(result.imported_count),
+      skippedCount: toSafeCount(result.skipped_count),
+      needDiscussionCount: toSafeCount(result.need_discussion_count),
+      batchStatus: typeof result.batch_status === "string" ? result.batch_status : null
+    };
+  }
+
+  if (
+    result.status === "unauthenticated" ||
+    result.status === "not_household_member" ||
+    result.status === "not_found" ||
+    result.status === "already_reviewed" ||
+    result.status === "invalid_input" ||
+    result.status === "invalid_category" ||
+    result.status === "invalid_paid_by" ||
+    result.status === "invalid_split_type" ||
+    result.status === "unsupported_direction" ||
+    result.status === "invalid_amount" ||
+    result.status === "missing_members" ||
+    result.status === "blocked_pending_replacement" ||
+    result.status === "entry_insert_failed" ||
+    result.status === "split_insert_failed" ||
+    result.status === "item_update_failed" ||
+    result.status === "batch_update_failed"
   ) {
     return {
       status: result.status
