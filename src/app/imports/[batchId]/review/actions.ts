@@ -7,9 +7,11 @@ import { getImportReviewHouseholdMembership } from "@/lib/import-review/batches"
 import {
   confirmImportItemToLedger,
   normalizeImportReviewStatusFilter,
+  reopenImportItemToPending,
   updateImportItemReviewStatus,
   type ConfirmImportItemToLedgerResult,
   type ImportReviewStatusFilter,
+  type ReopenImportItemToPendingResult,
   type UpdateImportItemReviewStatusResult
 } from "@/lib/import-review/review-items";
 import { createClient } from "@/lib/supabase/server";
@@ -67,6 +69,53 @@ export async function updateImportItemReviewStatusAction(formData: FormData) {
   }
 
   redirect(getReviewActionRedirectHref(returnContext, result));
+}
+
+export async function reopenImportItemToPendingAction(formData: FormData) {
+  const returnContext = getReviewActionReturnContext(formData);
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const membership = await getImportReviewHouseholdMembership(supabase, user.id);
+
+  if (!membership) {
+    redirect("/not-invited");
+  }
+
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    redirect("/login");
+  }
+
+  const actionSupabase = createAuthenticatedActionClient(session.access_token);
+  const result = await reopenImportItemToPending(actionSupabase, {
+    batchId: returnContext.batchId,
+    itemId: returnContext.itemId
+  });
+
+  if (returnContext.batchId) {
+    revalidatePath("/imports");
+    revalidatePath(`/imports/${returnContext.batchId}/review`);
+  }
+
+  if (result.status === "unauthenticated") {
+    redirect("/login");
+  }
+
+  if (result.status === "not_household_member") {
+    redirect("/not-invited");
+  }
+
+  redirect(getReopenActionRedirectHref(returnContext, result));
 }
 
 export async function confirmImportItemToLedgerAction(formData: FormData) {
@@ -204,6 +253,77 @@ function getReviewActionErrorCode(status: Exclude<UpdateImportItemReviewStatusRe
 
   if (status === "not_found") {
     return "not_found";
+  }
+
+  return "action_failed";
+}
+
+function getReopenActionRedirectHref(
+  returnContext: ReviewActionReturnContext,
+  result: Exclude<ReopenImportItemToPendingResult, { status: "unauthenticated" | "not_household_member" }>
+) {
+  const batchId = result.status === "reopened" ? result.batchId : result.batchId ?? returnContext.batchId;
+
+  if (!batchId) {
+    return "/imports";
+  }
+
+  const params = new URLSearchParams();
+
+  if (result.status === "reopened") {
+    params.set("status", "pending");
+    params.set("item", result.itemId);
+    params.set("import_review_result", "reopened");
+  } else if (result.status === "already_pending") {
+    params.set("status", "pending");
+
+    if (result.itemId ?? returnContext.itemId) {
+      params.set("item", result.itemId ?? returnContext.itemId ?? "");
+    }
+
+    params.set("import_review_result", "already_pending");
+  } else if (result.status === "already_imported") {
+    params.set("status", "imported");
+
+    if (result.itemId ?? returnContext.itemId) {
+      params.set("item", result.itemId ?? returnContext.itemId ?? "");
+    }
+
+    params.set("import_review_result", "already_imported");
+  } else if (result.status === "not_found") {
+    params.set("status", returnContext.statusFilter);
+
+    if (returnContext.itemId) {
+      params.set("item", returnContext.itemId);
+    } else if (returnContext.index) {
+      params.set("index", returnContext.index);
+    }
+
+    params.set("import_review_result", "not_found");
+  } else {
+    params.set("status", returnContext.statusFilter);
+
+    if (returnContext.itemId) {
+      params.set("item", returnContext.itemId);
+    } else if (returnContext.index) {
+      params.set("index", returnContext.index);
+    }
+
+    params.set("import_review_result", "error");
+    params.set("import_review_error", getReopenActionErrorCode(result.status));
+  }
+
+  return `/imports/${batchId}/review?${params.toString()}`;
+}
+
+function getReopenActionErrorCode(
+  status: Exclude<
+    ReopenImportItemToPendingResult["status"],
+    "reopened" | "already_pending" | "already_imported" | "not_found"
+  >
+) {
+  if (status === "invalid_transition" || status === "invalid_input") {
+    return "invalid_status";
   }
 
   return "action_failed";

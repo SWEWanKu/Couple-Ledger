@@ -106,6 +106,31 @@ export type ConfirmImportItemToLedgerResult =
         | "error";
     };
 
+export type ReopenImportItemToPendingResult =
+  | {
+      status: "reopened";
+      batchId: string;
+      itemId: string;
+      reviewedCount: number;
+      importedCount: number;
+      skippedCount: number;
+      needDiscussionCount: number;
+      batchStatus: string | null;
+    }
+  | {
+      status:
+        | "unauthenticated"
+        | "not_household_member"
+        | "not_found"
+        | "already_pending"
+        | "already_imported"
+        | "invalid_transition"
+        | "invalid_input"
+        | "error";
+      batchId?: string;
+      itemId?: string;
+    };
+
 type ListImportItemsForReviewInput = {
   householdId: string;
   batchId: string;
@@ -151,6 +176,17 @@ type ConfirmImportItemToLedgerRpcResult = {
   item_id?: unknown;
   ledger_entry_id?: unknown;
   next_item_id?: unknown;
+  reviewed_count?: unknown;
+  imported_count?: unknown;
+  skipped_count?: unknown;
+  need_discussion_count?: unknown;
+  batch_status?: unknown;
+};
+
+type ReopenImportItemToPendingRpcResult = {
+  status?: unknown;
+  batch_id?: unknown;
+  item_id?: unknown;
   reviewed_count?: unknown;
   imported_count?: unknown;
   skipped_count?: unknown;
@@ -335,6 +371,32 @@ export async function confirmImportItemToLedger(
   }
 
   return normalizeConfirmImportItemToLedgerRpcResult(data);
+}
+
+export async function reopenImportItemToPending(
+  supabase: SupabaseClient,
+  {
+    batchId,
+    itemId
+  }: {
+    batchId: string | null;
+    itemId: string | null;
+  }
+): Promise<ReopenImportItemToPendingResult> {
+  if (!isUuid(batchId) || !isUuid(itemId)) {
+    return { status: "not_found" };
+  }
+
+  const { data, error } = await supabase.rpc("reopen_import_item_to_pending_v1", {
+    p_batch_id: batchId,
+    p_item_id: itemId
+  });
+
+  if (error) {
+    return { status: "error" };
+  }
+
+  return normalizeReopenImportItemToPendingRpcResult(data);
 }
 
 function getSelectedIndex(
@@ -552,6 +614,45 @@ function normalizeConfirmImportItemToLedgerRpcResult(
   ) {
     return {
       status: result.status
+    };
+  }
+
+  return { status: "error" };
+}
+
+function normalizeReopenImportItemToPendingRpcResult(
+  value: unknown
+): ReopenImportItemToPendingResult {
+  const result = (value ?? {}) as ReopenImportItemToPendingRpcResult;
+  const batchId = isUuidValue(result.batch_id) ? result.batch_id : undefined;
+  const itemId = isUuidValue(result.item_id) ? result.item_id : undefined;
+
+  if (result.status === "reopened" && batchId && itemId) {
+    return {
+      status: "reopened",
+      batchId,
+      itemId,
+      reviewedCount: toSafeCount(result.reviewed_count),
+      importedCount: toSafeCount(result.imported_count),
+      skippedCount: toSafeCount(result.skipped_count),
+      needDiscussionCount: toSafeCount(result.need_discussion_count),
+      batchStatus: typeof result.batch_status === "string" ? result.batch_status : null
+    };
+  }
+
+  if (
+    result.status === "unauthenticated" ||
+    result.status === "not_household_member" ||
+    result.status === "not_found" ||
+    result.status === "already_pending" ||
+    result.status === "already_imported" ||
+    result.status === "invalid_transition" ||
+    result.status === "invalid_input"
+  ) {
+    return {
+      status: result.status,
+      batchId,
+      itemId
     };
   }
 

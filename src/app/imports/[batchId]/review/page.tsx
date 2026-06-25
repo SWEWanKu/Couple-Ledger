@@ -18,6 +18,7 @@ import {
   Hourglass,
   LockKeyhole,
   ReceiptText,
+  RotateCcw,
   ShieldCheck,
   Split,
   Sparkles,
@@ -57,7 +58,11 @@ import type {
   DashboardHouseholdSummary
 } from "@/types/dashboard";
 import { ImportReviewKeyboardShortcuts } from "./ImportReviewKeyboardShortcuts";
-import { confirmImportItemToLedgerAction, updateImportItemReviewStatusAction } from "./actions";
+import {
+  confirmImportItemToLedgerAction,
+  reopenImportItemToPendingAction,
+  updateImportItemReviewStatusAction
+} from "./actions";
 
 type ImportReviewPageProps = {
   params: Promise<{
@@ -674,7 +679,7 @@ function ReviewDecisionControls({
   }
 
   if (item.reviewStatus === "skipped" || item.reviewStatus === "need_discussion") {
-    return <ReviewedOutcomeStatusCard item={item} />;
+    return <ReviewedOutcomeStatusCard batch={batch} item={item} state={state} />;
   }
 
   const canUpdateStatus = item.reviewStatus === "pending" && !item.ledgerEntryId;
@@ -911,8 +916,17 @@ function ImportedLedgerStatusCard({ item }: { item: ImportReviewItem }) {
   );
 }
 
-function ReviewedOutcomeStatusCard({ item }: { item: ImportReviewItem }) {
+function ReviewedOutcomeStatusCard({
+  batch,
+  item,
+  state
+}: {
+  batch: ImportBatchSummary;
+  item: ImportReviewItem;
+  state: ImportReviewCardState;
+}) {
   const isNeedDiscussion = item.reviewStatus === "need_discussion";
+  const reopenCopy = isNeedDiscussion ? reviewedOutcomeReopenCopy.needDiscussion : reviewedOutcomeReopenCopy.skipped;
 
   return (
     <div
@@ -941,10 +955,43 @@ function ReviewedOutcomeStatusCard({ item }: { item: ImportReviewItem }) {
             : "已忽略只保留导入历史，不会创建正式账本流水，也不会影响月报或结算。"}
         </p>
       </div>
-      <p className="mt-3 text-xs font-bold leading-6">
-        当前版本不提供撤回或重新打开操作；需要入账时请在后续版本的重开流程里处理。
-      </p>
+      <form
+        action={reopenImportItemToPendingAction}
+        className="mt-4"
+        data-import-review-reopen-action={item.reviewStatus}
+      >
+        <ReopenActionHiddenInputs batch={batch} item={item} state={state} />
+        <Button
+          block
+          htmlType="submit"
+          icon={<RotateCcw aria-hidden="true" size={18} />}
+          type="primary"
+        >
+          {reopenCopy.buttonLabel}
+        </Button>
+      </form>
+      <p className="mt-3 text-xs font-bold leading-6">{reopenCopy.note}</p>
     </div>
+  );
+}
+
+function ReopenActionHiddenInputs({
+  batch,
+  item,
+  state
+}: {
+  batch: ImportBatchSummary;
+  item: ImportReviewItem;
+  state: ImportReviewCardState;
+}) {
+  return (
+    <>
+      <input name="batch_id" type="hidden" value={batch.id} />
+      <input name="item_id" type="hidden" value={item.id} />
+      <input name="return_status" type="hidden" value={state.statusFilter} />
+      <input name="return_item" type="hidden" value={item.id} />
+      <input name="return_index" type="hidden" value={String(state.selectedIndex + 1)} />
+    </>
   );
 }
 
@@ -1210,6 +1257,34 @@ function getReviewActionNotice(result: string | null, error: string | null) {
     return {
       kind: "success" as const,
       message: "已确认共同支出并写入正式账本，带你继续看下一张待对账卡片。"
+    };
+  }
+
+  if (result === "reopened") {
+    return {
+      kind: "success" as const,
+      message: "已放回待对账，这张小纸条又回到 pending 队列啦。"
+    };
+  }
+
+  if (result === "already_pending") {
+    return {
+      kind: "success" as const,
+      message: "这张小纸条已经在待对账队列里，不需要重复放回。"
+    };
+  }
+
+  if (result === "already_imported") {
+    return {
+      kind: "error" as const,
+      message: "这张已经写入正式账本，不能用轻量重开把它放回待对账。"
+    };
+  }
+
+  if (result === "not_found") {
+    return {
+      kind: "error" as const,
+      message: "没有找到这张对账小纸条，可能已经不在当前批次里。"
     };
   }
 
@@ -1575,6 +1650,17 @@ const importedLedgerCopy = {
   linkMissing: "\u8d26\u5355\u4fbf\u7b7e\u94fe\u63a5\u6682\u4e0d\u53ef\u7528",
   readonly:
     "\u53ea\u8bfb\u67e5\u770b\uff1a\u4e0d\u4f1a\u6539\u52a8\u5bfc\u5165\u72b6\u6001\uff0c\u4e0d\u4f1a\u5199\u5165\u65b0\u8d26\u5355\u3002"
+} as const;
+
+const reviewedOutcomeReopenCopy = {
+  skipped: {
+    buttonLabel: "\u91cd\u65b0\u653e\u56de\u5f85\u5bf9\u8d26",
+    note: "\u53ea\u4f1a\u628a\u8fd9\u5f20\u6765\u6e90\u5c0f\u7eb8\u6761\u91cd\u65b0\u653e\u56de\u5f85\u5bf9\u8d26\uff0c\u4e0d\u4f1a\u521b\u5efa\u6216\u5220\u9664\u6b63\u5f0f\u8d26\u672c\u6d41\u6c34\u3002"
+  },
+  needDiscussion: {
+    buttonLabel: "\u653e\u56de\u5f85\u5bf9\u8d26",
+    note: "\u5148\u628a\u5b83\u653e\u56de\u5f85\u5bf9\u8d26\u961f\u5217\uff0c\u4e4b\u540e\u53ef\u4ee5\u91cd\u65b0\u786e\u8ba4\u3001\u5ffd\u7565\u6216\u7ee7\u7eed\u6807\u8bb0\u5f85\u786e\u8ba4\u3002"
+  }
 } as const;
 
 const inputClassName =
