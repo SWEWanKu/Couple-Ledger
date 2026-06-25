@@ -7,8 +7,10 @@ import type {
   SuggestedReviewAction
 } from "@/lib/import-review";
 import type { ImportBatchSummary } from "@/lib/import-review/batches";
+import { suggestImportReviewFields } from "./suggestions";
 
 export type ImportReviewStatusFilter = ImportReviewStatus | "all";
+export type ImportReviewSuggestionFilter = SuggestedReviewAction | "all";
 
 export type ImportReviewItem = {
   id: string;
@@ -35,9 +37,11 @@ export type ImportReviewItem = {
 };
 
 export type ImportReviewStatusCounts = Record<ImportReviewStatusFilter, number>;
+export type ImportReviewSuggestionCounts = Record<ImportReviewSuggestionFilter, number>;
 
 export type ImportReviewCardState = {
   statusFilter: ImportReviewStatusFilter;
+  suggestionFilter: ImportReviewSuggestionFilter;
   items: ImportReviewItem[];
   totalItems: number;
   selectedItem: ImportReviewItem | null;
@@ -45,6 +49,7 @@ export type ImportReviewCardState = {
   previousItem: ImportReviewItem | null;
   nextItem: ImportReviewItem | null;
   counts: ImportReviewStatusCounts;
+  suggestionCounts: ImportReviewSuggestionCounts;
   warning: string | null;
 };
 
@@ -166,6 +171,7 @@ type ListImportItemsForReviewInput = {
   householdId: string;
   batchId: string;
   statusFilter: ImportReviewStatusFilter;
+  suggestionFilter: ImportReviewSuggestionFilter;
 };
 
 type ImportItemRow = {
@@ -243,11 +249,16 @@ type ReopenImportItemToPendingRpcResult = {
 
 const itemReadWarning = "这份待对账清单暂时没有读完整，先显示能安全读取的部分。";
 const reviewStatuses: ImportReviewStatus[] = ["pending", "imported", "skipped", "need_discussion"];
+const suggestionFilters: ImportReviewSuggestionFilter[] = ["all", "skip", "need_discussion", "review"];
 
 export async function listImportItemsForReview(
   supabase: SupabaseClient,
-  { householdId, batchId, statusFilter }: ListImportItemsForReviewInput
-): Promise<{ items: ImportReviewItem[]; warning: string | null }> {
+  { householdId, batchId, statusFilter, suggestionFilter }: ListImportItemsForReviewInput
+): Promise<{
+  items: ImportReviewItem[];
+  suggestionCounts: ImportReviewSuggestionCounts;
+  warning: string | null;
+}> {
   let query = supabase
     .from("import_items")
     .select(
@@ -288,12 +299,17 @@ export async function listImportItemsForReview(
   if (error) {
     return {
       items: [],
+      suggestionCounts: getEmptySuggestionCounts(),
       warning: itemReadWarning
     };
   }
 
+  const items = ((data ?? []) as unknown as ImportItemRow[]).map(mapImportItemRow);
+  const suggestionCounts = getSuggestionCounts(items);
+
   return {
-    items: ((data ?? []) as unknown as ImportItemRow[]).map(mapImportItemRow),
+    items: filterItemsBySuggestion(items, suggestionFilter),
+    suggestionCounts,
     warning: null
   };
 }
@@ -302,12 +318,16 @@ export function getImportReviewCardState({
   batch,
   items,
   statusFilter,
+  suggestionFilter,
+  suggestionCounts,
   itemId,
   index
 }: {
   batch: ImportBatchSummary;
   items: ImportReviewItem[];
   statusFilter: ImportReviewStatusFilter;
+  suggestionFilter: ImportReviewSuggestionFilter;
+  suggestionCounts: ImportReviewSuggestionCounts;
   itemId?: string | null;
   index?: string | null;
 }): ImportReviewCardState {
@@ -316,6 +336,7 @@ export function getImportReviewCardState({
 
   return {
     statusFilter,
+    suggestionFilter,
     items,
     totalItems: items.length,
     selectedItem,
@@ -323,6 +344,7 @@ export function getImportReviewCardState({
     previousItem: selectedIndex > 0 ? items[selectedIndex - 1] ?? null : null,
     nextItem: selectedIndex >= 0 ? items[selectedIndex + 1] ?? null : null,
     counts: getCountsFromBatch(batch),
+    suggestionCounts,
     warning: null
   };
 }
@@ -337,6 +359,44 @@ export function normalizeImportReviewStatusFilter(
   }
 
   return "pending";
+}
+
+export function normalizeImportReviewSuggestionFilter(
+  value: string | string[] | null | undefined
+): ImportReviewSuggestionFilter {
+  const suggestion = Array.isArray(value) ? value[0] : value;
+
+  if (isImportReviewSuggestionFilter(suggestion)) {
+    return suggestion;
+  }
+
+  return "all";
+}
+
+export function getImportItemDisplaySuggestion(item: ImportReviewItem): {
+  category: string | null;
+  reviewAction: SuggestedReviewAction;
+} {
+  if (item.suggestedReviewAction) {
+    return {
+      category: item.suggestedCategory,
+      reviewAction: item.suggestedReviewAction
+    };
+  }
+
+  const fallback = suggestImportReviewFields({
+    direction: item.direction,
+    counterparty: item.counterparty,
+    description: item.description,
+    sourceCategory: item.sourceCategory,
+    sourceStatus: item.sourceStatus,
+    paymentMethod: item.paymentMethod
+  });
+
+  return {
+    category: item.suggestedCategory ?? fallback.suggestedCategory,
+    reviewAction: fallback.suggestedReviewAction
+  };
 }
 
 export async function updateImportItemReviewStatus(
@@ -560,6 +620,38 @@ function getCountsFromBatch(batch: ImportBatchSummary): ImportReviewStatusCounts
   };
 }
 
+function getEmptySuggestionCounts(): ImportReviewSuggestionCounts {
+  return {
+    all: 0,
+    skip: 0,
+    need_discussion: 0,
+    review: 0
+  };
+}
+
+function getSuggestionCounts(items: ImportReviewItem[]): ImportReviewSuggestionCounts {
+  const counts = getEmptySuggestionCounts();
+
+  for (const item of items) {
+    const suggestion = getImportItemDisplaySuggestion(item).reviewAction;
+    counts.all += 1;
+    counts[suggestion] += 1;
+  }
+
+  return counts;
+}
+
+function filterItemsBySuggestion(
+  items: ImportReviewItem[],
+  suggestionFilter: ImportReviewSuggestionFilter
+) {
+  if (suggestionFilter === "all") {
+    return items;
+  }
+
+  return items.filter((item) => getImportItemDisplaySuggestion(item).reviewAction === suggestionFilter);
+}
+
 function readSuggestedReviewAction(rawJson: ImportRawJson): SuggestedReviewAction | null {
   const action =
     rawJson.suggestedReviewAction ??
@@ -614,6 +706,10 @@ function isImportReviewStatus(value: unknown): value is ImportReviewStatus {
 
 function isSuggestedReviewAction(value: unknown): value is SuggestedReviewAction {
   return value === "review" || value === "skip" || value === "need_discussion";
+}
+
+function isImportReviewSuggestionFilter(value: unknown): value is ImportReviewSuggestionFilter {
+  return suggestionFilters.includes(value as ImportReviewSuggestionFilter);
 }
 
 function isFinalSplitType(value: unknown): value is "equal" | "personal" {
