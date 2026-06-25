@@ -44,6 +44,8 @@ source trail and review queue.
 - Suggested `skip` / `need_discussion` quick-apply buttons on the review card;
   they reuse the existing status forms/actions and create no official ledger
   record.
+- Read-only suggestion queue filters for `skip`, `need_discussion`, and
+  `review`; they combine with status filters and add no write behavior.
 - Personal-expense skip actions for `我的个人` and `她的个人` / `对方个人`;
   these keep source trail fields and create no official ledger record.
 - Reopen `skipped` and `need_discussion` items back to `pending`.
@@ -260,6 +262,9 @@ Verify:
 - [ ] `第 N / M 条`.
 - [ ] Status filters:
       `pending`, `imported`, `skipped`, `need_discussion`, `all`.
+- [ ] Suggestion filter chip row labeled `按系统建议筛选`.
+- [ ] Suggestion filter chips:
+      `全部建议`, `建议忽略`, `建议待确认`, `建议入账/复核`.
 - [ ] Previous navigation.
 - [ ] Next navigation.
 - [ ] Transaction time.
@@ -288,6 +293,9 @@ Review safety:
       records.
 - [ ] Suggested `review` / common expense / category-only items keep the normal
       common-expense confirmation flow unchanged.
+- [ ] Suggestion filters are read-only navigation only.
+- [ ] Old import rows may use safe derived suggestion fallback.
+- [ ] Filtering does not backfill parser output or update `import_items`.
 - [ ] `rawJson` is not dumped into the UI.
 - [ ] Source transaction id is masked in the UI.
 - [ ] `我的个人` is enabled for eligible non-imported items.
@@ -309,6 +317,8 @@ Verify keyboard behavior:
 
 - [ ] `J` opens the next item when an existing next link is available.
 - [ ] `K` opens the previous item when an existing previous link is available.
+- [ ] With a suggestion filter active, `J` / `K` stay inside the filtered
+      suggestion queue.
 - [ ] `4` submits the existing `蹇界暐姝ゆ潯` / skip form only when that
       action is available.
 - [ ] `5` submits the existing `鏍囪寰呯‘璁?` / need-discussion form only
@@ -347,6 +357,50 @@ Verify after either status action:
 - [ ] Page moves to the next pending item, or shows an empty state when no
       pending items remain.
 - [ ] Imported items cannot be changed by these actions.
+
+## Suggestion Queue Filter Checklist
+
+`/imports/[batchId]/review` supports these suggestion query values:
+
+- [ ] `suggestion=all`.
+- [ ] `suggestion=skip`.
+- [ ] `suggestion=need_discussion`.
+- [ ] `suggestion=review`.
+
+Suggestion filters combine safely with status filters:
+
+- [ ] `status=pending&suggestion=skip`.
+- [ ] `status=pending&suggestion=need_discussion`.
+- [ ] `status=pending&suggestion=review`.
+- [ ] `status=all&suggestion=skip`.
+
+Queue behavior:
+
+- [ ] `按系统建议筛选` chip row appears near the existing status filters.
+- [ ] Chips include `全部建议`, `建议忽略`, `建议待确认`, and `建议入账/复核`.
+- [ ] Previous navigation preserves the active `suggestion` query.
+- [ ] Next navigation preserves the active `suggestion` query.
+- [ ] `J` / `K` shortcuts stay within the filtered queue.
+- [ ] If the requested `item` does not match the active filter, the page falls
+      back to the first matching item.
+- [ ] Empty suggestion queues show a friendly notebook empty state.
+- [ ] Empty suggestion queues offer safe links for `全部待对账`, `全部流水`, and
+      `导入列表`.
+
+Safety expectations:
+
+- [ ] Suggestion filters are advisory and read-only.
+- [ ] Suggestion filters may use safe derived suggestion fallback for old import
+      rows.
+- [ ] Filtering does not update existing `import_items`.
+- [ ] Filtering does not backfill parser suggestion fields.
+- [ ] Filtering creates no `ledger_entries` row.
+- [ ] Filtering creates no `ledger_entry_splits` rows.
+- [ ] Filtering mutates no settlement tables.
+- [ ] No new server action, RPC, migration, API route, parser behavior, or
+      backend write behavior is added for suggestion filters.
+- [ ] Quick-apply `skip` / `need_discussion` still works from filtered queues.
+- [ ] Manual status, personal, and common-expense controls remain available.
 
 ## Suggested Action Quick Apply Checklist
 
@@ -515,6 +569,11 @@ Always verify:
 - [ ] Do not cleanup-delete import rows.
 - [ ] Import tables have no DELETE policy.
 - [ ] Reopen smoke uses sanitized import items only.
+- [ ] Suggestion filter smoke uses sanitized import items only.
+- [ ] Suggestion filter smoke verifies `ledger_entries` count does not change.
+- [ ] Suggestion filter smoke verifies no `import_items` row is updated just by
+      filtering.
+- [ ] Suggestion filter smoke verifies settlement rows do not change.
 - [ ] Suggested quick-apply smoke uses sanitized import items only.
 - [ ] Suggested quick-apply smoke verifies `ledger_entries` count does not
       increase for `skip` or `need_discussion`.
@@ -558,8 +617,18 @@ Authenticated smoke:
 - [ ] `/imports` renders.
 - [ ] `/imports/new` renders.
 - [ ] `/imports/[batchId]/review` renders for an existing batch.
+- [ ] `/imports/[batchId]/review?suggestion=skip` renders matching items when
+      available.
+- [ ] `/imports/[batchId]/review?suggestion=need_discussion` renders matching
+      items when available.
+- [ ] `/imports/[batchId]/review?suggestion=review` renders matching items when
+      available.
+- [ ] Suggestion filters combine with status filters such as
+      `status=pending&suggestion=skip` and `status=all&suggestion=skip`.
+- [ ] Empty suggestion queues show the friendly notebook empty state.
 - [ ] `/imports/[batchId]/review` shortcut help card renders.
 - [ ] `J` / `K` navigation works without breaking mouse/touch navigation.
+- [ ] `J` / `K` stay within the active suggestion queue.
 - [ ] `4` / `5` submit only the existing status forms when available.
 - [ ] `1` focuses or highlights the common-expense confirmation area.
 - [ ] `Enter` confirms only when the confirm form exists and is valid.

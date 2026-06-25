@@ -446,6 +446,14 @@ review status forms/actions, never auto-confirm into the ledger, and do not
 create official ledger records. `review` and category-only suggestions keep the
 normal common-expense confirmation flow unchanged.
 
+V1 also includes read-only suggestion queue filters on
+`/imports/[batchId]/review` for `skip`, `need_discussion`, and `review`
+suggestions. These filters are navigation polish only: they combine with the
+existing status filter query, keep previous/next movement inside the filtered
+queue, use the same safe derived suggestion fallback for older import rows, and
+do not update `import_items`, change parser behavior, or create official ledger
+records.
+
 Example rule direction:
 
 - `美团` / `大众点评` / `外卖` -> `餐饮`
@@ -673,7 +681,9 @@ future write path only when a dedicated implementation task adds it.
 11. Category and review-action suggestions are advisory and use existing
     household categories. V1 may show quick-apply for `skip` and
     `need_discussion` by reusing existing status actions, but suggestions never
-    auto-confirm official ledger records.
+    auto-confirm official ledger records. V1 also supports read-only suggestion
+    queue filters for `skip`, `need_discussion`, and `review`; these filters do
+    not backfill parser output or update import rows.
 12. Duplicate official ledger records from already imported source items are
     prohibited; dedupe uses `file_sha256`, stable source ids, and a future
     approved normalized fingerprint.

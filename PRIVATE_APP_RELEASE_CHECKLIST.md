@@ -265,8 +265,16 @@ file as the final private-app release pass.
   - `skipped`
   - `need_discussion`
   - `all`
+- [ ] Suggestion filter chip row appears on `/imports/[batchId]/review`.
+- [ ] `suggestion=skip` filter works.
+- [ ] `suggestion=need_discussion` filter works.
+- [ ] `suggestion=review` filter works.
+- [ ] Suggestion filters combine with status filters.
+- [ ] Previous/next links stay within the active suggestion queue.
 - [ ] `J` opens the next item and `K` opens the previous item when links are
       available.
+- [ ] `J` / `K` stay within the active suggestion queue when a suggestion filter
+      is selected.
 - [ ] `4` submits only the existing skip form when available.
 - [ ] `5` submits only the existing need-discussion form when available.
 - [ ] `1` focuses or highlights the common-expense confirmation area when
@@ -285,6 +293,7 @@ file as the final private-app release pass.
 - [ ] Suggested quick apply creates no `ledger_entries` row.
 - [ ] Suggested quick apply creates no `ledger_entry_splits` rows.
 - [ ] Quick-applied items can reopen to `pending`.
+- [ ] Empty suggestion queues show a friendly notebook empty state.
 - [ ] Manual status, personal, and common-expense controls still work.
 - [ ] Keyboard shortcuts still work after suggested quick-apply polish.
 - [ ] `我的个人` personal skip works for an eligible non-imported item.
@@ -404,6 +413,7 @@ known scoped flows.
 - [ ] Use only sanitized import items for reopen smoke.
 - [ ] Use only sanitized import items for personal skip smoke.
 - [ ] Use only sanitized import items for suggested quick-apply smoke.
+- [ ] Use only sanitized import items for suggestion filter smoke.
 - [ ] Do not use real bill exports for committed tests.
 - [ ] Do not test imported undo as a user flow; imported item undo remains
       deferred.
@@ -415,6 +425,10 @@ known scoped flows.
 - [ ] Suggested quick-apply smoke verifies `ledger_entries` count does not
       increase for `skip` or `need_discussion`.
 - [ ] Suggested quick-apply smoke verifies settlement rows do not change.
+- [ ] Suggestion filter smoke verifies `ledger_entries` count does not change.
+- [ ] Suggestion filter smoke verifies no `import_items` row is updated just by
+      filtering.
+- [ ] Suggestion filters are SELECT/read-only derived UI only.
 - [ ] Do not cleanup-delete import rows.
 - [ ] Test ledger entries created through Import Review confirm-to-ledger should
       be soft-voided through the existing record detail flow.
