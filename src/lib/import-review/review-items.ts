@@ -27,6 +27,9 @@ export type ImportReviewItem = {
   reviewStatus: ImportReviewStatus;
   suggestedCategory: string | null;
   suggestedReviewAction: SuggestedReviewAction | null;
+  finalOwnerUserId: string | null;
+  finalSplitType: "equal" | "personal" | null;
+  finalNote: string | null;
   ledgerEntryId: string | null;
   createdAt: string;
 };
@@ -70,6 +73,34 @@ export type UpdateImportItemReviewStatusResult =
         | "invalid_transition"
         | "invalid_input"
         | "error";
+    };
+
+export type MarkImportItemPersonalResult =
+  | {
+      status: "personal_skipped";
+      batchId: string;
+      itemId: string;
+      ownerUserId: string;
+      nextItemId: string | null;
+      reviewedCount: number;
+      importedCount: number;
+      skippedCount: number;
+      needDiscussionCount: number;
+      batchStatus: string | null;
+    }
+  | {
+      status:
+        | "unauthenticated"
+        | "not_household_member"
+        | "not_found"
+        | "already_imported"
+        | "invalid_owner"
+        | "invalid_transition"
+        | "invalid_input"
+        | "error";
+      batchId?: string;
+      itemId?: string;
+      ownerUserId?: string;
     };
 
 export type ConfirmImportItemToLedgerResult =
@@ -153,6 +184,9 @@ type ImportItemRow = {
   raw_json: ImportRawJson | null;
   review_status: string;
   suggested_category: string | null;
+  final_owner_user_id: string | null;
+  final_split_type: string | null;
+  final_note: string | null;
   ledger_entry_id: string | null;
   created_at: string;
 };
@@ -162,6 +196,19 @@ type UpdateImportItemReviewStatusRpcResult = {
   batch_id?: unknown;
   item_id?: unknown;
   review_status?: unknown;
+  next_item_id?: unknown;
+  reviewed_count?: unknown;
+  imported_count?: unknown;
+  skipped_count?: unknown;
+  need_discussion_count?: unknown;
+  batch_status?: unknown;
+};
+
+type MarkImportItemPersonalRpcResult = {
+  status?: unknown;
+  batch_id?: unknown;
+  item_id?: unknown;
+  owner_user_id?: unknown;
   next_item_id?: unknown;
   reviewed_count?: unknown;
   imported_count?: unknown;
@@ -220,6 +267,9 @@ export async function listImportItemsForReview(
         "raw_json",
         "review_status",
         "suggested_category",
+        "final_owner_user_id",
+        "final_split_type",
+        "final_note",
         "ledger_entry_id",
         "created_at"
       ].join(", ")
@@ -321,6 +371,42 @@ export async function updateImportItemReviewStatus(
   }
 
   return normalizeUpdateImportItemReviewStatusRpcResult(data);
+}
+
+export async function markImportItemPersonal(
+  supabase: SupabaseClient,
+  {
+    batchId,
+    itemId,
+    ownerUserId,
+    note
+  }: {
+    batchId: string | null;
+    itemId: string | null;
+    ownerUserId: string | null;
+    note: string | null;
+  }
+): Promise<MarkImportItemPersonalResult> {
+  if (!isUuid(batchId) || !isUuid(itemId)) {
+    return { status: "not_found" };
+  }
+
+  if (!isUuid(ownerUserId)) {
+    return { status: "invalid_owner" };
+  }
+
+  const { data, error } = await supabase.rpc("mark_import_item_personal_v1", {
+    p_batch_id: batchId,
+    p_item_id: itemId,
+    p_owner_user_id: ownerUserId,
+    p_note: note
+  });
+
+  if (error) {
+    return { status: "error" };
+  }
+
+  return normalizeMarkImportItemPersonalRpcResult(data);
 }
 
 export async function confirmImportItemToLedger(
@@ -456,6 +542,9 @@ function mapImportItemRow(row: ImportItemRow): ImportReviewItem {
     reviewStatus: isImportReviewStatus(row.review_status) ? row.review_status : "pending",
     suggestedCategory: normalizeText(row.suggested_category),
     suggestedReviewAction: readSuggestedReviewAction(rawJson),
+    finalOwnerUserId: isUuidValue(row.final_owner_user_id) ? row.final_owner_user_id : null,
+    finalSplitType: isFinalSplitType(row.final_split_type) ? row.final_split_type : null,
+    finalNote: normalizeText(row.final_note),
     ledgerEntryId: isUuidValue(row.ledger_entry_id) ? row.ledger_entry_id : null,
     createdAt: row.created_at
   };
@@ -527,6 +616,10 @@ function isSuggestedReviewAction(value: unknown): value is SuggestedReviewAction
   return value === "review" || value === "skip" || value === "need_discussion";
 }
 
+function isFinalSplitType(value: unknown): value is "equal" | "personal" {
+  return value === "equal" || value === "personal";
+}
+
 function normalizeUpdateImportItemReviewStatusRpcResult(
   value: unknown
 ): UpdateImportItemReviewStatusResult {
@@ -563,6 +656,47 @@ function normalizeUpdateImportItemReviewStatusRpcResult(
   ) {
     return {
       status: result.status
+    };
+  }
+
+  return { status: "error" };
+}
+
+function normalizeMarkImportItemPersonalRpcResult(value: unknown): MarkImportItemPersonalResult {
+  const result = (value ?? {}) as MarkImportItemPersonalRpcResult;
+  const batchId = isUuidValue(result.batch_id) ? result.batch_id : undefined;
+  const itemId = isUuidValue(result.item_id) ? result.item_id : undefined;
+  const ownerUserId = isUuidValue(result.owner_user_id) ? result.owner_user_id : undefined;
+
+  if (result.status === "personal_skipped" && batchId && itemId && ownerUserId) {
+    return {
+      status: "personal_skipped",
+      batchId,
+      itemId,
+      ownerUserId,
+      nextItemId: isUuidValue(result.next_item_id) ? result.next_item_id : null,
+      reviewedCount: toSafeCount(result.reviewed_count),
+      importedCount: toSafeCount(result.imported_count),
+      skippedCount: toSafeCount(result.skipped_count),
+      needDiscussionCount: toSafeCount(result.need_discussion_count),
+      batchStatus: typeof result.batch_status === "string" ? result.batch_status : null
+    };
+  }
+
+  if (
+    result.status === "unauthenticated" ||
+    result.status === "not_household_member" ||
+    result.status === "not_found" ||
+    result.status === "already_imported" ||
+    result.status === "invalid_owner" ||
+    result.status === "invalid_transition" ||
+    result.status === "invalid_input"
+  ) {
+    return {
+      status: result.status,
+      batchId,
+      itemId,
+      ownerUserId
     };
   }
 

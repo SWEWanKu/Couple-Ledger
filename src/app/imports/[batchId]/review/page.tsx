@@ -60,6 +60,7 @@ import type {
 import { ImportReviewKeyboardShortcuts } from "./ImportReviewKeyboardShortcuts";
 import {
   confirmImportItemToLedgerAction,
+  markImportItemPersonalAction,
   reopenImportItemToPendingAction,
   updateImportItemReviewStatusAction
 } from "./actions";
@@ -269,7 +270,7 @@ function ReviewBatchHeader({
             </Title>
           </div>
           <p className="mt-5 max-w-3xl text-sm font-bold leading-7 text-[#725d42] sm:text-base">
-            这页展示外部账单解析出来的待对账条目。V1 只开放“共同支出 + 两人平分”的确认入账，其余个人、自定义分摊仍先留在未来版本。
+            这页展示外部账单解析出来的待对账条目。V1 只有“共同支出 + 两人平分”会写入正式账本；个人支出会作为非共同账本结果留在导入复核历史里。
           </p>
           <Divider type="wave-yellow" className="my-6" />
           <div
@@ -679,7 +680,15 @@ function ReviewDecisionControls({
   }
 
   if (item.reviewStatus === "skipped" || item.reviewStatus === "need_discussion") {
-    return <ReviewedOutcomeStatusCard batch={batch} item={item} state={state} />;
+    return (
+      <ReviewedOutcomeStatusCard
+        batch={batch}
+        currentUserId={currentUserId}
+        item={item}
+        members={members}
+        state={state}
+      />
+    );
   }
 
   const canUpdateStatus = item.reviewStatus === "pending" && !item.ledgerEntryId;
@@ -687,6 +696,7 @@ function ReviewDecisionControls({
   const canConfirmCommonExpense = !confirmBlockReason;
   const defaultCategoryId = getDefaultCategoryId(categories, item);
   const defaultPaidBy = getDefaultPaidBy(members, currentUserId);
+  const personalActionOptions = getPersonalActionOptions(members, currentUserId);
   const settlementNotice = getImportSettlementNotice(settlementStatus);
 
   return (
@@ -805,13 +815,13 @@ function ReviewDecisionControls({
         </div>
       )}
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
-        <Button type="dashed" htmlType="button" disabled block>
-          我的个人
-        </Button>
-        <Button type="dashed" htmlType="button" disabled block>
-          她的个人
-        </Button>
+      <div className="mt-4 grid gap-3">
+        <PersonalActionPanel
+          batch={batch}
+          item={item}
+          options={personalActionOptions}
+          state={state}
+        />
         <form
           action={updateImportItemReviewStatusAction}
           data-import-review-status-action="skipped"
@@ -856,8 +866,70 @@ function ReviewDecisionControls({
         </form>
       </div>
       <p className="mt-3 text-xs font-bold leading-6 text-[#725d42]">
-        共同支出确认会创建一笔正式支出流水和等分记录；忽略、待讨论只改待对账状态。个人账、自定义分摊和批量确认仍不开放。
+        共同支出确认会创建一笔正式支出流水和等分记录；个人支出、忽略、待讨论只会保留导入复核历史，不会进入共同账本。
       </p>
+    </div>
+  );
+}
+
+type PersonalActionOption = {
+  kind: "self" | "other";
+  label: string;
+  ownerUserId: string | null;
+  helper: string;
+};
+
+function PersonalActionPanel({
+  batch,
+  item,
+  options,
+  state
+}: {
+  batch: ImportBatchSummary;
+  item: ImportReviewItem;
+  options: PersonalActionOption[];
+  state: ImportReviewCardState;
+}) {
+  const canMarkPersonal = !item.ledgerEntryId && item.reviewStatus !== "imported";
+
+  return (
+    <div
+      className="rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-3 shadow-[0_5px_0_rgba(31,122,112,0.08)]"
+      data-import-review-personal-actions="true"
+    >
+      <p className="flex items-center gap-2 text-sm font-black text-[#1f7a70]">
+        <UserRound aria-hidden="true" size={17} />
+        个人支出不会进入共同账本，但会保留在导入复核历史里
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+        {options.map((option) => (
+          <form
+            key={option.kind}
+            action={markImportItemPersonalAction}
+            data-import-review-personal-action={option.kind}
+            data-import-review-personal-owner={option.ownerUserId ?? ""}
+          >
+            <PersonalActionHiddenInputs
+              batch={batch}
+              item={item}
+              ownerUserId={option.ownerUserId}
+              state={state}
+            />
+            <Button
+              block
+              disabled={!canMarkPersonal || !option.ownerUserId}
+              htmlType="submit"
+              icon={<UserRound aria-hidden="true" size={18} />}
+              type="dashed"
+            >
+              {option.label}
+            </Button>
+            <p className="mt-1 px-2 text-[11px] font-bold leading-5 text-[#1f7a70]">
+              {option.helper}
+            </p>
+          </form>
+        ))}
+      </div>
     </div>
   );
 }
@@ -918,14 +990,23 @@ function ImportedLedgerStatusCard({ item }: { item: ImportReviewItem }) {
 
 function ReviewedOutcomeStatusCard({
   batch,
+  currentUserId,
   item,
+  members,
   state
 }: {
   batch: ImportBatchSummary;
+  currentUserId: string;
   item: ImportReviewItem;
+  members: DashboardHouseholdMember[];
   state: ImportReviewCardState;
 }) {
   const isNeedDiscussion = item.reviewStatus === "need_discussion";
+  const isPersonalSkipped = isPersonalSkippedItem(item);
+  const ownerLabel = item.finalOwnerUserId
+    ? getPersonalOwnerDisplayName(item.finalOwnerUserId, members, currentUserId)
+    : null;
+  const personalActionOptions = getPersonalActionOptions(members, currentUserId);
   const reopenCopy = isNeedDiscussion ? reviewedOutcomeReopenCopy.needDiscussion : reviewedOutcomeReopenCopy.skipped;
 
   return (
@@ -947,13 +1028,37 @@ function ReviewedOutcomeStatusCard({
       </p>
       <div className="mt-3 rounded-[24px] bg-white/78 px-4 py-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]">
         <p className="text-lg font-black text-[#794f27]">
-          {isNeedDiscussion ? "先放进小岛讨论夹" : "这条没有进入正式账本"}
+          {isNeedDiscussion
+            ? "先放进小岛讨论夹"
+            : isPersonalSkipped
+              ? "这笔已标记为个人支出，不进入共同账本"
+              : "这条没有进入正式账本"}
         </p>
         <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">
           {isNeedDiscussion
             ? "待确认只记录这张来源小纸条，不会创建正式账本流水；可以之后再回来一起确认。"
-            : "已忽略只保留导入历史，不会创建正式账本流水，也不会影响月报或结算。"}
+            : isPersonalSkipped
+              ? "个人支出不会进入共同账本，但会保留在导入复核历史里。"
+              : "已忽略只保留导入历史，不会创建正式账本流水，也不会影响月报或结算。"}
         </p>
+        {isPersonalSkipped ? (
+          <p
+            className="mt-3 inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-3 py-1 text-xs font-black text-[#1f7a70]"
+            data-import-review-personal-state="true"
+            data-import-review-personal-owner={item.finalOwnerUserId ?? ""}
+          >
+            <UserRound aria-hidden="true" size={15} />
+            归属：{ownerLabel ?? "小岛成员"}
+          </p>
+        ) : null}
+      </div>
+      <div className="mt-4">
+        <PersonalActionPanel
+          batch={batch}
+          item={item}
+          options={personalActionOptions}
+          state={state}
+        />
       </div>
       <form
         action={reopenImportItemToPendingAction}
@@ -1008,6 +1113,30 @@ function ConfirmActionHiddenInputs({
     <>
       <input name="batch_id" type="hidden" value={batch.id} />
       <input name="item_id" type="hidden" value={item.id} />
+      <input name="return_status" type="hidden" value={state.statusFilter} />
+      <input name="return_item" type="hidden" value={item.id} />
+      <input name="return_index" type="hidden" value={String(state.selectedIndex + 1)} />
+    </>
+  );
+}
+
+function PersonalActionHiddenInputs({
+  batch,
+  item,
+  ownerUserId,
+  state
+}: {
+  batch: ImportBatchSummary;
+  item: ImportReviewItem;
+  ownerUserId: string | null;
+  state: ImportReviewCardState;
+}) {
+  return (
+    <>
+      <input name="batch_id" type="hidden" value={batch.id} />
+      <input name="item_id" type="hidden" value={item.id} />
+      <input name="owner_user_id" type="hidden" value={ownerUserId ?? ""} />
+      <input name="note" type="hidden" value="个人支出，不进入共同账本" />
       <input name="return_status" type="hidden" value={state.statusFilter} />
       <input name="return_item" type="hidden" value={item.id} />
       <input name="return_index" type="hidden" value={String(state.selectedIndex + 1)} />
@@ -1224,7 +1353,7 @@ function ReadonlyPromise() {
   return (
     <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-4 py-3 text-sm font-black leading-6 text-[#1f7a70]">
       <ShieldCheck aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
-      <span>本页只开放单条共同支出确认、忽略和待讨论。确认入账不会改动结算快照，不会开放个人账、自定义分摊或批量确认。</span>
+      <span>本页只开放单条共同支出确认、个人支出来源标记、忽略和待讨论。个人支出不会写入正式账本；确认入账不会改动结算快照，也不会开放自定义分摊或批量确认。</span>
     </div>
   );
 }
@@ -1243,6 +1372,13 @@ function getReviewActionNotice(result: string | null, error: string | null) {
     return {
       kind: "success" as const,
       message: "已忽略此条，正式账本没有新增流水。"
+    };
+  }
+
+  if (result === "personal_skipped") {
+    return {
+      kind: "success" as const,
+      message: "已标记为个人支出，不会进入共同账本，但会留在导入复核历史里。"
     };
   }
 
@@ -1285,6 +1421,13 @@ function getReviewActionNotice(result: string | null, error: string | null) {
     return {
       kind: "error" as const,
       message: "没有找到这张对账小纸条，可能已经不在当前批次里。"
+    };
+  }
+
+  if (result === "invalid_owner") {
+    return {
+      kind: "error" as const,
+      message: "没有确认这位个人归属属于当前共同小岛，先刷新后再试一次。"
     };
   }
 
@@ -1564,6 +1707,78 @@ function getDefaultPaidBy(members: DashboardHouseholdMember[], currentUserId: st
   return members.some((member) => member.userId === currentUserId)
     ? currentUserId
     : members[0]?.userId ?? null;
+}
+
+function getPersonalActionOptions(
+  members: DashboardHouseholdMember[],
+  currentUserId: string
+): PersonalActionOption[] {
+  const currentMember =
+    members.find((member) => member.userId === currentUserId) ??
+    members.find((member) => member.isCurrentUser);
+  const currentOwnerUserId = currentMember?.userId ?? currentUserId;
+  const otherMember = members.find((member) => member.userId !== currentOwnerUserId) ?? null;
+
+  return [
+    {
+      kind: "self",
+      label: "我的个人",
+      ownerUserId: currentOwnerUserId,
+      helper: "标记给你，只留下来源线索"
+    },
+    {
+      kind: "other",
+      label: otherMember ? "她的个人" : "对方个人",
+      ownerUserId: otherMember?.userId ?? null,
+      helper: otherMember
+        ? `标记给${formatPersonalMemberLabel(otherMember, members, currentUserId)}，不写入共同账本`
+        : "还没有读到对方成员，暂时不能提交"
+    }
+  ];
+}
+
+function isPersonalSkippedItem(item: ImportReviewItem) {
+  return (
+    item.reviewStatus === "skipped" &&
+    item.finalSplitType === "personal" &&
+    Boolean(item.finalOwnerUserId)
+  );
+}
+
+function getPersonalOwnerDisplayName(
+  ownerUserId: string,
+  members: DashboardHouseholdMember[],
+  currentUserId: string
+) {
+  const member = members.find((candidate) => candidate.userId === ownerUserId);
+
+  if (!member) {
+    return ownerUserId === currentUserId ? "你" : null;
+  }
+
+  return formatPersonalMemberLabel(member, members, currentUserId);
+}
+
+function formatPersonalMemberLabel(
+  member: DashboardHouseholdMember,
+  members: DashboardHouseholdMember[],
+  currentUserId: string
+) {
+  if (member.userId === currentUserId || member.isCurrentUser) {
+    return "你";
+  }
+
+  if (member.role === "owner") {
+    return "岛主";
+  }
+
+  if (member.role === "partner") {
+    return "伙伴";
+  }
+
+  const index = members.findIndex((candidate) => candidate.userId === member.userId);
+
+  return index >= 0 ? `成员 ${index + 1}` : "小岛成员";
 }
 
 function getDefaultConfirmNote(item: ImportReviewItem) {

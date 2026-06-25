@@ -6,11 +6,13 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getImportReviewHouseholdMembership } from "@/lib/import-review/batches";
 import {
   confirmImportItemToLedger,
+  markImportItemPersonal,
   normalizeImportReviewStatusFilter,
   reopenImportItemToPending,
   updateImportItemReviewStatus,
   type ConfirmImportItemToLedgerResult,
   type ImportReviewStatusFilter,
+  type MarkImportItemPersonalResult,
   type ReopenImportItemToPendingResult,
   type UpdateImportItemReviewStatusResult
 } from "@/lib/import-review/review-items";
@@ -69,6 +71,55 @@ export async function updateImportItemReviewStatusAction(formData: FormData) {
   }
 
   redirect(getReviewActionRedirectHref(returnContext, result));
+}
+
+export async function markImportItemPersonalAction(formData: FormData) {
+  const returnContext = getReviewActionReturnContext(formData);
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const membership = await getImportReviewHouseholdMembership(supabase, user.id);
+
+  if (!membership) {
+    redirect("/not-invited");
+  }
+
+  const {
+    data: { session }
+  } = await supabase.auth.getSession();
+
+  if (!session?.access_token) {
+    redirect("/login");
+  }
+
+  const actionSupabase = createAuthenticatedActionClient(session.access_token);
+  const result = await markImportItemPersonal(actionSupabase, {
+    batchId: returnContext.batchId,
+    itemId: returnContext.itemId,
+    ownerUserId: getFormString(formData, "owner_user_id"),
+    note: normalizePersonalNote(getFormString(formData, "note"))
+  });
+
+  if (returnContext.batchId) {
+    revalidatePath("/imports");
+    revalidatePath(`/imports/${returnContext.batchId}/review`);
+  }
+
+  if (result.status === "unauthenticated") {
+    redirect("/login");
+  }
+
+  if (result.status === "not_household_member") {
+    redirect("/not-invited");
+  }
+
+  redirect(getPersonalActionRedirectHref(returnContext, result));
 }
 
 export async function reopenImportItemToPendingAction(formData: FormData) {
@@ -258,6 +309,83 @@ function getReviewActionErrorCode(status: Exclude<UpdateImportItemReviewStatusRe
   return "action_failed";
 }
 
+function getPersonalActionRedirectHref(
+  returnContext: ReviewActionReturnContext,
+  result: Exclude<MarkImportItemPersonalResult, { status: "unauthenticated" | "not_household_member" }>
+) {
+  const batchId = result.status === "personal_skipped" ? result.batchId : result.batchId ?? returnContext.batchId;
+
+  if (!batchId) {
+    return "/imports";
+  }
+
+  const params = new URLSearchParams();
+
+  if (result.status === "personal_skipped") {
+    params.set("status", "pending");
+
+    if (result.nextItemId) {
+      params.set("item", result.nextItemId);
+    }
+
+    params.set("import_review_result", "personal_skipped");
+  } else if (result.status === "already_imported") {
+    params.set("status", "imported");
+
+    if (result.itemId ?? returnContext.itemId) {
+      params.set("item", result.itemId ?? returnContext.itemId ?? "");
+    }
+
+    params.set("import_review_result", "already_imported");
+  } else if (result.status === "invalid_owner") {
+    params.set("status", returnContext.statusFilter);
+
+    if (returnContext.itemId) {
+      params.set("item", returnContext.itemId);
+    } else if (returnContext.index) {
+      params.set("index", returnContext.index);
+    }
+
+    params.set("import_review_result", "invalid_owner");
+  } else if (result.status === "not_found") {
+    params.set("status", returnContext.statusFilter);
+
+    if (returnContext.itemId) {
+      params.set("item", returnContext.itemId);
+    } else if (returnContext.index) {
+      params.set("index", returnContext.index);
+    }
+
+    params.set("import_review_result", "not_found");
+  } else {
+    params.set("status", returnContext.statusFilter);
+
+    if (returnContext.itemId) {
+      params.set("item", returnContext.itemId);
+    } else if (returnContext.index) {
+      params.set("index", returnContext.index);
+    }
+
+    params.set("import_review_result", "error");
+    params.set("import_review_error", getPersonalActionErrorCode(result.status));
+  }
+
+  return `/imports/${batchId}/review?${params.toString()}`;
+}
+
+function getPersonalActionErrorCode(
+  status: Exclude<
+    MarkImportItemPersonalResult["status"],
+    "personal_skipped" | "already_imported" | "invalid_owner" | "not_found"
+  >
+) {
+  if (status === "invalid_transition" || status === "invalid_input") {
+    return "invalid_status";
+  }
+
+  return "action_failed";
+}
+
 function getReopenActionRedirectHref(
   returnContext: ReviewActionReturnContext,
   result: Exclude<ReopenImportItemToPendingResult, { status: "unauthenticated" | "not_household_member" }>
@@ -411,6 +539,12 @@ function normalizeConfirmNote(value: string | null) {
   const note = value?.trim();
 
   return note ? note.slice(0, 80) : null;
+}
+
+function normalizePersonalNote(value: string | null) {
+  const note = value?.trim();
+
+  return note ? note.slice(0, 120) : "个人支出，不进入共同账本";
 }
 
 function getFormString(formData: FormData, key: string) {
