@@ -2,7 +2,8 @@
 
 This is the final manual/Codex regression checklist for the private 小岛账本
 app. It ties together local smoke, dashboard, records, settlement, monthly
-reports, record mutation flows, and the private island trail navigation.
+reports, Import Review / `共同对账模式`, record mutation flows, and the private
+island trail navigation.
 
 This document does not replace the more detailed module-specific regression
 docs:
@@ -13,6 +14,7 @@ docs:
 - `RECORD_MUTATION_V1_REGRESSION.md`
 - `RECORD_MUTATION_PLAN.md`
 - `SETTLEMENT_V2_CHANGE_PLAN.md`
+- `IMPORT_REVIEW_V1_REGRESSION.md`
 
 Use those documents when a specific module needs deeper verification. Use this
 file as the final private-app release pass.
@@ -68,6 +70,9 @@ file as the final private-app release pass.
 - [ ] Anonymous `/settlement` redirects or is protected.
 - [ ] Anonymous `/settlement/history` redirects or is protected.
 - [ ] Anonymous `/reports/monthly?month=2026-06` redirects or is protected.
+- [ ] Anonymous `/imports` redirects to `/login`.
+- [ ] Anonymous `/imports/new` redirects to `/login`.
+- [ ] Anonymous `/imports/[batchId]/review` redirects to `/login`.
 - [ ] Primary `/dev-login` reaches the private app when configured.
 - [ ] Partner `/dev-login?persona=partner` works when configured.
 - [ ] Missing partner Dev Login config fails safely without printing secrets.
@@ -82,6 +87,9 @@ file as the final private-app release pass.
 - [ ] Recent activity renders non-voided records.
 - [ ] Recent activity record links open record details.
 - [ ] Settlement teaser renders the fully confirmed state for `2026-06`.
+- [ ] The `共同对账模式` entry appears.
+- [ ] The dashboard import review entry links to `/imports`.
+- [ ] The dashboard import review entry links to `/imports/new`.
 - [ ] Dashboard has no new write buttons.
 
 ## Records List Checklist
@@ -104,6 +112,9 @@ file as the final private-app release pass.
 - [ ] Summary stickers link to filtered records.
 - [ ] Settlement awareness renders.
 - [ ] Monthly report link works.
+- [ ] The records import review entry appears.
+- [ ] The records import review entry links to `/imports`.
+- [ ] The records import review entry links to `/imports/new`.
 - [ ] Voided records are excluded from the normal list.
 - [ ] Filtered empty state uses `NotebookEmptyState` and 小岛手账-style copy.
 
@@ -221,7 +232,63 @@ file as the final private-app release pass.
 - [ ] Settlement status renders.
 - [ ] Links to records work.
 - [ ] Links to settlement work.
+- [ ] The monthly report import review entry appears.
+- [ ] The monthly report import review entry links to `/imports`.
+- [ ] The monthly report import review entry links to `/imports/new`.
 - [ ] No writes are available from the monthly report page.
+
+## Import Review / 共同对账模式 Checklist
+
+- [ ] `/imports` is protected and renders after authenticated Dev Login.
+- [ ] `/imports/new` is protected and renders after authenticated Dev Login.
+- [ ] `/imports/[batchId]/review` is protected and renders for an existing
+      import batch.
+- [ ] Dashboard, records list, and monthly report entry points appear.
+- [ ] Dashboard, records list, and monthly report entry points link correctly to
+      `/imports` and `/imports/new`.
+- [ ] Parser verification passes for WeChat `.xlsx`, Alipay UTF-8 `.csv`, and
+      Alipay GBK/GB18030-compatible `.csv` fixtures:
+
+  ```powershell
+  npx --yes tsx scripts/verify-import-review-parsers.ts
+  ```
+
+- [ ] Parser verification reports only aggregate fixture results and does not
+      print real transaction details.
+- [ ] Upload sends parsed rows to the pending review pool.
+- [ ] Upload/parse does not create official `ledger_entries`.
+- [ ] `/imports` batch list shows progress counts and completion state.
+- [ ] `/imports/[batchId]/review` shows one source transaction card at a time.
+- [ ] Status filters work:
+  - `pending`
+  - `imported`
+  - `skipped`
+  - `need_discussion`
+  - `all`
+- [ ] `J` opens the next item and `K` opens the previous item when links are
+      available.
+- [ ] `4` submits only the existing skip form when available.
+- [ ] `5` submits only the existing need-discussion form when available.
+- [ ] `1` focuses or highlights the common-expense confirmation area when
+      available.
+- [ ] `Enter` submits confirm-to-ledger only when the existing confirm form is
+      valid and available.
+- [ ] `Esc` blurs the active editable field where applicable.
+- [ ] Shortcuts do not fire while typing in an input, textarea, select, or
+      contenteditable element.
+- [ ] `skipped` action creates no `ledger_entries` row.
+- [ ] `skipped` action creates no `ledger_entry_splits` rows.
+- [ ] `need_discussion` action creates no `ledger_entries` row.
+- [ ] `need_discussion` action creates no `ledger_entry_splits` rows.
+- [ ] Common expense confirm creates exactly one official `ledger_entries` row.
+- [ ] Common expense confirm creates equal-split `ledger_entry_splits` rows.
+- [ ] Imported item links to its official ledger record.
+- [ ] Ledger record detail shows the `来自共同对账导入` source card.
+- [ ] The ledger record import source card links back to the related review
+      item.
+- [ ] Completed batch state is clear.
+- [ ] Pending-empty state is clear and offers useful next-step links.
+- [ ] Review UI remains a scrapbook / island notebook flow, not an admin table.
 
 ## Visual Consistency Checklist
 
@@ -231,6 +298,9 @@ file as the final private-app release pass.
   - `/records/new`
   - `/records/[id]`
   - `/records/[id]/edit`
+  - `/imports`
+  - `/imports/new`
+  - `/imports/[batchId]/review`
   - `/settlement`
   - `/settlement/history`
   - `/settlement/history/[snapshotId]`
@@ -254,6 +324,17 @@ file as the final private-app release pass.
 - [ ] No hard delete user flow.
 - [ ] No DELETE policy on `ledger_entries` for the V1 app flow.
 - [ ] No mutation of settlement snapshot amounts or snapshot JSON.
+- [ ] Import Review confirm-to-ledger does not mutate settlement snapshots.
+- [ ] Import Review confirm-to-ledger does not mutate settlement confirmations.
+- [ ] No real bill files are committed.
+- [ ] Import Review does not dump `raw_json` into the UI.
+- [ ] Parser validation does not print transaction details, merchants, notes,
+      transaction ids, or real file names.
+- [ ] Import tables have no DELETE policy.
+- [ ] Upload does not store original bill files long-term.
+- [ ] Import Review has no one-click batch confirm-all behavior.
+- [ ] Import Review has no AI final decision.
+- [ ] Import Review has no voice recognition.
 - [ ] No payment provider behavior.
 - [ ] No real transfer behavior.
 
@@ -275,6 +356,9 @@ file as the final private-app release pass.
   - settlement create helper
   - settlement confirm helper
   - settlement replacement helpers
+  - import batch creation RPC helper
+  - import item status RPC helper
+  - import confirm-to-ledger RPC helper
 
 Useful static commands:
 
@@ -294,7 +378,14 @@ known scoped flows.
 ## Safe Write Smoke Guidance
 
 - [ ] Use far-future test months such as `2099-10`.
+- [ ] Use only sanitized Import Review fixtures for import smoke.
+- [ ] Do not use real bill exports for committed tests.
 - [ ] Prefer creating temporary records through the normal UI.
+- [ ] Importing sanitized fixtures may leave harmless `import_batches` and
+      `import_items` rows.
+- [ ] Do not cleanup-delete import rows.
+- [ ] Test ledger entries created through Import Review confirm-to-ledger should
+      be soft-voided through the existing record detail flow.
 - [ ] Edit the temporary record through `/records/[id]/edit`.
 - [ ] Soft-void the same temporary record afterward.
 - [ ] Do not cleanup-delete temporary records.
@@ -310,6 +401,15 @@ known scoped flows.
 - No Playwright dependency or script is committed.
 - Browser smoke is manual/Codex-run using `LOCAL_SMOKE_GUIDE.md`.
 - Custom split edit is deferred.
+- Personal expense import is deferred.
+- Import Review custom split is deferred.
+- Refund auto-linking is deferred.
+- Import Review batch confirm-all is deferred.
+- Undo/reopen imported items is deferred.
+- Realtime Import Review collaboration is deferred.
+- Import Review AI final decision is unsupported.
+- Import Review voice recognition is unsupported.
+- No original bill file archive is stored by Import Review V1.
 - Restore voided record is deferred.
 - Voided history/audit view is deferred.
 - Real replacement UI full flow waits for a genuine outdated month or an
@@ -319,6 +419,7 @@ known scoped flows.
 ## When To Update This File
 
 - A new private page is added.
+- Import Review parser, upload, review, shortcut, or confirm behavior changes.
 - Record mutation behavior changes.
 - Settlement V2 replacement behavior changes.
 - A new smoke/test runner is introduced.
