@@ -43,9 +43,11 @@ import {
   getImportReviewCardState,
   getImportItemDisplaySuggestion,
   listImportItemsForReview,
+  normalizeImportReviewDirectionFilter,
   normalizeImportReviewSuggestionFilter,
   normalizeImportReviewStatusFilter,
   type ImportReviewCardState,
+  type ImportReviewDirectionFilter,
   type ImportReviewItem,
   type ImportReviewSuggestionFilter,
   type ImportReviewStatusFilter
@@ -76,6 +78,7 @@ type ImportReviewPageProps = {
     notice?: string | string[];
     status?: string | string[];
     suggestion?: string | string[];
+    direction?: string | string[];
     item?: string | string[];
     index?: string | string[];
     import_review_result?: string | string[];
@@ -114,6 +117,24 @@ const suggestionFilterLabels: Record<ImportReviewSuggestionFilter, string> = {
   review: "建议入账/复核"
 };
 
+const directionFilters: ImportReviewDirectionFilter[] = [
+  "all",
+  "expense",
+  "income",
+  "refund",
+  "transfer",
+  "unknown"
+];
+
+const directionFilterLabels: Record<ImportReviewDirectionFilter, string> = {
+  all: "全部类型",
+  expense: "支出",
+  income: "收入",
+  refund: "退款",
+  transfer: "转账/充值提现",
+  unknown: "未知"
+};
+
 const shortcutTargetIds = {
   confirmForm: "import-review-confirm-common-form",
   skipForm: "import-review-skip-form",
@@ -125,6 +146,7 @@ export default async function ImportReviewPage({ params, searchParams }: ImportR
   const query = searchParams ? await searchParams : {};
   const statusFilter = normalizeImportReviewStatusFilter(query.status);
   const suggestionFilter = normalizeImportReviewSuggestionFilter(query.suggestion);
+  const directionFilter = normalizeImportReviewDirectionFilter(query.direction);
   const { supabase, user, membership } = await requireImportsAccess();
   const householdSummaryResult = await getDashboardHouseholdSummary(supabase, {
     householdId: membership.household_id,
@@ -147,14 +169,17 @@ export default async function ImportReviewPage({ params, searchParams }: ImportR
     householdId: membership.household_id,
     batchId,
     statusFilter,
-    suggestionFilter
+    suggestionFilter,
+    directionFilter
   });
   const cardState = getImportReviewCardState({
     batch: result.batch,
     items: itemsResult.items,
     statusFilter,
     suggestionFilter,
+    directionFilter,
     suggestionCounts: itemsResult.suggestionCounts,
+    directionCounts: itemsResult.directionCounts,
     itemId: getSingleParam(query.item),
     index: getSingleParam(query.index)
   });
@@ -243,6 +268,7 @@ function ReviewCardPage({
       <ReviewBatchHeader batch={batch} state={state} />
       <StatusFilterTabs batchId={batch.id} state={state} />
       <SuggestionFilterChips batchId={batch.id} state={state} />
+      <DirectionFilterChips batchId={batch.id} state={state} />
       {state.selectedItem ? (
         <ImportItemCard
           batch={batch}
@@ -393,7 +419,7 @@ function StatusFilterTabs({
         return (
           <Link
             key={filter}
-            href={getReviewHref(batchId, filter, state.suggestionFilter, null)}
+            href={getReviewHref(batchId, filter, state.suggestionFilter, state.directionFilter, null)}
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
           >
             {content}
@@ -447,8 +473,63 @@ function SuggestionFilterChips({
           return (
             <Link
               key={filter}
-              href={getReviewHref(batchId, state.statusFilter, filter, null)}
+              href={getReviewHref(batchId, state.statusFilter, filter, state.directionFilter, null)}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#9fd8ca] bg-white px-4 py-2 text-xs font-black text-[#1f7a70] shadow-[0_4px_0_rgba(31,122,112,0.1)] transition hover:-translate-y-0.5 hover:bg-[#fffdf3] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              {content}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DirectionFilterChips({
+  batchId,
+  state
+}: {
+  batchId: string;
+  state: ImportReviewCardState;
+}) {
+  return (
+    <div
+      data-import-review-direction-filter="true"
+      className="grid gap-3 rounded-[28px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] p-3 shadow-[0_5px_0_rgba(138,100,32,0.1)]"
+    >
+      <p className="flex items-center gap-2 px-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a6420]">
+        <WalletCards aria-hidden="true" size={16} />
+        按流水类型筛选
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {directionFilters.map((filter) => {
+          const isActive = filter === state.directionFilter;
+          const content = (
+            <>
+              <span>{directionFilterLabels[filter]}</span>
+              <span className="rounded-full bg-white/75 px-2 py-0.5 text-[11px]">
+                {state.directionCounts[filter]}
+              </span>
+            </>
+          );
+
+          if (isActive) {
+            return (
+              <span
+                key={filter}
+                aria-current="page"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_#d9a43e]"
+              >
+                {content}
+              </span>
+            );
+          }
+
+          return (
+            <Link
+              key={filter}
+              href={getReviewHref(batchId, state.statusFilter, state.suggestionFilter, filter, null)}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
             >
               {content}
             </Link>
@@ -481,9 +562,9 @@ function BatchCompletionCard({ batch }: { batch: ImportBatchSummary }) {
 function BatchNextStepLinks({ batch }: { batch: ImportBatchSummary }) {
   const month = getBatchMonthKey(batch);
   const links = [
-    { href: getReviewHref(batch.id, "all", "all", null), label: "查看全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
-    { href: getReviewHref(batch.id, "imported", "all", null), label: "查看已入账", icon: <BadgeCheck aria-hidden="true" size={16} /> },
-    { href: getReviewHref(batch.id, "need_discussion", "all", null), label: "查看待确认", icon: <HelpCircle aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batch.id, "all", "all", "all", null), label: "查看全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batch.id, "imported", "all", "all", null), label: "查看已入账", icon: <BadgeCheck aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batch.id, "need_discussion", "all", "all", null), label: "查看待确认", icon: <HelpCircle aria-hidden="true" size={16} /> },
     { href: "/imports", label: "回到导入列表", icon: <ArrowLeft aria-hidden="true" size={16} /> },
     { href: "/imports/new", label: "导入新账单", icon: <FileUp aria-hidden="true" size={16} /> },
     { href: month ? `/records?month=${month}` : "/records", label: "去账本看看", icon: <ReceiptText aria-hidden="true" size={16} /> },
@@ -542,10 +623,10 @@ function ImportItemCard({
   );
   const canUseStatusShortcut = item.reviewStatus === "pending" && !item.ledgerEntryId;
   const previousHref = state.previousItem
-    ? getReviewHref(batch.id, state.statusFilter, state.suggestionFilter, state.previousItem.id)
+    ? getReviewHref(batch.id, state.statusFilter, state.suggestionFilter, state.directionFilter, state.previousItem.id)
     : null;
   const nextHref = state.nextItem
-    ? getReviewHref(batch.id, state.statusFilter, state.suggestionFilter, state.nextItem.id)
+    ? getReviewHref(batch.id, state.statusFilter, state.suggestionFilter, state.directionFilter, state.nextItem.id)
     : null;
 
   return (
@@ -599,6 +680,7 @@ function ImportItemCard({
               value={maskSourceTransactionId(item.sourceTransactionId)}
             />
           </div>
+          <DirectionExplanation direction={item.direction} />
         </section>
 
         <aside className="grid gap-4 content-start">
@@ -646,7 +728,7 @@ function CardNavigator({
           direction="previous"
           href={
             state.previousItem
-              ? getReviewHref(batchId, state.statusFilter, state.suggestionFilter, state.previousItem.id)
+              ? getReviewHref(batchId, state.statusFilter, state.suggestionFilter, state.directionFilter, state.previousItem.id)
               : null
           }
           item={state.previousItem}
@@ -655,7 +737,7 @@ function CardNavigator({
           direction="next"
           href={
             state.nextItem
-              ? getReviewHref(batchId, state.statusFilter, state.suggestionFilter, state.nextItem.id)
+              ? getReviewHref(batchId, state.statusFilter, state.suggestionFilter, state.directionFilter, state.nextItem.id)
               : null
           }
           item={state.nextItem}
@@ -713,6 +795,62 @@ function PagerSlot({
       </span>
     </Link>
   );
+}
+
+function DirectionExplanation({ direction }: { direction: ImportReviewItem["direction"] }) {
+  const explanation = getDirectionExplanation(direction);
+
+  if (!explanation) {
+    return null;
+  }
+
+  return (
+    <div
+      data-import-review-direction-explanation={direction}
+      className="mt-5 rounded-[26px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-4 shadow-[0_6px_0_rgba(31,122,112,0.1)]"
+    >
+      <p className="flex items-center gap-2 text-sm font-black text-[#1f7a70]">
+        <AlertCircle aria-hidden="true" size={18} />
+        {explanation.title}
+      </p>
+      <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
+        {explanation.body}
+      </p>
+      {explanation.helper ? (
+        <p className="mt-2 rounded-[18px] bg-white/75 px-3 py-2 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]">
+          {explanation.helper}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function getDirectionExplanation(direction: ImportReviewItem["direction"]) {
+  if (direction === "transfer") {
+    return {
+      title: "转账类小纸条",
+      body: "这类通常是转账、提现、充值或理财流转，不一定是共同消费。",
+      helper: "可以按建议忽略，也可以待确认。"
+    };
+  }
+
+  if (direction === "refund") {
+    return {
+      title: "退款类小纸条",
+      body: "这类可能是退款或交易关闭，建议先确认是否要和原消费对应。",
+      helper: null
+    };
+  }
+
+  if (direction === "unknown") {
+    return {
+      title: "未识别小纸条",
+      body: "这笔流水信息不够明确，建议一起看一下。",
+      helper: null
+    };
+  }
+
+  return null;
 }
 
 function SuggestionPanel({
@@ -1353,30 +1491,33 @@ function EmptyReviewState({
 }) {
   const isPendingEmpty = state.statusFilter === "pending";
   const isSuggestionEmpty = state.suggestionFilter !== "all";
+  const isDirectionEmpty = state.directionFilter !== "all";
+  const isFilteredEmpty = isSuggestionEmpty || isDirectionEmpty;
 
   return (
     <div className="grid gap-5">
       <NotebookEmptyState
         action={{
-          href: isSuggestionEmpty
-            ? getReviewHref(batch.id, "pending", "all", null)
-            : getReviewHref(batch.id, "all", "all", null),
-          label: isSuggestionEmpty ? "全部待对账" : "查看全部条目",
+          href: isFilteredEmpty
+            ? getReviewHref(batch.id, "pending", "all", "all", null)
+            : getReviewHref(batch.id, "all", "all", "all", null),
+          label: isFilteredEmpty ? "全部待对账" : "查看全部条目",
           icon: <ReceiptText aria-hidden="true" size={18} />
         }}
         secondaryAction={{
-          href: isSuggestionEmpty ? getReviewHref(batch.id, "all", "all", null) : "/imports",
-          label: isSuggestionEmpty ? "全部流水" : "回到待对账池",
+          href: isFilteredEmpty ? getReviewHref(batch.id, "all", "all", "all", null) : "/imports",
+          label: isFilteredEmpty ? "全部流水" : "回到待对账池",
           icon: <ArrowLeft aria-hidden="true" size={18} />
         }}
         dataAttributes={{
           "data-import-review-empty-state": state.statusFilter,
-          "data-import-review-empty-suggestion": state.suggestionFilter
+          "data-import-review-empty-suggestion": state.suggestionFilter,
+          "data-import-review-empty-direction": state.directionFilter
         }}
         description={
-          isSuggestionEmpty ? (
+          isFilteredEmpty ? (
             <>
-              <p>这个建议队列暂时没有流水。</p>
+              <p>这个筛选队列暂时没有流水。</p>
               <p className="mt-2">可以切回全部待对账继续看，也可以回到全部流水检查其它小纸条。</p>
             </>
           ) : isPendingEmpty ? (
@@ -1388,19 +1529,19 @@ function EmptyReviewState({
             <p>这个筛选下暂时没有小纸条。换个状态看看，也许它们躲在别的夹层里。</p>
           )
         }
-        eyebrow={isSuggestionEmpty ? "Suggestion Queue" : "Quiet Stack"}
+        eyebrow={isFilteredEmpty ? "Filtered Queue" : "Quiet Stack"}
         iconName="icon-map"
         title={
-          isSuggestionEmpty
-            ? "这个建议队列暂时没有流水"
+          isFilteredEmpty
+            ? "这个筛选队列暂时没有流水"
             : isPendingEmpty
               ? "这个筛选下没有待处理流水了"
               : "这里暂时没有对账卡片"
         }
         tone="yellow"
       />
-      {isSuggestionEmpty ? (
-        <SuggestionEmptyLinks batchId={batch.id} />
+      {isFilteredEmpty ? (
+        <FilteredEmptyLinks batchId={batch.id} />
       ) : isPendingEmpty ? (
         <PendingEmptyLinks batchId={batch.id} />
       ) : null}
@@ -1408,16 +1549,16 @@ function EmptyReviewState({
   );
 }
 
-function SuggestionEmptyLinks({ batchId }: { batchId: string }) {
+function FilteredEmptyLinks({ batchId }: { batchId: string }) {
   const links = [
-    { href: getReviewHref(batchId, "pending", "all", null), label: "全部待对账", icon: <ReceiptText aria-hidden="true" size={16} /> },
-    { href: getReviewHref(batchId, "all", "all", null), label: "全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batchId, "pending", "all", "all", null), label: "全部待对账", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batchId, "all", "all", "all", null), label: "全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
     { href: "/imports", label: "导入列表", icon: <ArrowLeft aria-hidden="true" size={16} /> }
   ];
 
   return (
     <div
-      data-import-review-suggestion-empty-links="true"
+      data-import-review-filter-empty-links="true"
       className="flex flex-wrap gap-2 rounded-[28px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-3 shadow-[0_5px_0_rgba(31,122,112,0.1)]"
     >
       {links.map((link) => (
@@ -1436,14 +1577,14 @@ function SuggestionEmptyLinks({ batchId }: { batchId: string }) {
 
 function PendingEmptyLinks({ batchId }: { batchId: string }) {
   const links = [
-    { href: getReviewHref(batchId, "all", "all", null), label: "全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batchId, "all", "all", "all", null), label: "全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
     {
-      href: getReviewHref(batchId, "need_discussion", "all", null),
+      href: getReviewHref(batchId, "need_discussion", "all", "all", null),
       label: "待讨论",
       icon: <HelpCircle aria-hidden="true" size={16} />
     },
-    { href: getReviewHref(batchId, "imported", "all", null), label: "已入账", icon: <BadgeCheck aria-hidden="true" size={16} /> },
-    { href: getReviewHref(batchId, "skipped", "all", null), label: "已忽略", icon: <ReceiptText aria-hidden="true" size={16} /> }
+    { href: getReviewHref(batchId, "imported", "all", "all", null), label: "已入账", icon: <BadgeCheck aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batchId, "skipped", "all", "all", null), label: "已忽略", icon: <ReceiptText aria-hidden="true" size={16} /> }
   ];
 
   return (
@@ -1719,6 +1860,7 @@ function getReviewHref(
   batchId: string,
   statusFilter: ImportReviewStatusFilter,
   suggestionFilter: ImportReviewSuggestionFilter,
+  directionFilter: ImportReviewDirectionFilter,
   itemId: string | null
 ) {
   const params = new URLSearchParams();
@@ -1726,6 +1868,10 @@ function getReviewHref(
 
   if (suggestionFilter !== "all") {
     params.set("suggestion", suggestionFilter);
+  }
+
+  if (directionFilter !== "all") {
+    params.set("direction", directionFilter);
   }
 
   if (itemId) {

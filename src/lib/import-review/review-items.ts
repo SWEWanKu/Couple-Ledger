@@ -11,6 +11,7 @@ import { suggestImportReviewFields } from "./suggestions";
 
 export type ImportReviewStatusFilter = ImportReviewStatus | "all";
 export type ImportReviewSuggestionFilter = SuggestedReviewAction | "all";
+export type ImportReviewDirectionFilter = ImportDirection | "all";
 
 export type ImportReviewItem = {
   id: string;
@@ -38,10 +39,12 @@ export type ImportReviewItem = {
 
 export type ImportReviewStatusCounts = Record<ImportReviewStatusFilter, number>;
 export type ImportReviewSuggestionCounts = Record<ImportReviewSuggestionFilter, number>;
+export type ImportReviewDirectionCounts = Record<ImportReviewDirectionFilter, number>;
 
 export type ImportReviewCardState = {
   statusFilter: ImportReviewStatusFilter;
   suggestionFilter: ImportReviewSuggestionFilter;
+  directionFilter: ImportReviewDirectionFilter;
   items: ImportReviewItem[];
   totalItems: number;
   selectedItem: ImportReviewItem | null;
@@ -50,6 +53,7 @@ export type ImportReviewCardState = {
   nextItem: ImportReviewItem | null;
   counts: ImportReviewStatusCounts;
   suggestionCounts: ImportReviewSuggestionCounts;
+  directionCounts: ImportReviewDirectionCounts;
   warning: string | null;
 };
 
@@ -172,6 +176,7 @@ type ListImportItemsForReviewInput = {
   batchId: string;
   statusFilter: ImportReviewStatusFilter;
   suggestionFilter: ImportReviewSuggestionFilter;
+  directionFilter: ImportReviewDirectionFilter;
 };
 
 type ImportItemRow = {
@@ -250,13 +255,15 @@ type ReopenImportItemToPendingRpcResult = {
 const itemReadWarning = "这份待对账清单暂时没有读完整，先显示能安全读取的部分。";
 const reviewStatuses: ImportReviewStatus[] = ["pending", "imported", "skipped", "need_discussion"];
 const suggestionFilters: ImportReviewSuggestionFilter[] = ["all", "skip", "need_discussion", "review"];
+const directionFilters: ImportReviewDirectionFilter[] = ["all", "expense", "income", "refund", "transfer", "unknown"];
 
 export async function listImportItemsForReview(
   supabase: SupabaseClient,
-  { householdId, batchId, statusFilter, suggestionFilter }: ListImportItemsForReviewInput
+  { householdId, batchId, statusFilter, suggestionFilter, directionFilter }: ListImportItemsForReviewInput
 ): Promise<{
   items: ImportReviewItem[];
   suggestionCounts: ImportReviewSuggestionCounts;
+  directionCounts: ImportReviewDirectionCounts;
   warning: string | null;
 }> {
   let query = supabase
@@ -300,16 +307,20 @@ export async function listImportItemsForReview(
     return {
       items: [],
       suggestionCounts: getEmptySuggestionCounts(),
+      directionCounts: getEmptyDirectionCounts(),
       warning: itemReadWarning
     };
   }
 
   const items = ((data ?? []) as unknown as ImportItemRow[]).map(mapImportItemRow);
   const suggestionCounts = getSuggestionCounts(items);
+  const suggestionFilteredItems = filterItemsBySuggestion(items, suggestionFilter);
+  const directionCounts = getDirectionCounts(suggestionFilteredItems);
 
   return {
-    items: filterItemsBySuggestion(items, suggestionFilter),
+    items: filterItemsByDirection(suggestionFilteredItems, directionFilter),
     suggestionCounts,
+    directionCounts,
     warning: null
   };
 }
@@ -319,7 +330,9 @@ export function getImportReviewCardState({
   items,
   statusFilter,
   suggestionFilter,
+  directionFilter,
   suggestionCounts,
+  directionCounts,
   itemId,
   index
 }: {
@@ -327,7 +340,9 @@ export function getImportReviewCardState({
   items: ImportReviewItem[];
   statusFilter: ImportReviewStatusFilter;
   suggestionFilter: ImportReviewSuggestionFilter;
+  directionFilter: ImportReviewDirectionFilter;
   suggestionCounts: ImportReviewSuggestionCounts;
+  directionCounts: ImportReviewDirectionCounts;
   itemId?: string | null;
   index?: string | null;
 }): ImportReviewCardState {
@@ -337,6 +352,7 @@ export function getImportReviewCardState({
   return {
     statusFilter,
     suggestionFilter,
+    directionFilter,
     items,
     totalItems: items.length,
     selectedItem,
@@ -345,6 +361,7 @@ export function getImportReviewCardState({
     nextItem: selectedIndex >= 0 ? items[selectedIndex + 1] ?? null : null,
     counts: getCountsFromBatch(batch),
     suggestionCounts,
+    directionCounts,
     warning: null
   };
 }
@@ -368,6 +385,18 @@ export function normalizeImportReviewSuggestionFilter(
 
   if (isImportReviewSuggestionFilter(suggestion)) {
     return suggestion;
+  }
+
+  return "all";
+}
+
+export function normalizeImportReviewDirectionFilter(
+  value: string | string[] | null | undefined
+): ImportReviewDirectionFilter {
+  const direction = Array.isArray(value) ? value[0] : value;
+
+  if (isImportReviewDirectionFilter(direction)) {
+    return direction;
   }
 
   return "all";
@@ -629,6 +658,17 @@ function getEmptySuggestionCounts(): ImportReviewSuggestionCounts {
   };
 }
 
+function getEmptyDirectionCounts(): ImportReviewDirectionCounts {
+  return {
+    all: 0,
+    expense: 0,
+    income: 0,
+    refund: 0,
+    transfer: 0,
+    unknown: 0
+  };
+}
+
 function getSuggestionCounts(items: ImportReviewItem[]): ImportReviewSuggestionCounts {
   const counts = getEmptySuggestionCounts();
 
@@ -636,6 +676,17 @@ function getSuggestionCounts(items: ImportReviewItem[]): ImportReviewSuggestionC
     const suggestion = getImportItemDisplaySuggestion(item).reviewAction;
     counts.all += 1;
     counts[suggestion] += 1;
+  }
+
+  return counts;
+}
+
+function getDirectionCounts(items: ImportReviewItem[]): ImportReviewDirectionCounts {
+  const counts = getEmptyDirectionCounts();
+
+  for (const item of items) {
+    counts.all += 1;
+    counts[item.direction] += 1;
   }
 
   return counts;
@@ -650,6 +701,17 @@ function filterItemsBySuggestion(
   }
 
   return items.filter((item) => getImportItemDisplaySuggestion(item).reviewAction === suggestionFilter);
+}
+
+function filterItemsByDirection(
+  items: ImportReviewItem[],
+  directionFilter: ImportReviewDirectionFilter
+) {
+  if (directionFilter === "all") {
+    return items;
+  }
+
+  return items.filter((item) => item.direction === directionFilter);
 }
 
 function readSuggestedReviewAction(rawJson: ImportRawJson): SuggestedReviewAction | null {
@@ -710,6 +772,10 @@ function isSuggestedReviewAction(value: unknown): value is SuggestedReviewAction
 
 function isImportReviewSuggestionFilter(value: unknown): value is ImportReviewSuggestionFilter {
   return suggestionFilters.includes(value as ImportReviewSuggestionFilter);
+}
+
+function isImportReviewDirectionFilter(value: unknown): value is ImportReviewDirectionFilter {
+  return directionFilters.includes(value as ImportReviewDirectionFilter);
 }
 
 function isFinalSplitType(value: unknown): value is "equal" | "personal" {
