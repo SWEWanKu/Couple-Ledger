@@ -88,8 +88,15 @@ file as the final private-app release pass.
 - [ ] Recent activity record links open record details.
 - [ ] Settlement teaser renders the fully confirmed state for `2026-06`.
 - [ ] The `共同对账模式` entry appears.
+- [ ] If unfinished import batches exist, the dashboard `继续对账` entry appears.
+- [ ] The dashboard `继续对账` link opens
+      `/imports/[batchId]/review?status=pending` when pending items exist.
+- [ ] If no pending items remain but need-discussion items exist, the dashboard
+      `继续对账` link opens a safe `status=need_discussion` queue.
 - [ ] The dashboard import review entry links to `/imports`.
 - [ ] The dashboard import review entry links to `/imports/new`.
+- [ ] Viewing or clicking dashboard import review links does not write import,
+      ledger, or settlement data.
 - [ ] Dashboard has no new write buttons.
 
 ## Records List Checklist
@@ -246,6 +253,17 @@ file as the final private-app release pass.
 - [ ] Dashboard, records list, and monthly report entry points appear.
 - [ ] Dashboard, records list, and monthly report entry points link correctly to
       `/imports` and `/imports/new`.
+- [ ] If unfinished import batches exist, the dashboard entry shows
+      `继续对账`.
+- [ ] If unfinished import batches exist, `/imports` shows a top `继续对账`
+      section.
+- [ ] Continue links open `/imports/[batchId]/review?status=pending` when
+      pending items exist.
+- [ ] Continue links open a safe
+      `/imports/[batchId]/review?status=need_discussion` queue if no pending
+      items remain but need-discussion items exist.
+- [ ] Viewing or clicking continue links does not write import, ledger, or
+      settlement data.
 - [ ] Parser verification passes for WeChat `.xlsx`, Alipay UTF-8 `.csv`, and
       Alipay GBK/GB18030-compatible `.csv` fixtures:
 
@@ -259,6 +277,8 @@ file as the final private-app release pass.
 - [ ] Upload/parse does not create official `ledger_entries`.
 - [ ] `/imports` batch list shows progress counts and completion state.
 - [ ] `/imports/[batchId]/review` shows one source transaction card at a time.
+- [ ] Existing review actions and filters still work after landing from a
+      continue link.
 - [ ] Status filters work:
   - `pending`
   - `imported`
@@ -379,6 +399,11 @@ file as the final private-app release pass.
 - [ ] Import Review has no one-click batch confirm-all behavior.
 - [ ] Import Review has no AI final decision.
 - [ ] Import Review has no voice recognition.
+- [ ] Import Review continue-entry overview is SELECT/read-only derived UI.
+- [ ] Import Review continue-entry filtering/navigation does not change
+      `ledger_entries` count.
+- [ ] Import Review continue-entry filtering/navigation does not update
+      `import_items` or `import_batches`.
 - [ ] Import Review direction filters are SELECT/read-only derived UI.
 - [ ] Import Review direction filtering does not change `ledger_entries` count.
 - [ ] Import Review direction filtering does not update `import_items` rows.

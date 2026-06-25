@@ -39,6 +39,8 @@ source trail and review queue.
 - `/imports`.
 - `/imports/new`.
 - `/imports/[batchId]/review`.
+- Read-only continue-entry polish on `/dashboard` and `/imports` for unfinished
+  import review batches.
 - Common expense + equal split confirm-to-ledger.
 - `skipped` and `need_discussion` status actions.
 - Suggested `skip` / `need_discussion` quick-apply buttons on the review card;
@@ -253,6 +255,40 @@ Verify:
 - [ ] Duplicate file flow returns the existing batch with friendly copy.
 - [ ] Upload/parse creates no official ledger records.
 - [ ] Upload/parse mutates no settlement tables.
+
+## Continue Entry Checklist
+
+Dashboard and `/imports` provide read-only resume entry points for unfinished
+共同对账 work.
+
+- [ ] `/dashboard` shows the `共同对账模式` entry.
+- [ ] When unfinished import batches exist, the dashboard entry offers
+      `继续对账`.
+- [ ] `/imports` shows a top `继续对账` section when unfinished batches exist.
+- [ ] Unfinished means `pending_count > 0` or `need_discussion_count > 0`.
+- [ ] `pending_count` is derived from `parsed_count - reviewed_count`.
+- [ ] Continue links point to
+      `/imports/[batchId]/review?status=pending` when pending items exist.
+- [ ] If no pending items remain but `need_discussion_count > 0`, continue
+      links may point to
+      `/imports/[batchId]/review?status=need_discussion`.
+- [ ] Continue links are safe internal links only.
+- [ ] `/imports` batch list still works below the continue section.
+- [ ] `/imports/[batchId]/review` still renders status filters.
+- [ ] `/imports/[batchId]/review` still renders suggestion filters.
+- [ ] `/imports/[batchId]/review` still renders direction filters.
+
+Continue-entry safety expectations:
+
+- [ ] Continue summary is SELECT-only / derived UI.
+- [ ] Viewing or clicking continue links does not write `import_items`.
+- [ ] Viewing or clicking continue links does not write `import_batches`.
+- [ ] Continue-entry polish adds no new RPC, server action, migration, API route,
+      or backend behavior.
+- [ ] Continue-entry polish creates no `ledger_entries` row.
+- [ ] Continue-entry polish creates no `ledger_entry_splits` rows.
+- [ ] Continue-entry polish mutates no settlement snapshots or confirmations.
+- [ ] Continue-entry links do not accept or trust arbitrary return URLs.
 
 ## Review Card Checklist
 
@@ -680,6 +716,8 @@ Authenticated smoke:
 - [ ] Primary Dev Login works.
 - [ ] Partner Dev Login works if configured.
 - [ ] `/dashboard` renders.
+- [ ] If unfinished import batches exist, `/dashboard` shows a
+      `继续对账` entry that opens the pending or need-discussion review queue.
 - [ ] `/records?month=2026-06` renders.
 - [ ] `/records/new?month=2026-06` renders.
 - [ ] `/settlement?month=2026-06` renders.
@@ -687,8 +725,12 @@ Authenticated smoke:
 - [ ] Settlement snapshot detail renders.
 - [ ] `/reports/monthly?month=2026-06` renders.
 - [ ] `/imports` renders.
+- [ ] If unfinished import batches exist, `/imports` shows a top `继续对账`
+      section and the latest unfinished batch link opens the right review queue.
 - [ ] `/imports/new` renders.
 - [ ] `/imports/[batchId]/review` renders for an existing batch.
+- [ ] Landing on `/imports/[batchId]/review?status=pending` from a continue
+      link keeps the status, suggestion, and direction filters available.
 - [ ] `/imports/[batchId]/review?suggestion=skip` renders matching items when
       available.
 - [ ] `/imports/[batchId]/review?suggestion=need_discussion` renders matching
@@ -754,6 +796,12 @@ Authenticated smoke:
 - [ ] No payment or real transfer behavior.
 - [ ] No one-click batch import into the official ledger.
 - [ ] No batch confirm-all behavior.
+- [ ] Import Review continue-entry overview is SELECT/read-only derived UI.
+- [ ] Import Review continue-entry navigation does not update `import_items`.
+- [ ] Import Review continue-entry navigation does not update `import_batches`.
+- [ ] Import Review continue-entry navigation does not change `ledger_entries`
+      count.
+- [ ] Import Review continue-entry navigation does not mutate settlement data.
 - [ ] Direction filters are SELECT/read-only derived UI.
 - [ ] Direction filtering does not update `import_items` rows.
 - [ ] Direction filtering does not change `ledger_entries` count.

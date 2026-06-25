@@ -26,7 +26,7 @@ screen, or an automatic finance backend.
 
 ## 2. Routes
 
-Future routes:
+Current V1 routes:
 
 - `/imports` lists import batches and their progress.
 - `/imports/new` uploads a WeChat xlsx or Alipay csv file.
@@ -37,6 +37,12 @@ Future routes:
 The MVP should treat `/imports/[batchId]/review` as the main experience. A
 table-first batch screen can exist later as a support view, but it should not be
 the first V1 user journey.
+
+V1 now also includes read-only continue-entry polish on `/dashboard` and
+`/imports`. These entry points help users resume unfinished import review
+batches by linking to the pending queue first, or the need-discussion queue when
+no pending items remain. They do not change review actions, parser behavior,
+write behavior, schema, RLS, or official ledger/settlement semantics.
 
 ## 3. MVP Flow
 
@@ -90,7 +96,9 @@ a later explicit decision document changes them.
 1. Product name and framing: V1 is `共同对账模式`. It is a human-confirmed
    review workflow, not `一键自动记账`.
 2. Entry points: V1 may add `/imports` for upload/history and
-   `/imports/[batchId]/review` for the card-by-card review queue.
+   `/imports/[batchId]/review` for the card-by-card review queue. V1 also
+   includes read-only continue-entry links on `/dashboard` and `/imports` to
+   resume unfinished batches without adding write behavior.
 3. Supported sources: V1 supports WeChat Pay `.xlsx` and Alipay `.csv` exports.
    Bank PDF, OCR, encrypted zip extraction, voice recognition, and AI final
    decisions are deferred.
@@ -752,9 +760,10 @@ future write path only when a dedicated implementation task adds it.
 7. Accepted upload file size limits and upload failure copy.
 8. Whether a future refund-as-income rule is allowed.
 
-## Current Task Verification Checklist
+## Plan Document Verification Checklist
 
-This documentation task is complete only if:
+For updates that only edit this plan document, the documentation task is
+complete only if:
 
 - `IMPORT_REVIEW_PLAN.md` is the only changed file;
 - no `src/**` file changed;
