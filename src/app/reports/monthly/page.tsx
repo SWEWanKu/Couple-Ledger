@@ -20,6 +20,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { Card, Divider, Icon, Title } from "animal-island-ui";
+import { ImportReviewEntryCard } from "@/components/ImportReviewEntryCard";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
@@ -120,6 +121,8 @@ export default async function MonthlyReportPage({ searchParams }: MonthlyReportP
         {householdWarning ? <PageNotice message={householdWarning} /> : null}
         {monthlySummary.warning ? <PageNotice message={monthlySummary.warning} /> : null}
         {recordsResult.warning ? <PageNotice message={recordsResult.warning} /> : null}
+
+        <ImportReviewEntryCard context="monthly" monthLabel={range.monthLabel} />
 
         <MonthlyOverviewGrid result={monthlySummary} />
 

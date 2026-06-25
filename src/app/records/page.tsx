@@ -21,6 +21,7 @@ import {
   UserRound
 } from "lucide-react";
 import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
+import { ImportReviewEntryCard } from "@/components/ImportReviewEntryCard";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
@@ -201,6 +202,8 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
             />
 
             <RecordsMonthlySummaryNote filters={recordsFilters} result={monthlyLedgerSummary} />
+
+            <ImportReviewEntryCard context="records" className="mt-5" />
 
             <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
               <div className="flex flex-wrap gap-3">

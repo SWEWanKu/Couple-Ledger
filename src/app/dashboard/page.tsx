@@ -17,6 +17,7 @@ import {
   type LucideIcon
 } from "lucide-react";
 import { Card, Divider, Icon, Title } from "animal-island-ui";
+import { ImportReviewEntryCard } from "@/components/ImportReviewEntryCard";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
@@ -34,6 +35,7 @@ import {
   type MonthlyLedgerPayerBreakdownItem,
   type MonthlyLedgerSummaryResult
 } from "@/lib/ledger/get-monthly-ledger-summary";
+import { listImportBatches } from "@/lib/import-review/batches";
 import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
@@ -119,8 +121,21 @@ export default async function DashboardPage() {
     members: householdSummary.members,
     limit: 6
   });
+  const importReviewBatches = await listImportBatches(supabase, {
+    householdId: membership.household_id,
+    limit: 6
+  });
   const ledgerStats = createLedgerStats(ledgerSummary);
   const currentMonth = ledgerSummary.monthStart.slice(0, 7);
+  const importReviewOverview = {
+    recentBatchCount: importReviewBatches.batches.length,
+    pendingItemCount: importReviewBatches.batches.reduce((sum, batch) => sum + batch.pendingCount, 0),
+    needDiscussionCount: importReviewBatches.batches.reduce(
+      (sum, batch) => sum + batch.needDiscussionCount,
+      0
+    ),
+    warning: importReviewBatches.warning
+  };
 
   return (
     <AppShell
@@ -144,6 +159,8 @@ export default async function DashboardPage() {
         />
 
         <DashboardHouseholdSummaryCard summary={householdSummary} warning={householdSummaryWarning} />
+
+        <ImportReviewEntryCard context="dashboard" overview={importReviewOverview} />
 
         {ledgerSummaryWarning ? (
           <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
