@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "animal-island-ui/style";
 import "./globals.css";
-import { IslandTransitionProvider } from "@/components/IslandTransitionProvider";
 
 export const metadata: Metadata = {
   title: "小岛账本",
@@ -16,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
-        <IslandTransitionProvider>{children}</IslandTransitionProvider>
+        {children}
       </body>
     </html>
   );

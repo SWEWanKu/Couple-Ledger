@@ -18,7 +18,6 @@ import {
   Hourglass,
   LockKeyhole,
   ReceiptText,
-  RotateCcw,
   ShieldCheck,
   Split,
   Sparkles,
@@ -30,6 +29,7 @@ import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
+import { RitualSubmitButton } from "@/components/RitualSubmitButton";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   getImportBatchReviewSummary,
@@ -1058,15 +1058,20 @@ function ReviewDecisionControls({
             />
           </ConfirmFormField>
 
-          <Button
+          <RitualSubmitButton
             block
-            htmlType="submit"
-            icon={<CheckCircle2 aria-hidden="true" size={18} />}
+            dataPendingScope="import-review-confirm"
+            icon="check"
+            idleLabel="确认共同支出并下一条"
+            pendingLabel="正在贴到账本..."
+            ritual={{
+              title: "正在把这笔流水贴到账本里...",
+              description: "会创建这一笔正式支出和等分记录，不会改写结算便签。",
+              iconName: "icon-diy"
+            }}
             size="large"
             type="primary"
-          >
-            确认共同支出并下一条
-          </Button>
+          />
         </form>
       ) : (
         <div
@@ -1099,15 +1104,15 @@ function ReviewDecisionControls({
             reviewStatus="skipped"
             state={state}
           />
-          <Button
+          <RitualSubmitButton
             block
+            dataPendingScope="import-review-skip"
             disabled={!canUpdateStatus}
-            htmlType="submit"
-            icon={<ReceiptText aria-hidden="true" size={18} />}
+            icon="receipt"
+            idleLabel="忽略此条"
+            pendingLabel="正在放进忽略小夹..."
             type="dashed"
-          >
-            忽略此条
-          </Button>
+          />
         </form>
         <form
           action={updateImportItemReviewStatusAction}
@@ -1120,15 +1125,15 @@ function ReviewDecisionControls({
             reviewStatus="need_discussion"
             state={state}
           />
-          <Button
+          <RitualSubmitButton
             block
+            dataPendingScope="import-review-need-discussion"
             disabled={!canUpdateStatus}
-            htmlType="submit"
-            icon={<Hourglass aria-hidden="true" size={18} />}
+            icon="hourglass"
+            idleLabel="标记待确认"
+            pendingLabel="正在放进讨论夹..."
             type="dashed"
-          >
-            标记待确认
-          </Button>
+          />
         </form>
       </div>
       <p className="mt-3 text-xs font-bold leading-6 text-[#725d42]">
@@ -1181,15 +1186,15 @@ function PersonalActionPanel({
               ownerUserId={option.ownerUserId}
               state={state}
             />
-            <Button
+            <RitualSubmitButton
               block
+              dataPendingScope={`import-review-personal-${option.kind}`}
               disabled={!canMarkPersonal || !option.ownerUserId}
-              htmlType="submit"
-              icon={<UserRound aria-hidden="true" size={18} />}
+              icon="user"
+              idleLabel={option.label}
+              pendingLabel="正在标记个人支出..."
               type="dashed"
-            >
-              {option.label}
-            </Button>
+            />
             <p className="mt-1 px-2 text-[11px] font-bold leading-5 text-[#1f7a70]">
               {option.helper}
             </p>
@@ -1332,14 +1337,14 @@ function ReviewedOutcomeStatusCard({
         data-import-review-reopen-action={item.reviewStatus}
       >
         <ReopenActionHiddenInputs batch={batch} item={item} state={state} />
-        <Button
+        <RitualSubmitButton
           block
-          htmlType="submit"
-          icon={<RotateCcw aria-hidden="true" size={18} />}
+          dataPendingScope="import-review-reopen"
+          icon="rotate"
+          idleLabel={reopenCopy.buttonLabel}
+          pendingLabel="正在放回待确认..."
           type="primary"
-        >
-          {reopenCopy.buttonLabel}
-        </Button>
+        />
       </form>
       <p className="mt-3 text-xs font-bold leading-6">{reopenCopy.note}</p>
     </div>

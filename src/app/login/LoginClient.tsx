@@ -4,6 +4,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, HeartHandshake, LockKeyhole, Mail, Send, Sparkles } from "lucide-react";
 import { Button, Card, Divider, Footer, Icon, Title, Wallet } from "animal-island-ui";
+import { IslandRitualPending } from "@/components/IslandRitualPending";
 import { IslandLink } from "@/components/IslandLink";
 import { createClient } from "@/lib/supabase/client";
 
@@ -419,6 +420,24 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                       >
                         重新发送验证码
                       </Button>
+                    ) : null}
+
+                    {isVerifyingOtp ? (
+                      <IslandRitualPending
+                        compact
+                        dataScope="login-entry"
+                        description="通行信已经对上，正在把你送回两个人的私密账本。"
+                        iconName="icon-map"
+                        title="正在打开两个人的小岛..."
+                      />
+                    ) : isSendingOtp ? (
+                      <IslandRitualPending
+                        compact
+                        dataScope="login-send-otp"
+                        description="验证码只用于这次登岛，不会公开任何账本内容。"
+                        iconName="icon-chat"
+                        title="正在寄出小岛通行信..."
+                      />
                     ) : null}
                   </form>
 

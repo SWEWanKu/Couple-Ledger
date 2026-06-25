@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { AlertCircle, ArrowLeft, FileSpreadsheet, FileText, FileUp, ShieldCheck } from "lucide-react";
-import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
+import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
+import { RitualSubmitButton } from "@/components/RitualSubmitButton";
 import {
   getCreateImportBatchErrorMessage,
   getImportReviewHouseholdMembership,
@@ -141,9 +142,20 @@ export default async function NewImportPage({ searchParams }: NewImportPageProps
               />
             </label>
 
-            <Button type="primary" size="large" htmlType="submit" block>
-              放进待对账池
-            </Button>
+            <RitualSubmitButton
+              block
+              dataPendingScope="import-upload"
+              icon="upload"
+              idleLabel="放进待对账池"
+              pendingLabel="正在整理账单..."
+              ritual={{
+                title: "正在把账单放进待对账池...",
+                description: "不会直接写入正式账本，正在整理成待对账卡片。",
+                iconName: "icon-shopping"
+              }}
+              size="large"
+              type="primary"
+            />
           </form>
         </Card>
       </div>

@@ -14,13 +14,12 @@ import {
   Hourglass,
   NotebookTabs,
   ReceiptText,
-  Send,
   ShieldCheck,
   Stamp,
   UsersRound,
   WalletCards
 } from "lucide-react";
-import { Button, Card, Divider, Icon, Title } from "animal-island-ui";
+import { Card, Divider, Icon, Title } from "animal-island-ui";
 import {
   confirmSettlementReplacementSnapshotAction,
   confirmSettlementSnapshotAction,
@@ -31,6 +30,7 @@ import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
+import { RitualSubmitButton } from "@/components/RitualSubmitButton";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
 import {
@@ -591,9 +591,20 @@ function NoSnapshotActionPanel({
             <p className="text-sm font-black leading-7 text-[#725d42]">
               把当前实时计算盖章存成 {range.monthLabel} 的结算便签。
             </p>
-            <Button type="primary" size="large" htmlType="submit" icon={<Send aria-hidden="true" size={18} />} block>
-              提出本月结算便签
-            </Button>
+            <RitualSubmitButton
+              block
+              dataPendingScope="settlement-propose"
+              icon="send"
+              idleLabel="提出本月结算便签"
+              pendingLabel="正在盖上结算章..."
+              ritual={{
+                title: "正在盖上本月结算便签...",
+                description: `会保存 ${range.monthLabel} 的当前结算快照，不会改动原始账本。`,
+                iconName: "icon-chat"
+              }}
+              size="large"
+              type="primary"
+            />
           </form>
         ) : (
           <div className="grid h-full content-center gap-3 text-sm font-bold leading-7 text-[#725d42]">
@@ -779,9 +790,20 @@ function StoredSnapshotPanel({
             <p className="text-sm font-bold leading-7 text-[#725d42]">
               确认后只会新增你自己的确认记录，不会改动原始账本，也不会替对方确认。
             </p>
-            <Button type="primary" size="large" htmlType="submit" icon={<Stamp aria-hidden="true" size={18} />} block>
-              确认这张结算便签
-            </Button>
+            <RitualSubmitButton
+              block
+              dataPendingScope="settlement-confirm"
+              icon="stamp"
+              idleLabel="确认这张结算便签"
+              pendingLabel="正在盖确认章..."
+              ritual={{
+                title: "正在给结算便签盖章...",
+                description: "只会新增你的确认记录，不会改动原始账本或替对方确认。",
+                iconName: "icon-map"
+              }}
+              size="large"
+              type="primary"
+            />
           </form>
         )}
       </section>
@@ -891,9 +913,20 @@ function PendingReplacementNotice({
               <p className="text-xs font-black leading-5 text-[#725d42]">
                 确认后只给这张新便签加上你的盖章。它不是付款确认，也不会改账本流水。
               </p>
-              <Button type="primary" size="large" htmlType="submit" icon={<Stamp aria-hidden="true" size={18} />} block>
-                确认新的结算便签
-              </Button>
+              <RitualSubmitButton
+                block
+                dataPendingScope="settlement-replacement-confirm"
+                icon="stamp"
+                idleLabel="确认新的结算便签"
+                pendingLabel="正在盖确认章..."
+                ritual={{
+                  title: "正在确认新的结算便签...",
+                  description: "这只是给新便签加上你的章，不是付款确认，也不会改写账本流水。",
+                  iconName: "icon-map"
+                }}
+                size="large"
+                type="primary"
+              />
             </form>
           )}
         </div>
@@ -931,9 +964,20 @@ function ReplacementProposalPanel({
           <p className="text-sm font-black leading-6 text-[#725d42]">
             只创建 pending replacement 便签，不会付款、不会结清，也不会替你确认。
           </p>
-          <Button type="primary" size="large" htmlType="submit" icon={<FilePenLine aria-hidden="true" size={18} />} block>
-            重新生成结算便签
-          </Button>
+          <RitualSubmitButton
+            block
+            dataPendingScope="settlement-replacement-propose"
+            icon="file-pen"
+            idleLabel="重新生成结算便签"
+            pendingLabel="正在重写便签..."
+            ritual={{
+              title: "正在重新贴一张结算便签...",
+              description: "会生成一张新的待确认便签，旧便签会保持 active 直到双方确认新版本。",
+              iconName: "icon-diy"
+            }}
+            size="large"
+            type="primary"
+          />
         </form>
       </div>
     </div>
