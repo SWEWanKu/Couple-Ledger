@@ -454,6 +454,16 @@ queue, use the same safe derived suggestion fallback for older import rows, and
 do not update `import_items`, change parser behavior, or create official ledger
 records.
 
+V1 also includes read-only transaction-type queues on
+`/imports/[batchId]/review` for `expense`, `income`, `refund`, `transfer`, and
+`unknown` rows. These queues are navigation polish only: they combine with the
+status and suggestion filters, keep previous/next and `J` / `K` movement inside
+the filtered queue, derive counts from already selected rows, and do not update
+`import_items`, change parser behavior, or create official ledger records.
+Transfer, refund, and unknown rows may show explanatory copy, but that copy is
+advisory only and does not auto-apply a review decision. Refund auto-linking
+remains deferred.
+
 Example rule direction:
 
 - `美团` / `大众点评` / `外卖` -> `餐饮`
@@ -682,8 +692,10 @@ future write path only when a dedicated implementation task adds it.
     household categories. V1 may show quick-apply for `skip` and
     `need_discussion` by reusing existing status actions, but suggestions never
     auto-confirm official ledger records. V1 also supports read-only suggestion
-    queue filters for `skip`, `need_discussion`, and `review`; these filters do
-    not backfill parser output or update import rows.
+    queue filters for `skip`, `need_discussion`, and `review`, plus read-only
+    transaction-type queues for `expense`, `income`, `refund`, `transfer`, and
+    `unknown`; these filters do not backfill parser output or update import
+    rows.
 12. Duplicate official ledger records from already imported source items are
     prohibited; dedupe uses `file_sha256`, stable source ids, and a future
     approved normalized fingerprint.

@@ -270,11 +270,22 @@ file as the final private-app release pass.
 - [ ] `suggestion=need_discussion` filter works.
 - [ ] `suggestion=review` filter works.
 - [ ] Suggestion filters combine with status filters.
+- [ ] `direction=expense` filter works.
+- [ ] `direction=income` filter works when data exists.
+- [ ] `direction=refund` filter works when data exists.
+- [ ] `direction=transfer` filter works when data exists.
+- [ ] `direction=unknown` empty or populated state is friendly.
+- [ ] Direction filters combine with status and suggestion filters.
 - [ ] Previous/next links stay within the active suggestion queue.
+- [ ] Previous/next links stay within the active direction queue.
 - [ ] `J` opens the next item and `K` opens the previous item when links are
       available.
 - [ ] `J` / `K` stay within the active suggestion queue when a suggestion filter
       is selected.
+- [ ] `J` / `K` stay within the active direction queue when a direction filter
+      is selected.
+- [ ] Transfer/refund/unknown explanation copy renders when those rows are
+      available.
 - [ ] `4` submits only the existing skip form when available.
 - [ ] `5` submits only the existing need-discussion form when available.
 - [ ] `1` focuses or highlights the common-expense confirmation area when
@@ -294,7 +305,10 @@ file as the final private-app release pass.
 - [ ] Suggested quick apply creates no `ledger_entry_splits` rows.
 - [ ] Quick-applied items can reopen to `pending`.
 - [ ] Empty suggestion queues show a friendly notebook empty state.
+- [ ] Empty direction queues show a friendly notebook empty state.
 - [ ] Manual status, personal, and common-expense controls still work.
+- [ ] Quick-apply and manual controls still work inside filtered direction
+      queues.
 - [ ] Keyboard shortcuts still work after suggested quick-apply polish.
 - [ ] `我的个人` personal skip works for an eligible non-imported item.
 - [ ] `她的个人` / `对方个人` personal skip works for an eligible non-imported
@@ -365,6 +379,9 @@ file as the final private-app release pass.
 - [ ] Import Review has no one-click batch confirm-all behavior.
 - [ ] Import Review has no AI final decision.
 - [ ] Import Review has no voice recognition.
+- [ ] Import Review direction filters are SELECT/read-only derived UI.
+- [ ] Import Review direction filtering does not change `ledger_entries` count.
+- [ ] Import Review direction filtering does not update `import_items` rows.
 - [ ] No payment provider behavior.
 - [ ] No real transfer behavior.
 
@@ -414,6 +431,7 @@ known scoped flows.
 - [ ] Use only sanitized import items for personal skip smoke.
 - [ ] Use only sanitized import items for suggested quick-apply smoke.
 - [ ] Use only sanitized import items for suggestion filter smoke.
+- [ ] Use only sanitized import items for direction filter smoke.
 - [ ] Do not use real bill exports for committed tests.
 - [ ] Do not test imported undo as a user flow; imported item undo remains
       deferred.
@@ -429,6 +447,10 @@ known scoped flows.
 - [ ] Suggestion filter smoke verifies no `import_items` row is updated just by
       filtering.
 - [ ] Suggestion filters are SELECT/read-only derived UI only.
+- [ ] Direction filter smoke verifies `ledger_entries` count does not change.
+- [ ] Direction filter smoke verifies no `import_items` row is updated just by
+      filtering.
+- [ ] Direction filters are SELECT/read-only derived UI only.
 - [ ] Do not cleanup-delete import rows.
 - [ ] Test ledger entries created through Import Review confirm-to-ledger should
       be soft-voided through the existing record detail flow.

@@ -46,6 +46,9 @@ source trail and review queue.
   record.
 - Read-only suggestion queue filters for `skip`, `need_discussion`, and
   `review`; they combine with status filters and add no write behavior.
+- Read-only transaction-type direction filters for `expense`, `income`,
+  `refund`, `transfer`, and `unknown`; they combine with status and suggestion
+  filters and add no write behavior.
 - Personal-expense skip actions for `我的个人` and `她的个人` / `对方个人`;
   these keep source trail fields and create no official ledger record.
 - Reopen `skipped` and `need_discussion` items back to `pending`.
@@ -265,6 +268,9 @@ Verify:
 - [ ] Suggestion filter chip row labeled `按系统建议筛选`.
 - [ ] Suggestion filter chips:
       `全部建议`, `建议忽略`, `建议待确认`, `建议入账/复核`.
+- [ ] Direction filter chip row labeled `按流水类型筛选`.
+- [ ] Direction filter chips:
+      `全部类型`, `支出`, `收入`, `退款`, `转账/充值提现`, `未知`.
 - [ ] Previous navigation.
 - [ ] Next navigation.
 - [ ] Transaction time.
@@ -294,8 +300,11 @@ Review safety:
 - [ ] Suggested `review` / common expense / category-only items keep the normal
       common-expense confirmation flow unchanged.
 - [ ] Suggestion filters are read-only navigation only.
+- [ ] Direction filters are read-only navigation only.
 - [ ] Old import rows may use safe derived suggestion fallback.
 - [ ] Filtering does not backfill parser output or update `import_items`.
+- [ ] Direction explanations are advisory only and never auto-apply review
+      decisions.
 - [ ] `rawJson` is not dumped into the UI.
 - [ ] Source transaction id is masked in the UI.
 - [ ] `我的个人` is enabled for eligible non-imported items.
@@ -319,6 +328,8 @@ Verify keyboard behavior:
 - [ ] `K` opens the previous item when an existing previous link is available.
 - [ ] With a suggestion filter active, `J` / `K` stay inside the filtered
       suggestion queue.
+- [ ] With a direction filter active, `J` / `K` stay inside the filtered
+      transaction-type queue.
 - [ ] `4` submits the existing `蹇界暐姝ゆ潯` / skip form only when that
       action is available.
 - [ ] `5` submits the existing `鏍囪寰呯‘璁?` / need-discussion form only
@@ -399,6 +410,62 @@ Safety expectations:
 - [ ] Filtering mutates no settlement tables.
 - [ ] No new server action, RPC, migration, API route, parser behavior, or
       backend write behavior is added for suggestion filters.
+- [ ] Quick-apply `skip` / `need_discussion` still works from filtered queues.
+- [ ] Manual status, personal, and common-expense controls remain available.
+
+## Transaction-Type Direction Filter Checklist
+
+`/imports/[batchId]/review` supports these direction query values:
+
+- [ ] `direction=all`.
+- [ ] `direction=expense`.
+- [ ] `direction=income`.
+- [ ] `direction=refund`.
+- [ ] `direction=transfer`.
+- [ ] `direction=unknown`.
+
+Direction filters combine safely with status and suggestion filters:
+
+- [ ] `status=pending&direction=transfer`.
+- [ ] `status=pending&suggestion=skip&direction=transfer`.
+- [ ] `status=all&direction=expense`.
+- [ ] `status=pending&direction=refund`.
+
+Queue behavior:
+
+- [ ] `按流水类型筛选` chip row appears near the existing status and suggestion
+      filters.
+- [ ] Chips include `全部类型`, `支出`, `收入`, `退款`, `转账/充值提现`, and `未知`.
+- [ ] Direction counts are derived read-only from the current status +
+      suggestion filtered queue.
+- [ ] Previous navigation preserves the active `direction` query.
+- [ ] Next navigation preserves the active `direction` query.
+- [ ] `J` / `K` shortcuts stay within the filtered direction queue.
+- [ ] If the requested `item` does not match the active direction filter, the
+      page falls back to the first matching item.
+- [ ] Empty direction queues show a friendly notebook empty state.
+- [ ] Empty direction queues offer safe links for `全部待对账`, `全部流水`, and
+      `导入列表`.
+
+Explanation copy:
+
+- [ ] Transfer rows explain that they are usually transfers, withdrawals,
+      top-ups, or wealth-flow items and may not be shared consumption.
+- [ ] Refund rows explain that they may need checking against the original
+      purchase.
+- [ ] Unknown rows explain that the item needs human review.
+
+Safety expectations:
+
+- [ ] Direction filters are read-only navigation only.
+- [ ] Direction filters do not update existing `import_items`.
+- [ ] Direction filters do not backfill parser output or change parser behavior.
+- [ ] Direction filters create no `ledger_entries` row.
+- [ ] Direction filters create no `ledger_entry_splits` rows.
+- [ ] Direction filters mutate no settlement tables.
+- [ ] No new server action, RPC, migration, API route, parser behavior, or
+      backend write behavior is added for direction filters.
+- [ ] Suggestions and direction explanations are advisory only.
 - [ ] Quick-apply `skip` / `need_discussion` still works from filtered queues.
 - [ ] Manual status, personal, and common-expense controls remain available.
 
@@ -574,6 +641,11 @@ Always verify:
 - [ ] Suggestion filter smoke verifies no `import_items` row is updated just by
       filtering.
 - [ ] Suggestion filter smoke verifies settlement rows do not change.
+- [ ] Direction filter smoke uses sanitized import items only.
+- [ ] Direction filter smoke verifies `ledger_entries` count does not change.
+- [ ] Direction filter smoke verifies no `import_items` row is updated just by
+      filtering.
+- [ ] Direction filter smoke verifies settlement rows do not change.
 - [ ] Suggested quick-apply smoke uses sanitized import items only.
 - [ ] Suggested quick-apply smoke verifies `ledger_entries` count does not
       increase for `skip` or `need_discussion`.
@@ -626,9 +698,26 @@ Authenticated smoke:
 - [ ] Suggestion filters combine with status filters such as
       `status=pending&suggestion=skip` and `status=all&suggestion=skip`.
 - [ ] Empty suggestion queues show the friendly notebook empty state.
+- [ ] `/imports/[batchId]/review?direction=expense` renders matching items.
+- [ ] `/imports/[batchId]/review?direction=income` renders matching items when
+      available.
+- [ ] `/imports/[batchId]/review?direction=refund` renders matching items when
+      available.
+- [ ] `/imports/[batchId]/review?direction=transfer` renders matching items when
+      available.
+- [ ] `/imports/[batchId]/review?direction=unknown` shows either matching items
+      or a friendly notebook empty state.
+- [ ] Direction filters combine with status and suggestion filters such as
+      `status=pending&direction=transfer`,
+      `status=pending&suggestion=skip&direction=transfer`, and
+      `status=all&direction=expense`.
+- [ ] Previous/next links stay within the active direction queue.
 - [ ] `/imports/[batchId]/review` shortcut help card renders.
 - [ ] `J` / `K` navigation works without breaking mouse/touch navigation.
 - [ ] `J` / `K` stay within the active suggestion queue.
+- [ ] `J` / `K` stay within the active direction queue.
+- [ ] Transfer, refund, and unknown rows show advisory explanation copy when
+      those rows are available.
 - [ ] `4` / `5` submit only the existing status forms when available.
 - [ ] `1` focuses or highlights the common-expense confirmation area.
 - [ ] `Enter` confirms only when the confirm form exists and is valid.
@@ -665,6 +754,9 @@ Authenticated smoke:
 - [ ] No payment or real transfer behavior.
 - [ ] No one-click batch import into the official ledger.
 - [ ] No batch confirm-all behavior.
+- [ ] Direction filters are SELECT/read-only derived UI.
+- [ ] Direction filtering does not update `import_items` rows.
+- [ ] Direction filtering does not change `ledger_entries` count.
 - [ ] No package changes unless a later explicit task asks for them.
 
 Useful static searches for future Import Review code changes:
