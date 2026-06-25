@@ -59,7 +59,7 @@ export function Sidebar() {
           <Icon name="icon-chat" size={18} bounce />
           Memo
         </p>
-        <p className="mt-2">Supabase Auth/RLS 已接入，页面按当前小岛读取账本数据。</p>
+        <p className="mt-2">这里像一本只给小岛成员翻看的手账，页面会按当前小岛读取账本数据。</p>
       </div>
     </aside>
   );

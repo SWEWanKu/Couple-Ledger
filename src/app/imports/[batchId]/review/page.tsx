@@ -18,7 +18,6 @@ import {
   Hourglass,
   LockKeyhole,
   ReceiptText,
-  ShieldCheck,
   Split,
   Sparkles,
   Tags,
@@ -235,8 +234,9 @@ async function requireImportsAccess() {
 
 function ImportReviewShell({ children }: { children: ReactNode }) {
   return (
-    <AppShell title="对账卡片页" subtitle="一条一条看待对账流水，把共同支出确认进正式账本">
-      <div className="mx-auto grid max-w-6xl gap-6">
+    <AppShell compact title="对账卡片页" subtitle="看一条流水，立刻决定怎么处理；只在确认共同支出时写入正式账本">
+      <div className="mx-auto grid max-w-7xl gap-4">
+        {children}
         <PrivateIslandTrail
           items={[
             { label: islandTrailLabels.home, href: "/dashboard" },
@@ -244,7 +244,6 @@ function ImportReviewShell({ children }: { children: ReactNode }) {
             { label: "对账卡片页", current: true }
           ]}
         />
-        {children}
       </div>
     </AppShell>
   );
@@ -264,11 +263,8 @@ function ReviewCardPage({
   state: ImportReviewCardState;
 }) {
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4">
       <ReviewBatchHeader batch={batch} state={state} />
-      <StatusFilterTabs batchId={batch.id} state={state} />
-      <SuggestionFilterChips batchId={batch.id} state={state} />
-      <DirectionFilterChips batchId={batch.id} state={state} />
       {state.selectedItem ? (
         <ImportItemCard
           batch={batch}
@@ -281,7 +277,27 @@ function ReviewCardPage({
       ) : (
         <EmptyReviewState batch={batch} state={state} />
       )}
+      <ReviewFilterPocket batchId={batch.id} state={state} />
       <ReadonlyPromise />
+    </div>
+  );
+}
+
+function ReviewFilterPocket({
+  batchId,
+  state
+}: {
+  batchId: string;
+  state: ImportReviewCardState;
+}) {
+  return (
+    <div
+      data-import-review-filter-pocket="true"
+      className="grid gap-3 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-3 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)] xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)_minmax(0,1.2fr)] xl:items-start"
+    >
+      <StatusFilterTabs batchId={batchId} state={state} />
+      <SuggestionFilterChips batchId={batchId} state={state} />
+      <DirectionFilterChips batchId={batchId} state={state} />
     </div>
   );
 }
@@ -297,83 +313,73 @@ function ReviewBatchHeader({
   const progress = getBatchProgress(batch);
 
   return (
-    <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">
+    <Card color="default" pattern="app-teal" className="relative overflow-visible p-3 sm:p-4">
       <span
         aria-hidden="true"
-        className="absolute -top-4 left-8 h-8 w-28 -rotate-2 rounded-[10px] bg-[#f7cd67]/75 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+        className="absolute -top-3 left-8 h-6 w-24 -rotate-2 rounded-[9px] bg-[#f7cd67]/75 shadow-[0_4px_0_rgba(121,79,39,0.08)]"
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-[#8a7556] shadow-[0_4px_0_rgba(121,79,39,0.1)]">
             <Icon name={batch.source === "wechat" ? "icon-chat" : "icon-shopping"} size={22} bounce />
             {getImportSourceLabel(batch.source)}
-          </p>
-          <div className="mt-5">
-            <Title size="large" color="app-yellow">
-              一条一条对账
+            </span>
+            <span
+              className={`inline-flex rounded-full border-2 border-dashed px-3 py-1 text-xs font-black ${getImportBatchStatusTone(
+                batch.status
+              )}`}
+            >
+              {getImportBatchStatusLabel(batch.status)}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Title size="middle" color="app-yellow">
+              对账小纸条
             </Title>
+            <span className="text-sm font-bold leading-6 text-[#725d42]">
+              看一条流水，马上决定去向。
+            </span>
           </div>
-          <p className="mt-5 max-w-3xl text-sm font-bold leading-7 text-[#725d42] sm:text-base">
-            这页展示外部账单解析出来的待对账条目。V1 只有“共同支出 + 两人平分”会写入正式账本；个人支出会作为非共同账本结果留在导入复核历史里。
-          </p>
-          <Divider type="wave-yellow" className="my-6" />
-          <div
-            data-import-review-progress-card="true"
-            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"
-          >
-            <ProgressCard icon={<ReceiptText aria-hidden="true" size={20} />} label="已解析" value={batch.parsedCount} />
-            <ProgressCard icon={<Hourglass aria-hidden="true" size={20} />} label="待确认" value={batch.pendingCount} />
-            <ProgressCard icon={<BadgeCheck aria-hidden="true" size={20} />} label="已入账" value={batch.importedCount} />
-            <ProgressCard icon={<ReceiptText aria-hidden="true" size={20} />} label="已忽略" value={batch.skippedCount} />
-            <ProgressCard icon={<HelpCircle aria-hidden="true" size={20} />} label="待讨论" value={batch.needDiscussionCount} />
-            <ProgressCard
-              icon={<ShieldCheck aria-hidden="true" size={20} />}
-              label="对完比例"
-              value={`${progress.reviewedPercent}%`}
-            />
+          <div className="mt-2 flex min-w-0 flex-wrap gap-2 text-xs font-black text-[#725d42]">
+            <span className="max-w-full truncate rounded-full bg-white/85 px-3 py-1.5 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.5)]">
+              {batch.fileName}
+            </span>
+            <span className="rounded-full bg-[#e9fbf4] px-3 py-1.5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.45)]">
+              {formatImportPeriod(batch)}
+            </span>
           </div>
-          <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/75 px-4 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+        </div>
+
+        <div
+          data-import-review-progress-card="true"
+          className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-3 py-2 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+        >
+          <div className="grid gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-[#794f27]">
-              <span>整批进度</span>
+              <span className="flex items-center gap-2">
+                <ReceiptText aria-hidden="true" size={16} />
+                整批进度
+              </span>
               <span data-import-review-progress-percent={`${progress.reviewedPercent}%`}>
                 {progress.reviewedPercent}%
               </span>
             </div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#eadfc8] shadow-[inset_0_1px_0_rgba(121,79,39,0.12)]">
+            <div className="h-2.5 overflow-hidden rounded-full bg-[#eadfc8] shadow-[inset_0_1px_0_rgba(121,79,39,0.12)]">
               <span
                 className="block h-full rounded-full bg-[#82d5bb] transition-[width] duration-300"
                 style={{ width: `${progress.reviewedPercent}%` }}
               />
             </div>
-          </div>
-        </div>
-
-        <div className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-5 shadow-[0_7px_0_rgba(121,79,39,0.09)]">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Batch Note</p>
-          <p className="mt-3 break-words text-lg font-black text-[#794f27]">{batch.fileName}</p>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">{formatImportPeriod(batch)}</p>
-          <span
-            className={`mt-4 inline-flex rounded-full border-2 border-dashed px-3 py-1 text-xs font-black ${getImportBatchStatusTone(
-              batch.status
-            )}`}
-          >
-            {getImportBatchStatusLabel(batch.status)}
-          </span>
-          <div
-            data-import-review-position={`${selectedPosition}/${state.totalItems}`}
-            className="mt-5 rounded-[24px] bg-white px-4 py-4 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]"
-          >
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Card Progress</p>
-            {state.selectedItem ? (
-              <p className="mt-2 text-3xl font-black text-[#794f27]">
-                第 {selectedPosition} / {state.totalItems} 条
-              </p>
-            ) : (
-              <p className="mt-2 text-2xl font-black text-[#794f27]">暂无当前卡片</p>
-            )}
-            <p className="mt-2 text-xs font-bold leading-5 text-[#725d42]">
-              当前筛选内 {state.totalItems} 条
-            </p>
+            <div className="grid grid-cols-3 gap-1.5 text-center">
+              <CompactMetric
+                label="当前"
+                value={state.selectedItem ? `${selectedPosition}/${state.totalItems}` : "0/0"}
+                dataAttributes={{ "data-import-review-position": `${selectedPosition}/${state.totalItems}` }}
+              />
+              <CompactMetric label="待确认" value={batch.pendingCount} />
+              <CompactMetric label="已处理" value={batch.reviewedCount} />
+            </div>
           </div>
         </div>
       </div>
@@ -393,8 +399,12 @@ function StatusFilterTabs({
   return (
     <div
       data-import-review-status-filter="true"
-      className="flex flex-wrap gap-2 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      className="flex min-w-0 flex-wrap items-center gap-1.5"
     >
+      <span className="mr-1 inline-flex items-center gap-1 rounded-full bg-white/75 px-2.5 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#9f927d]">
+        <Hourglass aria-hidden="true" size={13} />
+        状态
+      </span>
       {statusFilters.map((filter) => {
         const isActive = filter === state.statusFilter;
         const content = (
@@ -409,7 +419,7 @@ function StatusFilterTabs({
             <span
               key={filter}
               aria-current="page"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_#d9a43e]"
+              className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full bg-[#f7cd67] px-3 py-1 text-[11px] font-black text-[#794f27] shadow-[0_3px_0_#d9a43e]"
             >
               {content}
             </span>
@@ -420,7 +430,7 @@ function StatusFilterTabs({
           <Link
             key={filter}
             href={getReviewHref(batchId, filter, state.suggestionFilter, state.directionFilter, null)}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-[#d9c49b] bg-white px-3 py-1 text-[11px] font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
           >
             {content}
           </Link>
@@ -440,13 +450,13 @@ function SuggestionFilterChips({
   return (
     <div
       data-import-review-suggestion-filter="true"
-      className="grid gap-3 rounded-[28px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-3 shadow-[0_5px_0_rgba(31,122,112,0.1)]"
+      className="grid min-w-0 gap-2"
     >
-      <p className="flex items-center gap-2 px-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
+      <p className="flex items-center gap-1.5 px-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#1f7a70]">
         <Sparkles aria-hidden="true" size={16} />
-        按系统建议筛选
+        建议
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {suggestionFilters.map((filter) => {
           const isActive = filter === state.suggestionFilter;
           const content = (
@@ -463,7 +473,7 @@ function SuggestionFilterChips({
               <span
                 key={filter}
                 aria-current="page"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#82d5bb] px-4 py-2 text-xs font-black text-white shadow-[0_4px_0_#5fb89f]"
+                className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full bg-[#82d5bb] px-3 py-1 text-[11px] font-black text-white shadow-[0_3px_0_#5fb89f]"
               >
                 {content}
               </span>
@@ -474,7 +484,7 @@ function SuggestionFilterChips({
             <Link
               key={filter}
               href={getReviewHref(batchId, state.statusFilter, filter, state.directionFilter, null)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#9fd8ca] bg-white px-4 py-2 text-xs font-black text-[#1f7a70] shadow-[0_4px_0_rgba(31,122,112,0.1)] transition hover:-translate-y-0.5 hover:bg-[#fffdf3] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+              className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-[#9fd8ca] bg-white px-3 py-1 text-[11px] font-black text-[#1f7a70] shadow-[0_3px_0_rgba(31,122,112,0.1)] transition hover:-translate-y-0.5 hover:bg-[#fffdf3] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
             >
               {content}
             </Link>
@@ -495,13 +505,13 @@ function DirectionFilterChips({
   return (
     <div
       data-import-review-direction-filter="true"
-      className="grid gap-3 rounded-[28px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] p-3 shadow-[0_5px_0_rgba(138,100,32,0.1)]"
+      className="grid min-w-0 gap-2"
     >
-      <p className="flex items-center gap-2 px-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a6420]">
+      <p className="flex items-center gap-1.5 px-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#8a6420]">
         <WalletCards aria-hidden="true" size={16} />
-        按流水类型筛选
+        类型
       </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {directionFilters.map((filter) => {
           const isActive = filter === state.directionFilter;
           const content = (
@@ -518,7 +528,7 @@ function DirectionFilterChips({
               <span
                 key={filter}
                 aria-current="page"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_#d9a43e]"
+                className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full bg-[#f7cd67] px-3 py-1 text-[11px] font-black text-[#794f27] shadow-[0_3px_0_#d9a43e]"
               >
                 {content}
               </span>
@@ -529,7 +539,7 @@ function DirectionFilterChips({
             <Link
               key={filter}
               href={getReviewHref(batchId, state.statusFilter, state.suggestionFilter, filter, null)}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+              className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-[#d9c49b] bg-white px-3 py-1 text-[11px] font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
             >
               {content}
             </Link>
@@ -640,7 +650,7 @@ function ImportItemCard({
         aria-hidden="true"
         className="absolute -top-4 right-10 h-8 w-28 rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(500px,560px)] lg:items-start">
         <section>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={item.reviewStatus} />
@@ -654,21 +664,21 @@ function ImportItemCard({
             </span>
           </div>
 
-          <div className="mt-5 rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-5 shadow-[0_7px_0_rgba(121,79,39,0.08)]">
+          <div className="mt-4 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_6px_0_rgba(121,79,39,0.08)]">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Source Memo</p>
-            <h2 className="mt-3 break-words text-2xl font-black leading-tight text-[#794f27]">
+            <h2 className="mt-2 break-words text-2xl font-black leading-tight text-[#794f27]">
               {item.description ?? item.counterparty ?? "没有备注的小纸条"}
             </h2>
-            <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
+            <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">
               {item.counterparty ? `交易对象：${item.counterparty}` : "交易对象还没有识别出来"}
             </p>
-            <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-2xl font-black text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.65)]">
+            <p className="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-2xl font-black text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.65)]">
               <CircleDollarSign aria-hidden="true" size={24} />
               {formatCents(item.amountCents)}
             </p>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
             <DetailSticker icon={<CalendarDays aria-hidden="true" size={18} />} label="月份" value={item.monthKey} />
             <DetailSticker icon={<WalletCards aria-hidden="true" size={18} />} label="方向" value={getDirectionLabel(item.direction)} />
             <DetailSticker icon={<Tags aria-hidden="true" size={18} />} label="来源分类" value={item.sourceCategory ?? "没有分类"} />
@@ -683,20 +693,7 @@ function ImportItemCard({
           <DirectionExplanation direction={item.direction} />
         </section>
 
-        <aside className="grid gap-4 content-start">
-          <ImportReviewKeyboardShortcuts
-            canFocusCommonExpense={canConfirmCommonExpense}
-            canMarkNeedDiscussion={canUseStatusShortcut}
-            canSkip={canUseStatusShortcut}
-            canSubmitConfirm={canConfirmCommonExpense}
-            commonExpenseAreaId={shortcutTargetIds.confirmForm}
-            confirmFormId={shortcutTargetIds.confirmForm}
-            needDiscussionFormId={shortcutTargetIds.needDiscussionForm}
-            nextHref={nextHref}
-            previousHref={previousHref}
-            skipFormId={shortcutTargetIds.skipForm}
-          />
-          <CardNavigator batchId={batch.id} state={state} />
+        <aside className="grid content-start gap-3">
           <SuggestionPanel canQuickApplyStatus={canUseStatusShortcut} item={item} />
           <ReviewDecisionControls
             batch={batch}
@@ -708,6 +705,21 @@ function ImportItemCard({
             state={state}
           />
         </aside>
+      </div>
+      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
+        <CardNavigator batchId={batch.id} state={state} />
+        <ImportReviewKeyboardShortcuts
+          canFocusCommonExpense={canConfirmCommonExpense}
+          canMarkNeedDiscussion={canUseStatusShortcut}
+          canSkip={canUseStatusShortcut}
+          canSubmitConfirm={canConfirmCommonExpense}
+          commonExpenseAreaId={shortcutTargetIds.confirmForm}
+          confirmFormId={shortcutTargetIds.confirmForm}
+          needDiscussionFormId={shortcutTargetIds.needDiscussionForm}
+          nextHref={nextHref}
+          previousHref={previousHref}
+          skipFormId={shortcutTargetIds.skipForm}
+        />
       </div>
     </Card>
   );
@@ -721,9 +733,12 @@ function CardNavigator({
   state: ImportReviewCardState;
 }) {
   return (
-    <div className="grid gap-3 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-white/80 p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-      <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Card Walk</p>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+    <div className="grid gap-2 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/80 p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+        <ChevronRight aria-hidden="true" size={15} />
+        翻小纸条
+      </p>
+      <div className="grid gap-2 sm:grid-cols-2">
         <PagerSlot
           direction="previous"
           href={
@@ -770,7 +785,7 @@ function PagerSlot({
 
   if (!href || !item) {
     return (
-      <div className="rounded-[24px] border-2 border-dashed border-[#e4d6bd] bg-[#fffdf3] px-4 py-3 text-sm font-black text-[#b2a38e]">
+      <div className="rounded-[20px] border-2 border-dashed border-[#e4d6bd] bg-[#fffdf3] px-3 py-2 text-sm font-black text-[#b2a38e]">
         <span className="flex items-center gap-2">
           {icon}
           {title}
@@ -784,7 +799,7 @@ function PagerSlot({
     <Link
       href={href}
       {...dataAttribute}
-      className="group rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+      className="group rounded-[20px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-3 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
     >
       <span className="flex items-center gap-2">
         {icon}
@@ -867,25 +882,25 @@ function SuggestionPanel({
     <div
       data-import-review-suggestion="true"
       data-import-review-suggested-action={suggestion.reviewAction ?? "none"}
-      className="rounded-[28px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      className="rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
     >
       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a6420]">
         <Sparkles aria-hidden="true" size={17} />
         系统建议
       </p>
-      <div className="mt-3 grid gap-2">
+      <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
         <SuggestionLine label="建议分类" value={suggestion.category ?? "暂无分类建议"} />
         <SuggestionLine
           label="建议动作"
           value={suggestion.reviewAction ? getSuggestedReviewActionLabel(suggestion.reviewAction) : "暂无明确动作"}
         />
       </div>
-      <p className="mt-3 rounded-[20px] bg-white/75 px-3 py-2 text-xs font-bold leading-6 text-[#8a6420]">
+      <p className="mt-2 rounded-[18px] bg-white/75 px-3 py-2 text-xs font-bold leading-5 text-[#8a6420]">
         这些只是辅助判断的小便签，不会自动入账；最后仍需要你们确认。
       </p>
       {quickApply ? (
         <div
-          className="mt-4 rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-3 shadow-[0_5px_0_rgba(31,122,112,0.1)]"
+          className="mt-3 rounded-[22px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-3 shadow-[0_5px_0_rgba(31,122,112,0.1)]"
           data-import-review-suggestion-quick-apply={quickApply.reviewStatus}
         >
           <p className="flex items-center gap-2 text-sm font-black leading-6 text-[#1f7a70]">
@@ -896,11 +911,8 @@ function SuggestionPanel({
             )}
             {quickApply.headline}
           </p>
-          <p className="mt-2 text-xs font-bold leading-6 text-[#725d42]">
+          <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">
             {quickApply.examples}
-          </p>
-          <p className="mt-2 rounded-[18px] bg-white/75 px-3 py-2 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]">
-            建议只是小岛便签，最终仍由你们决定；按建议处理只会复用现有状态操作，不会创建正式账本流水。
           </p>
           <Button
             block
@@ -913,7 +925,7 @@ function SuggestionPanel({
                 <Hourglass aria-hidden="true" size={18} />
               )
             }
-            size="large"
+            size="middle"
             type="primary"
           >
             {quickApply.buttonLabel}
@@ -968,7 +980,7 @@ function ReviewDecisionControls({
   return (
     <div
       data-import-review-decision-controls="true"
-      className="rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
     >
       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
         <LockKeyhole aria-hidden="true" size={17} />
@@ -977,86 +989,79 @@ function ReviewDecisionControls({
 
       {settlementNotice ? <ConfirmNotice notice={settlementNotice} /> : null}
 
+      <div className="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_190px]">
+        <div className="min-w-0">
       {canConfirmCommonExpense && defaultCategoryId && defaultPaidBy ? (
         <form
           action={confirmImportItemToLedgerAction}
-          className="mt-4 grid gap-4 rounded-[26px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+          className="grid gap-3 rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
           data-import-review-common-expense-area="true"
           data-import-review-confirm-common="true"
           id={shortcutTargetIds.confirmForm}
         >
           <ConfirmActionHiddenInputs batch={batch} item={item} state={state} />
 
-          <fieldset className="grid gap-3">
-            <legend className="flex items-center gap-2 text-sm font-black text-[#1f7a70]">
-              <Tags aria-hidden="true" size={17} />
-              分类快捷贴纸
-            </legend>
-            <div className="grid gap-2">
-              {categories.map((category) => (
-                <label key={category.id} className={radioCardClassName}>
-                  <input
-                    type="radio"
-                    name="category_id"
-                    value={category.id}
-                    required
-                    defaultChecked={category.id === defaultCategoryId}
-                    className="mt-1 h-4 w-4 accent-[#19c8b9]"
-                  />
-                  <span>
-                    <span className="block font-black text-[#794f27]">
-                      {formatCategoryOption(category)}
-                    </span>
-                    <span className="mt-1 block text-xs font-bold leading-5 text-[#725d42]">
-                      作为正式账本分类保存
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <ConfirmFormField
-            id="import-confirm-paid-by"
-            label="谁先付的"
-            icon={<UserRound aria-hidden="true" size={17} />}
-          >
-            <select
-              id="import-confirm-paid-by"
-              name="paid_by_user_id"
-              required
-              defaultValue={defaultPaidBy}
-              className={inputClassName}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+            <ConfirmFormField
+              id="import-confirm-category"
+              label="分类"
+              icon={<Tags aria-hidden="true" size={17} />}
             >
-              {members.map((member, index) => (
-                <option key={member.userId} value={member.userId}>
-                  {formatMemberOption(member, index)}
-                </option>
-              ))}
-            </select>
-          </ConfirmFormField>
+              <select
+                id="import-confirm-category"
+                name="category_id"
+                required
+                defaultValue={defaultCategoryId}
+                className={inputClassName}
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {formatCategoryOption(category)}
+                  </option>
+                ))}
+              </select>
+            </ConfirmFormField>
+
+            <ConfirmFormField
+              id="import-confirm-paid-by"
+              label="谁先付的"
+              icon={<UserRound aria-hidden="true" size={17} />}
+            >
+              <select
+                id="import-confirm-paid-by"
+                name="paid_by_user_id"
+                required
+                defaultValue={defaultPaidBy}
+                className={inputClassName}
+              >
+                {members.map((member, index) => (
+                  <option key={member.userId} value={member.userId}>
+                    {formatMemberOption(member, index)}
+                  </option>
+                ))}
+              </select>
+            </ConfirmFormField>
+
+            <ConfirmFormField id="import-confirm-note" label="备注" optional>
+              <input
+                id="import-confirm-note"
+                name="note"
+                type="text"
+                maxLength={80}
+                defaultValue={getDefaultConfirmNote(item)}
+                className={inputClassName}
+              />
+            </ConfirmFormField>
+          </div>
 
           <input name="split_type" type="hidden" value="equal" />
-          <div className="rounded-[22px] bg-white/80 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.6)]">
+          <div className="rounded-[20px] bg-white/80 px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.6)]">
             <p className="flex items-center gap-2 text-sm font-black text-[#794f27]">
               <Split aria-hidden="true" size={17} />
               两人平分
             </p>
-            <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">
-              V1 只开放共同支出等分；个人账和自定义分摊先不写入。
-            </p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[#725d42]">V1 共同支出默认两人平分。</p>
           </div>
-
-          <ConfirmFormField id="import-confirm-note" label="备注" optional>
-            <input
-              id="import-confirm-note"
-              name="note"
-              type="text"
-              maxLength={80}
-              defaultValue={getDefaultConfirmNote(item)}
-              className={inputClassName}
-            />
-          </ConfirmFormField>
 
           <RitualSubmitButton
             block
@@ -1075,7 +1080,7 @@ function ReviewDecisionControls({
         </form>
       ) : (
         <div
-          className="mt-4 rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-white/78 p-4 text-sm font-bold leading-6 text-[#725d42]"
+          className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-white/78 p-4 text-sm font-bold leading-6 text-[#725d42]"
           data-import-review-confirm-common-disabled="true"
         >
           <p className="flex items-center gap-2 font-black text-[#794f27]">
@@ -1086,58 +1091,62 @@ function ReviewDecisionControls({
         </div>
       )}
 
-      <div className="mt-4 grid gap-3">
+        </div>
+        <div className="grid content-start gap-2">
         <PersonalActionPanel
           batch={batch}
           item={item}
           options={personalActionOptions}
           state={state}
         />
-        <form
-          action={updateImportItemReviewStatusAction}
-          data-import-review-status-action="skipped"
-          id={shortcutTargetIds.skipForm}
-        >
-          <ReviewStatusActionHiddenInputs
-            batch={batch}
-            item={item}
-            reviewStatus="skipped"
-            state={state}
-          />
-          <RitualSubmitButton
-            block
-            dataPendingScope="import-review-skip"
-            disabled={!canUpdateStatus}
-            icon="receipt"
-            idleLabel="忽略此条"
-            pendingLabel="正在放进忽略小夹..."
-            type="dashed"
-          />
-        </form>
-        <form
-          action={updateImportItemReviewStatusAction}
-          data-import-review-status-action="need_discussion"
-          id={shortcutTargetIds.needDiscussionForm}
-        >
-          <ReviewStatusActionHiddenInputs
-            batch={batch}
-            item={item}
-            reviewStatus="need_discussion"
-            state={state}
-          />
-          <RitualSubmitButton
-            block
-            dataPendingScope="import-review-need-discussion"
-            disabled={!canUpdateStatus}
-            icon="hourglass"
-            idleLabel="标记待确认"
-            pendingLabel="正在放进讨论夹..."
-            type="dashed"
-          />
-        </form>
+        <div className="grid gap-2">
+          <form
+            action={updateImportItemReviewStatusAction}
+            data-import-review-status-action="skipped"
+            id={shortcutTargetIds.skipForm}
+          >
+            <ReviewStatusActionHiddenInputs
+              batch={batch}
+              item={item}
+              reviewStatus="skipped"
+              state={state}
+            />
+            <RitualSubmitButton
+              block
+              dataPendingScope="import-review-skip"
+              disabled={!canUpdateStatus}
+              icon="receipt"
+              idleLabel="忽略此条"
+              pendingLabel="正在放进忽略小夹..."
+              type="dashed"
+            />
+          </form>
+          <form
+            action={updateImportItemReviewStatusAction}
+            data-import-review-status-action="need_discussion"
+            id={shortcutTargetIds.needDiscussionForm}
+          >
+            <ReviewStatusActionHiddenInputs
+              batch={batch}
+              item={item}
+              reviewStatus="need_discussion"
+              state={state}
+            />
+            <RitualSubmitButton
+              block
+              dataPendingScope="import-review-need-discussion"
+              disabled={!canUpdateStatus}
+              icon="hourglass"
+              idleLabel="标记待确认"
+              pendingLabel="正在放进讨论夹..."
+              type="dashed"
+            />
+          </form>
+        </div>
       </div>
-      <p className="mt-3 text-xs font-bold leading-6 text-[#725d42]">
-        共同支出确认会创建一笔正式支出流水和等分记录；个人支出、忽略、待讨论只会保留导入复核历史，不会进入共同账本。
+      </div>
+      <p className="mt-2 text-xs font-bold leading-5 text-[#725d42]">
+        共同支出会入正式账本；其它选择只保留复核结果。
       </p>
     </div>
   );
@@ -1165,14 +1174,10 @@ function PersonalActionPanel({
 
   return (
     <div
-      className="rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-3 shadow-[0_5px_0_rgba(31,122,112,0.08)]"
+      className="rounded-[22px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-2 shadow-[0_5px_0_rgba(31,122,112,0.08)]"
       data-import-review-personal-actions="true"
     >
-      <p className="flex items-center gap-2 text-sm font-black text-[#1f7a70]">
-        <UserRound aria-hidden="true" size={17} />
-        个人支出不会进入共同账本，但会保留在导入复核历史里
-      </p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+      <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <form
             key={option.kind}
@@ -1195,9 +1200,6 @@ function PersonalActionPanel({
               pendingLabel="正在标记个人支出..."
               type="dashed"
             />
-            <p className="mt-1 px-2 text-[11px] font-bold leading-5 text-[#1f7a70]">
-              {option.helper}
-            </p>
           </form>
         ))}
       </div>
@@ -1673,7 +1675,7 @@ function ReviewActionNotice({
 function ReadonlyPromise() {
   return (
     <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-4 py-3 text-sm font-black leading-6 text-[#1f7a70]">
-      <ShieldCheck aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+      <BadgeCheck aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
       <span>本页只开放单条共同支出确认、个人支出来源标记、忽略和待讨论。个人支出不会写入正式账本；确认入账不会改动结算快照，也不会开放自定义分摊或批量确认。</span>
     </div>
   );
@@ -1794,22 +1796,22 @@ function getReviewActionErrorMessage(error: string | null) {
   return "操作失败，请稍后再试一次。";
 }
 
-function ProgressCard({
-  icon,
+function CompactMetric({
+  dataAttributes,
   label,
   value
 }: {
-  icon: ReactNode;
+  dataAttributes?: Record<string, string>;
   label: string;
   value: ReactNode;
 }) {
   return (
-    <div className="rounded-[24px] bg-white px-4 py-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
-      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
-        {icon}
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-black text-[#794f27]">{value}</p>
+    <div
+      {...dataAttributes}
+      className="rounded-[16px] bg-white/85 px-2 py-1.5 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]"
+    >
+      <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#9f927d]">{label}</p>
+      <p className="text-sm font-black text-[#794f27]">{value}</p>
     </div>
   );
 }
@@ -1842,19 +1844,19 @@ function DetailSticker({
   value: string;
 }) {
   return (
-    <div className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/85 px-4 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
+    <div className="rounded-[20px] border-2 border-dashed border-[#d9c49b] bg-white/85 px-3 py-2 shadow-[0_4px_0_rgba(121,79,39,0.08)]">
+      <p className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-[#9f927d]">
         {icon}
         {label}
       </p>
-      <p className="mt-2 break-words text-sm font-black leading-6 text-[#794f27]">{value}</p>
+      <p className="mt-1 break-words text-sm font-black leading-5 text-[#794f27]">{value}</p>
     </div>
   );
 }
 
 function SuggestionLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-[18px] bg-white/80 px-3 py-2 text-sm font-black text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
+    <div className="flex items-center justify-between gap-3 rounded-[16px] bg-white/80 px-3 py-1.5 text-xs font-black text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
       <span className="text-[#8a7556]">{label}</span>
       <span className="text-right">{value}</span>
     </div>
@@ -2243,7 +2245,4 @@ const reviewedOutcomeReopenCopy = {
 } as const;
 
 const inputClassName =
-  "h-12 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] px-4 text-sm font-black text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25";
-
-const radioCardClassName =
-  "grid cursor-pointer grid-cols-[auto_1fr] gap-3 rounded-[22px] bg-white/78 px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.08)]";
+  "h-11 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] px-4 text-sm font-black text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_4px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25";

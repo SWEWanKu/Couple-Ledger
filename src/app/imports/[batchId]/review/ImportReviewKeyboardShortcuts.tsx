@@ -208,7 +208,7 @@ export function ImportReviewKeyboardShortcuts({
     <Card
       color="default"
       pattern="app-teal"
-      className="relative overflow-hidden p-4"
+      className="relative overflow-hidden p-3"
       data-import-review-shortcuts="true"
     >
       <span
@@ -216,14 +216,16 @@ export function ImportReviewKeyboardShortcuts({
         className="absolute -right-5 top-4 h-14 w-14 rounded-full bg-[#82d5bb]/35"
       />
       <div className="relative z-10">
-        <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
-          <Keyboard aria-hidden="true" size={17} />
-          {shortcutCopy.title}
-        </p>
-        <p className="mt-2 text-xs font-bold leading-5 text-[#725d42]">
-          {shortcutCopy.description}
-        </p>
-        <div className="mt-3 grid gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
+            <Keyboard aria-hidden="true" size={17} />
+            {shortcutCopy.title}
+          </p>
+          <p className="text-xs font-bold leading-5 text-[#725d42]">
+            {shortcutCopy.description}
+          </p>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {shortcutRows.map((row) => (
             <ShortcutHint
               key={row.action}
@@ -243,7 +245,7 @@ export function ImportReviewKeyboardShortcuts({
         </div>
         <p
           aria-live="polite"
-          className="mt-3 flex items-start gap-2 rounded-[18px] bg-white/75 px-3 py-2 text-[11px] font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]"
+          className="mt-2 flex items-start gap-2 rounded-[16px] bg-white/75 px-3 py-1.5 text-[11px] font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]"
           data-import-review-shortcut-status="true"
         >
           <Sparkles aria-hidden="true" className="mt-0.5 shrink-0" size={14} />
@@ -285,15 +287,15 @@ function ShortcutHint({
   return (
     <span
       aria-disabled={!enabled}
-      className={`grid grid-cols-[auto_1fr] items-center gap-2 rounded-[18px] px-3 py-2 text-xs font-black shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)] ${
+      className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)] ${
         enabled ? "bg-[#fffdf3] text-[#794f27]" : "bg-white/55 text-[#b2a38e]"
       }`}
       data-import-review-shortcut-key={action}
     >
-      <kbd className="inline-flex min-h-7 min-w-9 items-center justify-center rounded-full bg-[#f7cd67] px-2 text-[11px] text-[#794f27] shadow-[0_3px_0_#d9a43e]">
+      <kbd className="inline-flex min-h-6 min-w-8 items-center justify-center rounded-full bg-[#f7cd67] px-2 text-[10px] text-[#794f27] shadow-[0_2px_0_#d9a43e]">
         {keyName}
       </kbd>
-      <span className="flex items-center gap-1">
+      <span className="flex items-center gap-1 whitespace-nowrap">
         <MousePointerClick aria-hidden="true" size={13} />
         {label}
       </span>

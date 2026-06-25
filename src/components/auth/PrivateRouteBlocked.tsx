@@ -113,7 +113,7 @@ export function PrivateRouteBlocked() {
 
                   <p className="mt-5 inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3]/85 px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
                     <ShieldCheck aria-hidden="true" size={15} />
-                    仅两人可见 · RLS 保护
+                    仅两人可见 · 私密手账
                   </p>
                 </div>
 
