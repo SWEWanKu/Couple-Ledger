@@ -14,9 +14,10 @@ type HeaderKey =
   | "sourceStatus";
 
 type HeaderMap = Partial<Record<HeaderKey, number>>;
+type AlipayCsvInput = string | ArrayBuffer | ArrayBufferView;
 
-export function parseAlipayCsv(csvText: string): NormalizedImportItemDraft[] {
-  const rows = parseCsv(csvText);
+export function parseAlipayCsv(csvInput: AlipayCsvInput): NormalizedImportItemDraft[] {
+  const rows = parseCsv(decodeAlipayCsvInput(csvInput));
   const headerIndex = findHeaderIndex(rows);
 
   if (headerIndex < 0) {
@@ -30,6 +31,49 @@ export function parseAlipayCsv(csvText: string): NormalizedImportItemDraft[] {
     .slice(headerIndex + 1)
     .filter((row) => row.some((cell) => cell.trim()))
     .map((row) => normalizeAlipayRow(row, rows[headerIndex], headerMap));
+}
+
+function decodeAlipayCsvInput(input: AlipayCsvInput) {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  const bytes = toUint8Array(input);
+  const utf8Text = decodeBytes(bytes, "utf-8");
+
+  if (hasAlipayHeader(utf8Text)) {
+    return utf8Text;
+  }
+
+  for (const encoding of ["gb18030", "gbk"] as const) {
+    const decoded = decodeBytes(bytes, encoding);
+
+    if (hasAlipayHeader(decoded)) {
+      return decoded;
+    }
+  }
+
+  return utf8Text;
+}
+
+function toUint8Array(input: Exclude<AlipayCsvInput, string>) {
+  if (input instanceof ArrayBuffer) {
+    return new Uint8Array(input);
+  }
+
+  return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+}
+
+function decodeBytes(bytes: Uint8Array, encoding: string) {
+  try {
+    return new TextDecoder(encoding).decode(bytes);
+  } catch {
+    return "";
+  }
+}
+
+function hasAlipayHeader(text: string) {
+  return findHeaderIndex(parseCsv(text)) >= 0;
 }
 
 function normalizeAlipayRow(
