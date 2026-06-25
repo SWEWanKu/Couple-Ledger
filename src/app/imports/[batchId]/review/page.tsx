@@ -56,6 +56,7 @@ import type {
   DashboardHouseholdMember,
   DashboardHouseholdSummary
 } from "@/types/dashboard";
+import { ImportReviewKeyboardShortcuts } from "./ImportReviewKeyboardShortcuts";
 import { confirmImportItemToLedgerAction, updateImportItemReviewStatusAction } from "./actions";
 
 type ImportReviewPageProps = {
@@ -93,6 +94,12 @@ const statusFilterLabels: Record<ImportReviewStatusFilter, string> = {
 };
 
 const reviewStatusLabels = statusFilterLabels;
+
+const shortcutTargetIds = {
+  confirmForm: "import-review-confirm-common-form",
+  skipForm: "import-review-skip-form",
+  needDiscussionForm: "import-review-need-discussion-form"
+} as const;
 
 export default async function ImportReviewPage({ params, searchParams }: ImportReviewPageProps) {
   const { batchId } = await params;
@@ -362,6 +369,23 @@ function ImportItemCard({
   item: ImportReviewItem;
   settlementStatus: GetSettlementSnapshotStatusResult | null;
 }) {
+  const confirmBlockReason = getConfirmBlockReason({
+    categories: householdSummary.categories,
+    item,
+    members: householdSummary.members,
+    settlementStatus
+  });
+  const canConfirmCommonExpense = Boolean(
+    !confirmBlockReason &&
+      getDefaultCategoryId(householdSummary.categories, item) &&
+      getDefaultPaidBy(householdSummary.members, currentUserId)
+  );
+  const canUseStatusShortcut = item.reviewStatus === "pending" && !item.ledgerEntryId;
+  const previousHref = state.previousItem
+    ? getReviewHref(batch.id, state.statusFilter, state.previousItem.id)
+    : null;
+  const nextHref = state.nextItem ? getReviewHref(batch.id, state.statusFilter, state.nextItem.id) : null;
+
   return (
     <Card
       color="default"
@@ -416,6 +440,18 @@ function ImportItemCard({
         </section>
 
         <aside className="grid gap-4 content-start">
+          <ImportReviewKeyboardShortcuts
+            canFocusCommonExpense={canConfirmCommonExpense}
+            canMarkNeedDiscussion={canUseStatusShortcut}
+            canSkip={canUseStatusShortcut}
+            canSubmitConfirm={canConfirmCommonExpense}
+            commonExpenseAreaId={shortcutTargetIds.confirmForm}
+            confirmFormId={shortcutTargetIds.confirmForm}
+            needDiscussionFormId={shortcutTargetIds.needDiscussionForm}
+            nextHref={nextHref}
+            previousHref={previousHref}
+            skipFormId={shortcutTargetIds.skipForm}
+          />
           <CardNavigator batchId={batch.id} state={state} />
           <SuggestionPanel item={item} />
           <ReviewDecisionControls
@@ -579,7 +615,9 @@ function ReviewDecisionControls({
         <form
           action={confirmImportItemToLedgerAction}
           className="mt-4 grid gap-4 rounded-[26px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4]/75 p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+          data-import-review-common-expense-area="true"
           data-import-review-confirm-common="true"
+          id={shortcutTargetIds.confirmForm}
         >
           <ConfirmActionHiddenInputs batch={batch} item={item} state={state} />
 
@@ -684,7 +722,11 @@ function ReviewDecisionControls({
         <Button type="dashed" htmlType="button" disabled block>
           她的个人
         </Button>
-        <form action={updateImportItemReviewStatusAction} data-import-review-status-action="skipped">
+        <form
+          action={updateImportItemReviewStatusAction}
+          data-import-review-status-action="skipped"
+          id={shortcutTargetIds.skipForm}
+        >
           <ReviewStatusActionHiddenInputs
             batch={batch}
             item={item}
@@ -701,7 +743,11 @@ function ReviewDecisionControls({
             忽略此条
           </Button>
         </form>
-        <form action={updateImportItemReviewStatusAction} data-import-review-status-action="need_discussion">
+        <form
+          action={updateImportItemReviewStatusAction}
+          data-import-review-status-action="need_discussion"
+          id={shortcutTargetIds.needDiscussionForm}
+        >
           <ReviewStatusActionHiddenInputs
             batch={batch}
             item={item}
