@@ -41,6 +41,7 @@ import {
   type ImportReviewStatusFilter
 } from "@/lib/import-review/review-items";
 import { createClient } from "@/lib/supabase/server";
+import { updateImportItemReviewStatusAction } from "./actions";
 
 type ImportReviewPageProps = {
   params: Promise<{
@@ -51,6 +52,8 @@ type ImportReviewPageProps = {
     status?: string | string[];
     item?: string | string[];
     index?: string | string[];
+    import_review_result?: string | string[];
+    import_review_error?: string | string[];
   }>;
 };
 
@@ -115,6 +118,10 @@ export default async function ImportReviewPage({ params, searchParams }: ImportR
       {result.warning ? <PageNotice message={result.warning} /> : null}
       {itemsResult.warning ? <PageNotice message={itemsResult.warning} /> : null}
       {cardState.warning ? <PageNotice message={cardState.warning} /> : null}
+      <ReviewActionNotice
+        error={getSingleParam(query.import_review_error)}
+        result={getSingleParam(query.import_review_result)}
+      />
       <ReviewCardPage batch={result.batch} state={cardState} />
     </ImportReviewShell>
   );
@@ -360,7 +367,7 @@ function ImportItemCard({
         <aside className="grid gap-4 content-start">
           <CardNavigator batchId={batch.id} state={state} />
           <SuggestionPanel item={item} />
-          <DisabledDecisionControls />
+          <ReviewDecisionControls batch={batch} item={item} state={state} />
         </aside>
       </div>
     </Card>
@@ -469,7 +476,17 @@ function SuggestionPanel({ item }: { item: ImportReviewItem }) {
   );
 }
 
-function DisabledDecisionControls() {
+function ReviewDecisionControls({
+  batch,
+  item,
+  state
+}: {
+  batch: ImportBatchSummary;
+  item: ImportReviewItem;
+  state: ImportReviewCardState;
+}) {
+  const canUpdateStatus = item.reviewStatus !== "imported" && !item.ledgerEntryId;
+
   return (
     <div
       data-import-review-disabled-controls="true"
@@ -477,7 +494,7 @@ function DisabledDecisionControls() {
     >
       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
         <LockKeyhole aria-hidden="true" size={17} />
-        下一步会开放
+        这条怎么处理
       </p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
         <Button type="dashed" htmlType="button" disabled block>
@@ -489,20 +506,71 @@ function DisabledDecisionControls() {
         <Button type="dashed" htmlType="button" disabled block>
           她的个人
         </Button>
-        <Button type="dashed" htmlType="button" disabled block>
-          忽略
-        </Button>
-        <Button type="dashed" htmlType="button" disabled block>
-          待确认
-        </Button>
+        <form action={updateImportItemReviewStatusAction} data-import-review-status-action="skipped">
+          <ReviewStatusActionHiddenInputs
+            batch={batch}
+            item={item}
+            reviewStatus="skipped"
+            state={state}
+          />
+          <Button
+            block
+            disabled={!canUpdateStatus}
+            htmlType="submit"
+            icon={<ReceiptText aria-hidden="true" size={18} />}
+            type="dashed"
+          >
+            忽略此条
+          </Button>
+        </form>
+        <form action={updateImportItemReviewStatusAction} data-import-review-status-action="need_discussion">
+          <ReviewStatusActionHiddenInputs
+            batch={batch}
+            item={item}
+            reviewStatus="need_discussion"
+            state={state}
+          />
+          <Button
+            block
+            disabled={!canUpdateStatus}
+            htmlType="submit"
+            icon={<Hourglass aria-hidden="true" size={18} />}
+            type="dashed"
+          >
+            标记待确认
+          </Button>
+        </form>
         <Button type="primary" htmlType="button" disabled block>
           确认入账并下一条
         </Button>
       </div>
       <p className="mt-3 text-xs font-bold leading-6 text-[#725d42]">
-        当前页面只读预览。确认、忽略、待讨论会在后续写入流程里打开。
+        忽略和待确认会记录到待对账清单，不会创建正式流水。共同支出、个人支出和确认入账仍然留给下一步开放。
       </p>
     </div>
+  );
+}
+
+function ReviewStatusActionHiddenInputs({
+  batch,
+  item,
+  reviewStatus,
+  state
+}: {
+  batch: ImportBatchSummary;
+  item: ImportReviewItem;
+  reviewStatus: "skipped" | "need_discussion";
+  state: ImportReviewCardState;
+}) {
+  return (
+    <>
+      <input name="batch_id" type="hidden" value={batch.id} />
+      <input name="item_id" type="hidden" value={item.id} />
+      <input name="review_status" type="hidden" value={reviewStatus} />
+      <input name="return_status" type="hidden" value={state.statusFilter} />
+      <input name="return_item" type="hidden" value={item.id} />
+      <input name="return_index" type="hidden" value={String(state.selectedIndex + 1)} />
+    </>
   );
 }
 
@@ -530,7 +598,7 @@ function EmptyReviewState({
         dataAttributes={{ "data-import-review-empty-state": state.statusFilter }}
         description={
           state.statusFilter === "pending" ? (
-            <p>这份账单现在没有待确认小纸条了，可以切到“全部”看看已处理记录。</p>
+            <p>这个筛选下没有待处理流水了，可以切换到全部、待确认或已忽略查看。</p>
           ) : (
             <p>这个筛选下暂时没有小纸条。换个状态看看，也许它们躲在别的夹层里。</p>
           )
@@ -571,11 +639,43 @@ function BatchUnavailableState({ reason }: { reason: "not_found" | "read_failed"
   );
 }
 
+function ReviewActionNotice({
+  error,
+  result
+}: {
+  error: string | null;
+  result: string | null;
+}) {
+  const notice = getReviewActionNotice(result, error);
+
+  if (!notice) {
+    return null;
+  }
+
+  return (
+    <div
+      data-import-review-result={notice.kind}
+      className={`flex items-start gap-3 rounded-[24px] border-2 border-dashed px-4 py-3 text-sm font-black leading-6 ${
+        notice.kind === "error"
+          ? "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+          : "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+      }`}
+    >
+      {notice.kind === "error" ? (
+        <HelpCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+      ) : (
+        <BadgeCheck aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
+      )}
+      <span>{notice.message}</span>
+    </div>
+  );
+}
+
 function ReadonlyPromise() {
   return (
     <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] px-4 py-3 text-sm font-black leading-6 text-[#1f7a70]">
       <ShieldCheck aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
-      <span>这次只做卡片式预览，没有确认按钮、没有入账写入，也不会改动结算或正式流水。</span>
+      <span>本页现在只开放“忽略”和“待确认”两个轻量状态动作，不会创建正式流水，也不会改动结算或上传解析逻辑。</span>
     </div>
   );
 }
@@ -587,6 +687,47 @@ function PageNotice({ message }: { message: string }) {
       <span>{message}</span>
     </div>
   );
+}
+
+function getReviewActionNotice(result: string | null, error: string | null) {
+  if (result === "skipped") {
+    return {
+      kind: "success" as const,
+      message: "已忽略此条，正式账本没有新增流水。"
+    };
+  }
+
+  if (result === "need_discussion") {
+    return {
+      kind: "success" as const,
+      message: "已标记待确认，先放进小岛讨论夹里。"
+    };
+  }
+
+  if (result === "error") {
+    return {
+      kind: "error" as const,
+      message: getReviewActionErrorMessage(error)
+    };
+  }
+
+  return null;
+}
+
+function getReviewActionErrorMessage(error: string | null) {
+  if (error === "already_imported") {
+    return "这条已经入账，不能再改成忽略或待确认。";
+  }
+
+  if (error === "invalid_status") {
+    return "这个操作暂时不能用于当前小纸条。";
+  }
+
+  if (error === "not_found") {
+    return "没有找到这条待对账流水，可能已经不在当前批次里。";
+  }
+
+  return "操作失败，请稍后再试一次。";
 }
 
 function ProgressCard({

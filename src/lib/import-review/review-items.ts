@@ -27,6 +27,7 @@ export type ImportReviewItem = {
   reviewStatus: ImportReviewStatus;
   suggestedCategory: string | null;
   suggestedReviewAction: SuggestedReviewAction | null;
+  ledgerEntryId: string | null;
   createdAt: string;
 };
 
@@ -43,6 +44,33 @@ export type ImportReviewCardState = {
   counts: ImportReviewStatusCounts;
   warning: string | null;
 };
+
+export type ImportReviewStatusActionTarget = "skipped" | "need_discussion";
+
+export type UpdateImportItemReviewStatusResult =
+  | {
+      status: "updated";
+      batchId: string;
+      itemId: string;
+      reviewStatus: ImportReviewStatusActionTarget;
+      nextItemId: string | null;
+      reviewedCount: number;
+      importedCount: number;
+      skippedCount: number;
+      needDiscussionCount: number;
+      batchStatus: string | null;
+    }
+  | {
+      status:
+        | "unauthenticated"
+        | "not_household_member"
+        | "not_found"
+        | "already_imported"
+        | "invalid_status"
+        | "invalid_transition"
+        | "invalid_input"
+        | "error";
+    };
 
 type ListImportItemsForReviewInput = {
   householdId: string;
@@ -66,7 +94,21 @@ type ImportItemRow = {
   raw_json: ImportRawJson | null;
   review_status: string;
   suggested_category: string | null;
+  ledger_entry_id: string | null;
   created_at: string;
+};
+
+type UpdateImportItemReviewStatusRpcResult = {
+  status?: unknown;
+  batch_id?: unknown;
+  item_id?: unknown;
+  review_status?: unknown;
+  next_item_id?: unknown;
+  reviewed_count?: unknown;
+  imported_count?: unknown;
+  skipped_count?: unknown;
+  need_discussion_count?: unknown;
+  batch_status?: unknown;
 };
 
 const itemReadWarning = "这份待对账清单暂时没有读完整，先显示能安全读取的部分。";
@@ -95,6 +137,7 @@ export async function listImportItemsForReview(
         "raw_json",
         "review_status",
         "suggested_category",
+        "ledger_entry_id",
         "created_at"
       ].join(", ")
     )
@@ -163,6 +206,40 @@ export function normalizeImportReviewStatusFilter(
   return "pending";
 }
 
+export async function updateImportItemReviewStatus(
+  supabase: SupabaseClient,
+  {
+    batchId,
+    itemId,
+    reviewStatus
+  }: {
+    batchId: string | null;
+    itemId: string | null;
+    reviewStatus: string | null;
+  }
+): Promise<UpdateImportItemReviewStatusResult> {
+  if (!isUuid(batchId) || !isUuid(itemId)) {
+    return { status: "not_found" };
+  }
+
+  if (!isReviewStatusActionTarget(reviewStatus)) {
+    return { status: "invalid_status" };
+  }
+
+  const { data, error } = await supabase.rpc("update_import_item_review_status_v1", {
+    p_batch_id: batchId,
+    p_item_id: itemId,
+    p_review_status: reviewStatus,
+    p_note: null
+  });
+
+  if (error) {
+    return { status: "error" };
+  }
+
+  return normalizeUpdateImportItemReviewStatusRpcResult(data);
+}
+
 function getSelectedIndex(
   items: ImportReviewItem[],
   {
@@ -220,6 +297,7 @@ function mapImportItemRow(row: ImportItemRow): ImportReviewItem {
     reviewStatus: isImportReviewStatus(row.review_status) ? row.review_status : "pending",
     suggestedCategory: normalizeText(row.suggested_category),
     suggestedReviewAction: readSuggestedReviewAction(rawJson),
+    ledgerEntryId: isUuidValue(row.ledger_entry_id) ? row.ledger_entry_id : null,
     createdAt: row.created_at
   };
 }
@@ -288,4 +366,66 @@ function isImportReviewStatus(value: unknown): value is ImportReviewStatus {
 
 function isSuggestedReviewAction(value: unknown): value is SuggestedReviewAction {
   return value === "review" || value === "skip" || value === "need_discussion";
+}
+
+function normalizeUpdateImportItemReviewStatusRpcResult(
+  value: unknown
+): UpdateImportItemReviewStatusResult {
+  const result = (value ?? {}) as UpdateImportItemReviewStatusRpcResult;
+
+  if (
+    result.status === "updated" &&
+    isUuidValue(result.batch_id) &&
+    isUuidValue(result.item_id) &&
+    isReviewStatusActionTarget(result.review_status)
+  ) {
+    return {
+      status: "updated",
+      batchId: result.batch_id,
+      itemId: result.item_id,
+      reviewStatus: result.review_status,
+      nextItemId: isUuidValue(result.next_item_id) ? result.next_item_id : null,
+      reviewedCount: toSafeCount(result.reviewed_count),
+      importedCount: toSafeCount(result.imported_count),
+      skippedCount: toSafeCount(result.skipped_count),
+      needDiscussionCount: toSafeCount(result.need_discussion_count),
+      batchStatus: typeof result.batch_status === "string" ? result.batch_status : null
+    };
+  }
+
+  if (
+    result.status === "unauthenticated" ||
+    result.status === "not_household_member" ||
+    result.status === "not_found" ||
+    result.status === "already_imported" ||
+    result.status === "invalid_status" ||
+    result.status === "invalid_transition" ||
+    result.status === "invalid_input"
+  ) {
+    return {
+      status: result.status
+    };
+  }
+
+  return { status: "error" };
+}
+
+function isReviewStatusActionTarget(value: unknown): value is ImportReviewStatusActionTarget {
+  return value === "skipped" || value === "need_discussion";
+}
+
+function toSafeCount(value: unknown) {
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : 0;
+}
+
+function isUuidValue(value: unknown): value is string {
+  return typeof value === "string" && isUuid(value);
+}
+
+function isUuid(value: string | null | undefined) {
+  return Boolean(
+    value &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+  );
 }
