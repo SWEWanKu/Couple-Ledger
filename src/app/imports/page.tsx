@@ -8,11 +8,12 @@ import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import {
   getImportBatchStatusLabel,
-  getImportBatchStatusTone,
+  getImportReviewContinueSummary,
   getImportReviewHouseholdMembership,
   getImportSourceLabel,
   listImportBatches,
-  type ImportBatchSummary
+  type ImportBatchSummary,
+  type ImportReviewContinueSummary
 } from "@/lib/import-review/batches";
 import { createClient } from "@/lib/supabase/server";
 
@@ -23,6 +24,9 @@ export const metadata: Metadata = {
 export default async function ImportsPage() {
   const { supabase, membership } = await requireImportsAccess();
   const { batches, warning } = await listImportBatches(supabase, {
+    householdId: membership.household_id
+  });
+  const continueSummary = await getImportReviewContinueSummary(supabase, {
     householdId: membership.household_id
   });
 
@@ -39,6 +43,10 @@ export default async function ImportsPage() {
         <ImportHero batchCount={batches.length} />
 
         {warning ? <PageNotice message={warning} /> : null}
+
+        {continueSummary.latestUnfinishedBatch && continueSummary.continueHref ? (
+          <ImportContinueCard summary={continueSummary} />
+        ) : null}
 
         <section className="grid gap-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -140,6 +148,77 @@ function ImportHero({ batchCount }: { batchCount: number }) {
           <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Pocket Count</p>
           <p className="mt-3 text-4xl font-black text-[#794f27]">{batchCount}</p>
           <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">当前可查看的待对账批次</p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function ImportContinueCard({ summary }: { summary: ImportReviewContinueSummary }) {
+  const batch = summary.latestUnfinishedBatch;
+
+  if (!batch || !summary.continueHref) {
+    return null;
+  }
+
+  return (
+    <Card
+      color="default"
+      pattern="app-yellow"
+      className="relative overflow-visible p-5 sm:p-6"
+      data-imports-continue-section="true"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute -top-3 left-10 h-7 w-28 -rotate-2 rounded-[10px] bg-[#82d5bb]/65 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+        <div className="min-w-0">
+          <p className="inline-flex items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
+            <Icon name={batch.source === "wechat" ? "icon-chat" : "icon-shopping"} size={20} bounce />
+            Continue Review
+          </p>
+          <div className="mt-4">
+            <Title size="middle" color="app-yellow">
+              继续对账
+            </Title>
+          </div>
+          <p className="mt-4 max-w-3xl text-sm font-bold leading-7 text-[#725d42]">
+            还有一批账单没对完。先从最新的待确认小纸条继续，如果待确认已经清空，就回到待讨论队列。
+          </p>
+          <Divider type="wave-yellow" className="my-5" />
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <IslandLink
+              href={summary.continueHref}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+              data-imports-continue-link="true"
+              data-imports-continue-href={summary.continueHref}
+            >
+              <ArrowRight aria-hidden="true" size={18} />
+              继续对账
+            </IslandLink>
+            <IslandLink
+              href="/imports/new"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-white/85 px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <FileUp aria-hidden="true" size={18} />
+              导入新账单
+            </IslandLink>
+          </div>
+        </div>
+
+        <div className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_7px_0_rgba(121,79,39,0.09)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Next Pocket</p>
+          <p className="mt-2 truncate text-lg font-black text-[#794f27]">{batch.fileName}</p>
+          <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">
+            {getImportSourceLabel(batch.source)} · {formatImportPeriod(batch)}
+          </p>
+          <div className="mt-4 grid gap-2">
+            <MiniMetric label="未完成批次" value={`${summary.unfinishedBatchCount} 批`} />
+            <MiniMetric label="待确认" value={`${summary.totalPendingItemCount} 条`} />
+            <MiniMetric label="待讨论" value={`${summary.totalNeedDiscussionCount} 条`} />
+            <MiniMetric label="这批进度" value={`${summary.latestUnfinishedBatchReviewedPercent}%`} />
+          </div>
         </div>
       </div>
     </Card>

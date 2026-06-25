@@ -38,6 +38,22 @@ export type ImportBatchListResult = {
   warning: string | null;
 };
 
+export type ImportReviewContinueSummary = {
+  recentBatchCount: number;
+  unfinishedBatchCount: number;
+  totalPendingItemCount: number;
+  totalNeedDiscussionCount: number;
+  latestUnfinishedBatch: ImportBatchSummary | null;
+  latestUnfinishedBatchId: string | null;
+  latestUnfinishedBatchFileName: string | null;
+  latestUnfinishedBatchSource: ImportSource | null;
+  latestUnfinishedBatchPendingCount: number;
+  latestUnfinishedBatchNeedDiscussionCount: number;
+  latestUnfinishedBatchReviewedPercent: number;
+  continueHref: string | null;
+  warning: string | null;
+};
+
 export type ImportBatchReviewSummaryResult =
   | {
       ok: true;
@@ -160,6 +176,45 @@ export async function listImportBatches(
   return {
     batches: ((data ?? []) as unknown as ImportBatchRow[]).map(mapImportBatchRow),
     warning: null
+  };
+}
+
+export async function getImportReviewContinueSummary(
+  supabase: SupabaseClient,
+  {
+    householdId,
+    limit = 50
+  }: {
+    householdId: string;
+    limit?: number;
+  }
+): Promise<ImportReviewContinueSummary> {
+  const result = await listImportBatches(supabase, {
+    householdId,
+    limit
+  });
+  const unfinishedBatches = result.batches.filter(isImportBatchUnfinished);
+  const latestUnfinishedBatch = unfinishedBatches[0] ?? null;
+
+  return {
+    recentBatchCount: result.batches.length,
+    unfinishedBatchCount: unfinishedBatches.length,
+    totalPendingItemCount: unfinishedBatches.reduce((sum, batch) => sum + batch.pendingCount, 0),
+    totalNeedDiscussionCount: unfinishedBatches.reduce(
+      (sum, batch) => sum + batch.needDiscussionCount,
+      0
+    ),
+    latestUnfinishedBatch,
+    latestUnfinishedBatchId: latestUnfinishedBatch?.id ?? null,
+    latestUnfinishedBatchFileName: latestUnfinishedBatch?.fileName ?? null,
+    latestUnfinishedBatchSource: latestUnfinishedBatch?.source ?? null,
+    latestUnfinishedBatchPendingCount: latestUnfinishedBatch?.pendingCount ?? 0,
+    latestUnfinishedBatchNeedDiscussionCount: latestUnfinishedBatch?.needDiscussionCount ?? 0,
+    latestUnfinishedBatchReviewedPercent: latestUnfinishedBatch
+      ? getImportBatchReviewedPercent(latestUnfinishedBatch)
+      : 0,
+    continueHref: latestUnfinishedBatch ? getImportBatchContinueHref(latestUnfinishedBatch) : null,
+    warning: result.warning
   };
 }
 
@@ -329,6 +384,22 @@ export function getImportBatchStatusTone(status: ImportBatchStatus) {
   }
 
   return "border-[#d9c49b] bg-[#fffdf3] text-[#794f27]";
+}
+
+export function isImportBatchUnfinished(batch: ImportBatchSummary) {
+  return batch.pendingCount > 0 || batch.needDiscussionCount > 0;
+}
+
+export function getImportBatchContinueHref(batch: ImportBatchSummary) {
+  const status = batch.pendingCount > 0 ? "pending" : "need_discussion";
+
+  return `/imports/${batch.id}/review?status=${status}`;
+}
+
+export function getImportBatchReviewedPercent(batch: ImportBatchSummary) {
+  return batch.parsedCount > 0
+    ? Math.min(100, Math.round((batch.reviewedCount / batch.parsedCount) * 100))
+    : 0;
 }
 
 export function getMaxImportUploadMegabytes() {
