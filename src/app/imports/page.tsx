@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ArrowRight, FileUp, History, ReceiptText, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileUp, History, ReceiptText, ShieldCheck } from "lucide-react";
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
@@ -147,6 +147,8 @@ function ImportHero({ batchCount }: { batchCount: number }) {
 }
 
 function ImportBatchCard({ batch }: { batch: ImportBatchSummary }) {
+  const progress = getBatchProgress(batch);
+
   return (
     <IslandLink
       href={`/imports/${batch.id}/review`}
@@ -165,10 +167,12 @@ function ImportBatchCard({ batch }: { batch: ImportBatchSummary }) {
               {getImportSourceLabel(batch.source)}
             </span>
             <span
-              className={`inline-flex rounded-full border-2 border-dashed px-3 py-1 text-xs font-black ${getImportBatchStatusTone(
-                batch.status
-              )}`}
+              data-import-batch-state-label={progress.stateLabel}
+              className={`inline-flex rounded-full border-2 border-dashed px-3 py-1 text-xs font-black ${progress.stateTone}`}
             >
+              {progress.stateLabel}
+            </span>
+            <span className="inline-flex rounded-full border-2 border-dashed border-[#d9c49b] bg-white/85 px-3 py-1 text-xs font-black text-[#725d42]">
               {getImportBatchStatusLabel(batch.status)}
             </span>
           </div>
@@ -176,12 +180,42 @@ function ImportBatchCard({ batch }: { batch: ImportBatchSummary }) {
           <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">
             {formatImportPeriod(batch)} · {formatDateTime(batch.createdAt)}
           </p>
+          {progress.isComplete ? (
+            <p
+              data-import-batch-complete="true"
+              className="mt-3 inline-flex items-center gap-2 rounded-[18px] bg-[#e9fbf4] px-3 py-2 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.45)]"
+            >
+              <CheckCircle2 aria-hidden="true" size={16} />
+              这批账单已经没有待处理流水
+            </p>
+          ) : null}
         </div>
-        <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[360px]">
+        <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[430px] lg:grid-cols-4">
           <MiniMetric label="已解析" value={`${batch.parsedCount} 条`} />
           <MiniMetric label="待确认" value={`${batch.pendingCount} 条`} />
           <MiniMetric label="已处理" value={`${batch.reviewedCount} 条`} />
+          <MiniMetric label="对完比例" value={`${progress.reviewedPercent}%`} />
         </div>
+      </div>
+      <div
+        data-import-batch-progress="true"
+        className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/75 px-4 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-[#794f27]">
+          <span>对账进度</span>
+          <span data-import-batch-progress-percent={`${progress.reviewedPercent}%`}>
+            {progress.reviewedPercent}%
+          </span>
+        </div>
+        <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#eadfc8] shadow-[inset_0_1px_0_rgba(121,79,39,0.12)]">
+          <span
+            className="block h-full rounded-full bg-[#82d5bb] transition-[width] duration-300"
+            style={{ width: `${progress.reviewedPercent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs font-bold leading-5 text-[#725d42]">
+          {progress.isComplete ? "已对完，可以回看全部流水或继续导入新账单。" : `还有 ${batch.pendingCount} 条待确认小纸条。`}
+        </p>
       </div>
       <div className="mt-4 grid gap-2 sm:grid-cols-3">
         <ProgressPill label="已入账" value={batch.importedCount} />
@@ -189,7 +223,7 @@ function ImportBatchCard({ batch }: { batch: ImportBatchSummary }) {
         <ProgressPill label="待讨论" value={batch.needDiscussionCount} />
       </div>
       <p className="mt-4 inline-flex items-center gap-2 text-sm font-black text-[#1f7a70]">
-        打开对账占位页
+        打开对账卡片
         <ArrowRight aria-hidden="true" size={17} className="transition group-hover:translate-x-0.5" />
       </p>
     </IslandLink>
@@ -230,6 +264,25 @@ function ProgressPill({ label, value }: { label: string; value: number }) {
       <span>{value}</span>
     </span>
   );
+}
+
+function getBatchProgress(batch: ImportBatchSummary) {
+  const reviewedPercent =
+    batch.parsedCount > 0 ? Math.min(100, Math.round((batch.reviewedCount / batch.parsedCount) * 100)) : 0;
+  const isComplete = batch.parsedCount > 0 && batch.pendingCount === 0;
+  const stateLabel = isComplete ? "已对完" : batch.reviewedCount > 0 ? "对账中" : "待对账";
+  const stateTone = isComplete
+    ? "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
+    : batch.reviewedCount > 0
+      ? "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
+      : "border-[#d9c49b] bg-[#fffdf3] text-[#794f27]";
+
+  return {
+    isComplete,
+    reviewedPercent,
+    stateLabel,
+    stateTone
+  };
 }
 
 function formatImportPeriod(batch: ImportBatchSummary) {

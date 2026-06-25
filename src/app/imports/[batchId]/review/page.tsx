@@ -215,22 +215,22 @@ function ReviewCardPage({
   settlementStatus: GetSettlementSnapshotStatusResult | null;
   state: ImportReviewCardState;
 }) {
-  if (!state.selectedItem) {
-    return <EmptyReviewState batch={batch} state={state} />;
-  }
-
   return (
     <div className="grid gap-6">
       <ReviewBatchHeader batch={batch} state={state} />
       <StatusFilterTabs batchId={batch.id} state={state} />
-      <ImportItemCard
-        batch={batch}
-        currentUserId={currentUserId}
-        householdSummary={householdSummary}
-        item={state.selectedItem}
-        settlementStatus={settlementStatus}
-        state={state}
-      />
+      {state.selectedItem ? (
+        <ImportItemCard
+          batch={batch}
+          currentUserId={currentUserId}
+          householdSummary={householdSummary}
+          item={state.selectedItem}
+          settlementStatus={settlementStatus}
+          state={state}
+        />
+      ) : (
+        <EmptyReviewState batch={batch} state={state} />
+      )}
       <ReadonlyPromise />
     </div>
   );
@@ -244,6 +244,7 @@ function ReviewBatchHeader({
   state: ImportReviewCardState;
 }) {
   const selectedPosition = state.selectedIndex >= 0 ? state.selectedIndex + 1 : 0;
+  const progress = getBatchProgress(batch);
 
   return (
     <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">
@@ -266,11 +267,34 @@ function ReviewBatchHeader({
             这页展示外部账单解析出来的待对账条目。V1 只开放“共同支出 + 两人平分”的确认入账，其余个人、自定义分摊仍先留在未来版本。
           </p>
           <Divider type="wave-yellow" className="my-6" />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div
+            data-import-review-progress-card="true"
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6"
+          >
             <ProgressCard icon={<ReceiptText aria-hidden="true" size={20} />} label="已解析" value={batch.parsedCount} />
             <ProgressCard icon={<Hourglass aria-hidden="true" size={20} />} label="待确认" value={batch.pendingCount} />
-            <ProgressCard icon={<ShieldCheck aria-hidden="true" size={20} />} label="已处理" value={batch.reviewedCount} />
-            <ProgressCard icon={<Icon name="icon-map" size={20} bounce />} label="筛选内" value={state.totalItems} />
+            <ProgressCard icon={<BadgeCheck aria-hidden="true" size={20} />} label="已入账" value={batch.importedCount} />
+            <ProgressCard icon={<ReceiptText aria-hidden="true" size={20} />} label="已忽略" value={batch.skippedCount} />
+            <ProgressCard icon={<HelpCircle aria-hidden="true" size={20} />} label="待讨论" value={batch.needDiscussionCount} />
+            <ProgressCard
+              icon={<ShieldCheck aria-hidden="true" size={20} />}
+              label="对完比例"
+              value={`${progress.reviewedPercent}%`}
+            />
+          </div>
+          <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/75 px-4 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-[#794f27]">
+              <span>整批进度</span>
+              <span data-import-review-progress-percent={`${progress.reviewedPercent}%`}>
+                {progress.reviewedPercent}%
+              </span>
+            </div>
+            <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#eadfc8] shadow-[inset_0_1px_0_rgba(121,79,39,0.12)]">
+              <span
+                className="block h-full rounded-full bg-[#82d5bb] transition-[width] duration-300"
+                style={{ width: `${progress.reviewedPercent}%` }}
+              />
+            </div>
           </div>
         </div>
 
@@ -290,19 +314,21 @@ function ReviewBatchHeader({
             className="mt-5 rounded-[24px] bg-white px-4 py-4 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.62)]"
           >
             <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Card Progress</p>
-            <p className="mt-2 text-3xl font-black text-[#794f27]">
-              第 {selectedPosition} / {state.totalItems} 条
+            {state.selectedItem ? (
+              <p className="mt-2 text-3xl font-black text-[#794f27]">
+                第 {selectedPosition} / {state.totalItems} 条
+              </p>
+            ) : (
+              <p className="mt-2 text-2xl font-black text-[#794f27]">暂无当前卡片</p>
+            )}
+            <p className="mt-2 text-xs font-bold leading-5 text-[#725d42]">
+              当前筛选内 {state.totalItems} 条
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-white/75 p-4 sm:grid-cols-4">
-        <ProgressPill label="已入账" value={state.counts.imported} />
-        <ProgressPill label="已忽略" value={state.counts.skipped} />
-        <ProgressPill label="待讨论" value={state.counts.need_discussion} />
-        <ProgressPill label="全部条目" value={state.counts.all} />
-      </div>
+      {progress.isComplete ? <BatchCompletionCard batch={batch} /> : null}
     </Card>
   );
 }
@@ -350,6 +376,61 @@ function StatusFilterTabs({
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+function BatchCompletionCard({ batch }: { batch: ImportBatchSummary }) {
+  return (
+    <div
+      data-import-review-completion-card="true"
+      className="mt-5 rounded-[28px] border-2 border-dashed border-[#82d5bb] bg-[#e9fbf4] p-4 shadow-[0_7px_0_rgba(31,122,112,0.1)]"
+    >
+      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
+        <CheckCircle2 aria-hidden="true" size={18} />
+        Batch Finished
+      </p>
+      <h3 className="mt-3 text-xl font-black text-[#1f7a70]">这批账单已经对完啦</h3>
+      <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
+        已入账的小纸条已经进入正式账本；已忽略的会留在导入历史里方便回看；待讨论的小纸条仍然可以之后再回来一起确认。
+      </p>
+      <BatchNextStepLinks batch={batch} />
+    </div>
+  );
+}
+
+function BatchNextStepLinks({ batch }: { batch: ImportBatchSummary }) {
+  const month = getBatchMonthKey(batch);
+  const links = [
+    { href: getReviewHref(batch.id, "all", null), label: "查看全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batch.id, "imported", null), label: "查看已入账", icon: <BadgeCheck aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batch.id, "need_discussion", null), label: "查看待确认", icon: <HelpCircle aria-hidden="true" size={16} /> },
+    { href: "/imports", label: "回到导入列表", icon: <ArrowLeft aria-hidden="true" size={16} /> },
+    { href: "/imports/new", label: "导入新账单", icon: <FileUp aria-hidden="true" size={16} /> },
+    { href: month ? `/records?month=${month}` : "/records", label: "去账本看看", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    {
+      href: month ? `/reports/monthly?month=${month}` : "/reports/monthly",
+      label: "去月报看看",
+      icon: <CalendarDays aria-hidden="true" size={16} />
+    },
+    { href: month ? `/settlement?month=${month}` : "/settlement", label: "去结算看看", icon: <Coins aria-hidden="true" size={16} /> }
+  ];
+
+  return (
+    <div
+      data-import-review-next-step-links="true"
+      className="mt-4 flex flex-wrap gap-2"
+    >
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          {link.icon}
+          {link.label}
+        </Link>
+      ))}
     </div>
   );
 }
@@ -592,7 +673,11 @@ function ReviewDecisionControls({
     return <ImportedLedgerStatusCard item={item} />;
   }
 
-  const canUpdateStatus = !item.ledgerEntryId;
+  if (item.reviewStatus === "skipped" || item.reviewStatus === "need_discussion") {
+    return <ReviewedOutcomeStatusCard item={item} />;
+  }
+
+  const canUpdateStatus = item.reviewStatus === "pending" && !item.ledgerEntryId;
   const confirmBlockReason = getConfirmBlockReason({ categories, item, members, settlementStatus });
   const canConfirmCommonExpense = !confirmBlockReason;
   const defaultCategoryId = getDefaultCategoryId(categories, item);
@@ -816,6 +901,49 @@ function ImportedLedgerStatusCard({ item }: { item: ImportReviewItem }) {
       <p className="mt-3 text-xs font-bold leading-6 text-[#1f7a70]">
         {importedLedgerCopy.readonly}
       </p>
+      <p
+        data-import-review-imported-state-note="true"
+        className="mt-2 rounded-[18px] bg-white/70 px-3 py-2 text-xs font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]"
+      >
+        后续修改请从正式账单便签进入，这张导入小纸条这里只做来源回看。
+      </p>
+    </div>
+  );
+}
+
+function ReviewedOutcomeStatusCard({ item }: { item: ImportReviewItem }) {
+  const isNeedDiscussion = item.reviewStatus === "need_discussion";
+
+  return (
+    <div
+      data-import-review-reviewed-outcome={item.reviewStatus}
+      className={`rounded-[28px] border-2 border-dashed p-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${
+        isNeedDiscussion
+          ? "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+          : "border-[#d9c49b] bg-[#fffdf3] text-[#725d42]"
+      }`}
+    >
+      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em]">
+        {isNeedDiscussion ? (
+          <HelpCircle aria-hidden="true" size={17} />
+        ) : (
+          <ReceiptText aria-hidden="true" size={17} />
+        )}
+        {isNeedDiscussion ? "待确认" : "已忽略"}
+      </p>
+      <div className="mt-3 rounded-[24px] bg-white/78 px-4 py-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]">
+        <p className="text-lg font-black text-[#794f27]">
+          {isNeedDiscussion ? "先放进小岛讨论夹" : "这条没有进入正式账本"}
+        </p>
+        <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">
+          {isNeedDiscussion
+            ? "待确认只记录这张来源小纸条，不会创建正式账本流水；可以之后再回来一起确认。"
+            : "已忽略只保留导入历史，不会创建正式账本流水，也不会影响月报或结算。"}
+        </p>
+      </div>
+      <p className="mt-3 text-xs font-bold leading-6">
+        当前版本不提供撤回或重新打开操作；需要入账时请在后续版本的重开流程里处理。
+      </p>
     </div>
   );
 }
@@ -919,9 +1047,10 @@ function EmptyReviewState({
   batch: ImportBatchSummary;
   state: ImportReviewCardState;
 }) {
+  const isPendingEmpty = state.statusFilter === "pending";
+
   return (
     <div className="grid gap-5">
-      <StatusFilterTabs batchId={batch.id} state={state} />
       <NotebookEmptyState
         action={{
           href: getReviewHref(batch.id, "all", null),
@@ -935,17 +1064,52 @@ function EmptyReviewState({
         }}
         dataAttributes={{ "data-import-review-empty-state": state.statusFilter }}
         description={
-          state.statusFilter === "pending" ? (
-            <p>这个筛选下没有待处理流水了，可以切换到全部、待确认或已忽略查看。</p>
+          isPendingEmpty ? (
+            <>
+              <p>这个筛选下没有待处理流水了。</p>
+              <p className="mt-2">待讨论的小纸条还可以之后再回来一起确认，不算永远完成。</p>
+            </>
           ) : (
             <p>这个筛选下暂时没有小纸条。换个状态看看，也许它们躲在别的夹层里。</p>
           )
         }
         eyebrow="Quiet Stack"
         iconName="icon-map"
-        title="这里暂时没有对账卡片"
+        title={isPendingEmpty ? "这个筛选下没有待处理流水了" : "这里暂时没有对账卡片"}
         tone="yellow"
       />
+      {isPendingEmpty ? <PendingEmptyLinks batchId={batch.id} /> : null}
+    </div>
+  );
+}
+
+function PendingEmptyLinks({ batchId }: { batchId: string }) {
+  const links = [
+    { href: getReviewHref(batchId, "all", null), label: "全部流水", icon: <ReceiptText aria-hidden="true" size={16} /> },
+    {
+      href: getReviewHref(batchId, "need_discussion", null),
+      label: "待讨论",
+      icon: <HelpCircle aria-hidden="true" size={16} />
+    },
+    { href: getReviewHref(batchId, "imported", null), label: "已入账", icon: <BadgeCheck aria-hidden="true" size={16} /> },
+    { href: getReviewHref(batchId, "skipped", null), label: "已忽略", icon: <ReceiptText aria-hidden="true" size={16} /> }
+  ];
+
+  return (
+    <div
+      data-import-review-pending-empty-links="true"
+      className="flex flex-wrap gap-2 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+    >
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-[#e9fbf4] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+        >
+          {link.icon}
+          {link.label}
+        </Link>
+      ))}
     </div>
   );
 }
@@ -1098,7 +1262,7 @@ function ProgressCard({
 }: {
   icon: ReactNode;
   label: string;
-  value: number;
+  value: ReactNode;
 }) {
   return (
     <div className="rounded-[24px] bg-white px-4 py-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
@@ -1108,15 +1272,6 @@ function ProgressCard({
       </p>
       <p className="mt-2 text-2xl font-black text-[#794f27]">{value}</p>
     </div>
-  );
-}
-
-function ProgressPill({ label, value }: { label: string; value: number }) {
-  return (
-    <span className="inline-flex items-center justify-between gap-3 rounded-[20px] bg-[#fffdf3] px-3 py-2 text-xs font-black text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.5)]">
-      <span>{label}</span>
-      <span>{value}</span>
-    </span>
   );
 }
 
@@ -1180,6 +1335,28 @@ function getReviewHref(
   }
 
   return `/imports/${batchId}/review?${params.toString()}`;
+}
+
+function getBatchProgress(batch: ImportBatchSummary) {
+  const reviewedPercent =
+    batch.parsedCount > 0 ? Math.min(100, Math.round((batch.reviewedCount / batch.parsedCount) * 100)) : 0;
+
+  return {
+    isComplete: batch.parsedCount > 0 && batch.pendingCount === 0,
+    reviewedPercent
+  };
+}
+
+function getBatchMonthKey(batch: ImportBatchSummary) {
+  const monthSource = batch.periodEnd ?? batch.periodStart;
+
+  if (!monthSource) {
+    return null;
+  }
+
+  const match = monthSource.match(/^(\d{4}-\d{2})(?:-\d{2})?$/);
+
+  return match?.[1] ?? null;
 }
 
 function getLedgerRecordHref(ledgerEntryId: string, monthKey: string) {
