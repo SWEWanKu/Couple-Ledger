@@ -413,22 +413,25 @@ Visual direction:
 - avoid dense admin tables, cold finance dashboards, and bank-style import
   wording.
 
-## 11. Keyboard Shortcut Plan
+## 11. Keyboard Shortcut Behavior
 
-V1 may document shortcuts before implementation:
+V1 card review now includes shortcut polish for `J` / `K` / `4` / `5` / `1` /
+`Enter` / `Esc`.
 
-- `J`: next item;
-- `K`: previous item;
-- `1`: common expense;
-- `2`: my personal expense;
-- `3`: partner personal expense;
-- `4`: ignore;
-- `5`: need discussion;
-- `Enter`: confirm the current reviewed decision.
+- `J`: next item.
+- `K`: previous item.
+- `4`: ignore the current item when the existing skip form is available.
+- `5`: mark the current item as need discussion when the existing status form
+  is available.
+- `1`: focus or highlight the common-expense confirmation area when it is
+  available.
+- `Enter`: submit confirm-to-ledger only when the existing confirm form exists
+  and passes browser form validity.
+- `Esc`: blur the active input where applicable.
 
-Keyboard shortcuts must never bypass validation or explicit confirmation. If
-implemented later, they should be progressive enhancement on top of the same
-server-side review and confirm rules.
+Keyboard shortcuts remain progressive enhancement. They reuse existing links,
+forms, and server actions; they do not add backend behavior, bypass validation,
+or replace the mouse/touch buttons.
 
 ## 12. Suggestion Layer
 

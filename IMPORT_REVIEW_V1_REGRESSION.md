@@ -39,6 +39,8 @@ source trail and review queue.
 - `/imports/[batchId]/review`.
 - Common expense + equal split confirm-to-ledger.
 - `skipped` and `need_discussion` status actions.
+- Review card keyboard shortcuts for `J`, `K`, `4`, `5`, `1`, `Enter`, and
+  `Esc`.
 - No personal expense import yet.
 - No custom split yet.
 - No batch confirm-all yet.
@@ -229,6 +231,34 @@ Review safety:
 - [ ] The page uses the private scrapbook / island notebook style, not an admin
       table.
 
+## Keyboard Shortcut Checklist
+
+`/imports/[batchId]/review` should show a discoverable shortcut help card.
+
+Verify keyboard behavior:
+
+- [ ] `J` opens the next item when an existing next link is available.
+- [ ] `K` opens the previous item when an existing previous link is available.
+- [ ] `4` submits the existing `蹇界暐姝ゆ潯` / skip form only when that
+      action is available.
+- [ ] `5` submits the existing `鏍囪寰呯‘璁?` / need-discussion form only
+      when that action is available.
+- [ ] `1` focuses or highlights the `鍏卞悓鏀嚭` confirmation area only when
+      confirm-to-ledger is available.
+- [ ] `Enter` submits confirm-to-ledger only when the existing confirm form
+      exists and browser form validity passes.
+- [ ] `Esc` blurs the active input where applicable.
+
+Shortcut safety:
+
+- [ ] Shortcuts do not trigger while typing in `input`, `textarea`, `select`, or
+      `contenteditable` elements.
+- [ ] Shortcuts reuse existing links, forms, and server actions.
+- [ ] Shortcuts add no backend behavior.
+- [ ] No new server action, RPC, migration, API route, or helper is added for
+      shortcuts.
+- [ ] Mouse and touch buttons remain usable.
+
 ## Status Action Checklist
 
 From a pending item:
@@ -360,6 +390,12 @@ Authenticated smoke:
 - [ ] `/imports` renders.
 - [ ] `/imports/new` renders.
 - [ ] `/imports/[batchId]/review` renders for an existing batch.
+- [ ] `/imports/[batchId]/review` shortcut help card renders.
+- [ ] `J` / `K` navigation works without breaking mouse/touch navigation.
+- [ ] `4` / `5` submit only the existing status forms when available.
+- [ ] `1` focuses or highlights the common-expense confirmation area.
+- [ ] `Enter` confirms only when the confirm form exists and is valid.
+- [ ] Shortcuts do not fire while typing in note, category, or paid-by fields.
 
 ## Security And Static Checklist
 
@@ -401,7 +437,6 @@ review.
 - Batch confirm-all is deferred.
 - Undo/reopen imported item is deferred.
 - Reopen skipped or need-discussion item is deferred.
-- Keyboard shortcuts are deferred.
 - Realtime collaboration is deferred.
 - AI final decision is not supported.
 - Voice recognition is not supported.
