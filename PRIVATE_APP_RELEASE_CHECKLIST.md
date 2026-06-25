@@ -280,6 +280,11 @@ file as the final private-app release pass.
 - [ ] `skipped` action creates no `ledger_entry_splits` rows.
 - [ ] `need_discussion` action creates no `ledger_entries` row.
 - [ ] `need_discussion` action creates no `ledger_entry_splits` rows.
+- [ ] `skipped -> pending` reopen works.
+- [ ] `need_discussion -> pending` reopen works.
+- [ ] Imported items cannot be reopened.
+- [ ] Reopen actions do not create, update, unlink, or delete ledger records.
+- [ ] Reopen actions do not mutate settlement data.
 - [ ] Common expense confirm creates exactly one official `ledger_entries` row.
 - [ ] Common expense confirm creates equal-split `ledger_entry_splits` rows.
 - [ ] Imported item links to its official ledger record.
@@ -379,7 +384,10 @@ known scoped flows.
 
 - [ ] Use far-future test months such as `2099-10`.
 - [ ] Use only sanitized Import Review fixtures for import smoke.
+- [ ] Use only sanitized import items for reopen smoke.
 - [ ] Do not use real bill exports for committed tests.
+- [ ] Do not test imported undo as a user flow; imported item undo remains
+      deferred.
 - [ ] Prefer creating temporary records through the normal UI.
 - [ ] Importing sanitized fixtures may leave harmless `import_batches` and
       `import_items` rows.

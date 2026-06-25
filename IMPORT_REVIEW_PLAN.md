@@ -139,10 +139,11 @@ a later explicit decision document changes them.
 15. Refunds and reversals: V1 does not auto-link refunds or import them as income.
     Parser suggestions should steer them to `忽略` or `待确认` until a later rule
     locks refund handling.
-16. Reversibility: V1 does not include an undo-imported-item flow in the first
-    schema/action slice. Created records can later follow the existing
-    edit/soft-void record flows, while import source trail remains. Reopening
-    skipped or need-discussion items is planned after MVP.
+16. Reversibility: V1 supports reopening lightweight `skipped` and
+    `need_discussion` outcomes back to `pending`. V1 still does not include an
+    undo-imported-item flow or ledger-entry unlinking; created records can later
+    follow the existing edit/soft-void record flows, while import source trail
+    remains.
 17. Batch counters: counters may be stored for UX, but correctness must not rely
     only on stale counters. Recompute when needed, and update stored counters in
     the same transaction as item status changes if counters exist.
@@ -500,9 +501,18 @@ Need discussion:
 - records `reviewed_by` and `reviewed_at`;
 - keeps the item findable for later review.
 
-Future undo/reopen behavior should be planned separately. V1 can postpone undo
-as long as the status history is clear and users can return to
-need-discussion items.
+Reopen-to-pending:
+
+- supports `skipped -> pending`;
+- supports `need_discussion -> pending`;
+- clears `reviewed_by` and `reviewed_at` because pending items have no review
+  actor pair;
+- keeps `ledger_entry_id` null;
+- recomputes batch counters transaction-safely.
+
+Imported item undo remains separate and deferred. V1 does not unlink imported
+items from ledger entries and does not delete official ledger records from the
+import review queue.
 
 ## 15. Relationship With Settlement
 
@@ -657,8 +667,10 @@ future write path only when a dedicated implementation task adds it.
     snapshot/outdated-live warning; `pending_replacement` months block confirm.
 14. Refunds/reversals are not auto-linked and are not imported as income in V1;
     suggest `忽略` or `待确认`.
-15. No imported-item undo/reopen flow in the first slice; created records use the
-    existing edit/soft-void flows and source trail remains.
+15. `skipped` and `need_discussion` items can be reopened to `pending`;
+    imported-item undo/reopen and ledger-entry unlinking remain deferred.
+    Created records use the existing edit/soft-void flows and source trail
+    remains.
 16. Batch counters may be stored, but correctness must be recomputable and
     counter updates must be transaction-safe with item status changes.
 17. Future import RLS/security must stay household-scoped, derive actors from
@@ -679,8 +691,7 @@ future write path only when a dedicated implementation task adds it.
 3. Long-term original-file archival.
 4. Refund auto-linking, automatic income import for refunds, and complex reversal
    reconciliation.
-5. Imported-item undo/reopen flows for imported, skipped, or need-discussion
-   rows.
+5. Imported-item undo/reopen and ledger-entry unlinking flows.
 6. Extra statuses such as `duplicate_suspected` or `personal_skipped`, unless a
    later schema decision explicitly adds them.
 7. Batch confirm-all, dense table-first/admin review, realtime presence, complex

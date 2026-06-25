@@ -34,11 +34,13 @@ source trail and review queue.
 - `create_import_batch_v1` RPC.
 - `update_import_item_review_status_v1` RPC.
 - `confirm_import_item_to_ledger_v1` RPC.
+- `reopen_import_item_to_pending_v1` RPC.
 - `/imports`.
 - `/imports/new`.
 - `/imports/[batchId]/review`.
 - Common expense + equal split confirm-to-ledger.
 - `skipped` and `need_discussion` status actions.
+- Reopen `skipped` and `need_discussion` items back to `pending`.
 - Review card keyboard shortcuts for `J`, `K`, `4`, `5`, `1`, `Enter`, and
   `Esc`.
 - No personal expense import yet.
@@ -170,6 +172,28 @@ Verify:
 - [ ] Does not mutate `settlement_confirmations`.
 - [ ] Uses no service role or RLS bypass.
 
+### `reopen_import_item_to_pending_v1`
+
+- [ ] Function exists.
+- [ ] Function is `SECURITY INVOKER`.
+- [ ] `anon` cannot execute.
+- [ ] `authenticated` can execute.
+- [ ] Authenticated household member can reopen an eligible item.
+- [ ] Non-household user cannot reopen items.
+- [ ] Supports `skipped -> pending`.
+- [ ] Supports `need_discussion -> pending`.
+- [ ] Rejects `imported` items.
+- [ ] Rejects items linked to `ledger_entry_id`.
+- [ ] Clears `reviewed_by`.
+- [ ] Clears `reviewed_at`.
+- [ ] Keeps `ledger_entry_id` null.
+- [ ] Recomputes batch counters in the same transaction.
+- [ ] Adds no DELETE policy.
+- [ ] Creates no `ledger_entries`.
+- [ ] Creates no `ledger_entry_splits`.
+- [ ] Mutates no settlement tables.
+- [ ] Uses no service role or RLS bypass.
+
 ## Upload Flow Checklist
 
 - [ ] `/imports` is auth-protected.
@@ -278,6 +302,30 @@ Verify after either status action:
       pending items remain.
 - [ ] Imported items cannot be changed by these actions.
 
+## Reopen-To-Pending Checklist
+
+From a skipped item:
+
+- [ ] Current item shows `重新放回待对账`.
+- [ ] Action changes `review_status` back to `pending`.
+
+From a need-discussion item:
+
+- [ ] Current item shows `放回待对账`.
+- [ ] Action changes `review_status` back to `pending`.
+
+Verify after either reopen action:
+
+- [ ] `reviewed_by` is cleared.
+- [ ] `reviewed_at` is cleared.
+- [ ] `ledger_entry_id` remains null.
+- [ ] Batch counters are recomputed transaction-safely.
+- [ ] Item returns to the pending queue.
+- [ ] No `ledger_entries` row is created, updated, unlinked, or deleted.
+- [ ] No `ledger_entry_splits` row is created, updated, or deleted.
+- [ ] No settlement snapshot or confirmation row is mutated.
+- [ ] Imported items cannot be reopened.
+
 ## Confirm-To-Ledger Checklist
 
 Pick a sanitized pending expense item. Confirm it as:
@@ -356,6 +404,9 @@ Always verify:
       or file names.
 - [ ] Do not cleanup-delete import rows.
 - [ ] Import tables have no DELETE policy.
+- [ ] Reopen smoke uses sanitized import items only.
+- [ ] Do not test imported undo as a user flow; imported item undo remains
+      deferred.
 - [ ] If sanitized import batches/items remain in the DB, record them as
       harmless test artifacts.
 - [ ] For created test ledger entries, use the existing soft-void flow rather
@@ -436,7 +487,6 @@ review.
 - Refund auto-linking is deferred.
 - Batch confirm-all is deferred.
 - Undo/reopen imported item is deferred.
-- Reopen skipped or need-discussion item is deferred.
 - Realtime collaboration is deferred.
 - AI final decision is not supported.
 - Voice recognition is not supported.
