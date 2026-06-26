@@ -163,7 +163,7 @@ export default async function EditRecordPage({ params, searchParams }: EditRecor
                   </Title>
                 </div>
                 <p className="mt-4 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
-                  把金额、日期、分类、经手人或备注修正好。保存时只会通过小岛的账本 RPC 更新这笔记录和分摊行。
+                  把金额、日期、分类、经手人或备注修正好。保存时会一起更新这笔记录和分摊。
                 </p>
               </div>
               <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_7px_0_#5fb89f]">
@@ -392,10 +392,10 @@ export default async function EditRecordPage({ params, searchParams }: EditRecor
             <Card type="dashed" color="default" className="p-5">
               <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
                 <Icon name="icon-diy" size={18} bounce />
-                RPC Only
+                保存说明
               </p>
               <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
-                这张修改便签只提交给 `update_ledger_record_v1`，由数据库一次性更新账单和分摊行。
+                保存后会一次性更新账单和分摊行。
               </p>
             </Card>
           </aside>

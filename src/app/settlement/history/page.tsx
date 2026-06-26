@@ -106,7 +106,7 @@ export default async function SettlementHistoryPage() {
               </div>
 
               <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-[#725d42] sm:text-lg">
-                这里像一本只读便签册，只翻看已经保存过的 settlement snapshot 和两个人的确认章。没有盖章按钮，也不会触发真实转账。
+                这里像一本结算便签册，只翻看已经保存过的月份和两个人的确认章。没有盖章按钮，也不会触发真实转账。
               </p>
 
               <Divider type="wave-yellow" className="my-6" />
@@ -138,9 +138,9 @@ export default async function SettlementHistoryPage() {
 
               <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-sm font-bold leading-7 text-[#725d42]">
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-                  Read Source
+                  归档说明
                 </p>
-                <p className="mt-1">读取 settlement_snapshots 和 settlement_confirmations；本页没有写入入口。</p>
+                <p className="mt-1">这里仅用于回看旧便签，本页没有新的确认操作。</p>
               </div>
             </aside>
           </div>
@@ -304,7 +304,7 @@ function HistoryCard({ item }: { item: SettlementHistoryItem }) {
         </div>
       ) : (
         <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white px-4 py-3 text-sm font-black leading-6 text-[#725d42]">
-          这张旧便签的明细 JSON 暂时读不完整，只展示表中保存的总额和确认进度。
+          这张旧便签的明细暂时读不完整，只展示已保存的总额和确认进度。
         </div>
       )}
 
@@ -418,7 +418,7 @@ function getHistoryCount(history: GetSettlementHistoryResult) {
 function getLifecycleHistoryCopy(status: SettlementHistoryItem["lifecycleStatus"]) {
   if (status === "pending_replacement") {
     return {
-      raw: "pending_replacement",
+      raw: "待确认新版",
       memo: "新的结算便签草稿，等待两个人确认",
       className: "border-[#f7cd67] bg-[#fff8da] text-[#8a6420]"
     };
@@ -426,14 +426,14 @@ function getLifecycleHistoryCopy(status: SettlementHistoryItem["lifecycleStatus"
 
   if (status === "superseded") {
     return {
-      raw: "superseded",
+      raw: "已归档",
       memo: "旧结算便签，已被新的便签替代",
       className: "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
     };
   }
 
   return {
-    raw: "active",
+    raw: "当前",
     memo: "当前结算便签",
     className: "border-[#82d5bb] bg-[#e9fbf4] text-[#1f7a70]"
   };

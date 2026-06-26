@@ -125,7 +125,6 @@ export default async function DashboardPage() {
     householdId: membership.household_id,
     limit: 50
   });
-  const ledgerStats = createLedgerStats(ledgerSummary);
   const currentMonth = ledgerSummary.monthStart.slice(0, 7);
 
   return (
@@ -149,29 +148,16 @@ export default async function DashboardPage() {
           summary={ledgerSummary}
         />
 
-        <DashboardHouseholdSummaryCard summary={householdSummary} warning={householdSummaryWarning} />
-
         <ImportReviewEntryCard context="dashboard" overview={importReviewOverview} />
 
-        {ledgerSummaryWarning ? (
+        {householdSummaryWarning || ledgerSummaryWarning ? (
           <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
             <AlertCircle aria-hidden="true" size={18} className="mt-0.5 shrink-0" />
-            <span>{ledgerSummaryWarning}</span>
+            <span>{householdSummaryWarning ?? ledgerSummaryWarning}</span>
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {ledgerStats.map((stat) => (
-            <LedgerStatSticker key={stat.label} stat={stat} />
-          ))}
-        </section>
-
         <MonthlyLedgerNotebookCard result={monthlyLedgerSummary} />
-
-        <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-          <CategoryBreakdownCard items={ledgerSummary.categoryBreakdown} />
-          <RecentRecordsCard records={ledgerSummary.recentRecords} />
-        </section>
 
         <RecentIslandActivityCard
           activity={recentActivity}
@@ -242,7 +228,7 @@ function DashboardMonthHero({
           </div>
 
           <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-[#725d42] sm:text-lg">
-            {householdName} 的本月账本已经接上 Supabase，只展示真实读取到的流水和小岛资料。
+            {householdName} 的本月账本在这里轻轻摊开，先看这个月花了多少、最近记了什么。
           </p>
 
           <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_190px]">
@@ -304,7 +290,7 @@ function DashboardMonthHero({
           <div className="rounded-[26px] bg-[#82d5bb] px-4 py-4 text-white shadow-[0_5px_0_#5fb89f]">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
               <WalletCards aria-hidden="true" size={16} />
-              Real Ledger
+              本月支出
             </p>
             <p className="mt-3 text-3xl font-black leading-tight">{formatMoney(summary.expenseTotal)}</p>
             <p className="mt-1 text-sm font-bold leading-6 text-white/90">本月真实支出流水</p>
@@ -353,7 +339,7 @@ function DashboardHouseholdSummaryCard({
             </Title>
           </div>
           <p className="mt-3 max-w-2xl text-sm font-bold leading-7 text-[#725d42]">
-            {summary.householdName} 的成员、分类贴纸都来自 Supabase；这里不展示假账本，只整理当前能安全读到的小岛资料。
+            {summary.householdName} 的成员和分类贴纸都在这里，方便确认这本手账属于哪座小岛。
           </p>
         </div>
 
@@ -1044,7 +1030,7 @@ function SettlementEntryCard({
         <div className={`rounded-[28px] border-2 border-dashed px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${teaser.className}`}>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
             <TeaserIcon aria-hidden="true" size={16} />
-            Settlement Status
+            结算状态
           </p>
           <p className="mt-2 text-lg font-black text-[#794f27]">{teaser.title}</p>
           <p className="mt-1 text-sm font-bold leading-6 text-[#725d42]">

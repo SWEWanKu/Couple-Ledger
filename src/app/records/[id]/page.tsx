@@ -688,7 +688,7 @@ function RecordUpdatedNotice({ cleanHref }: { cleanHref: string }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="flex items-start gap-3">
           <BadgeCheck aria-hidden="true" size={19} className="mt-0.5 shrink-0" />
-          这笔账已经修改好啦，账单和分摊行都通过小岛 RPC 重新对齐了。
+          这笔账已经修改好啦，金额和分摊也一起对齐了。
         </p>
         <Link
           href={cleanHref}
@@ -821,7 +821,7 @@ function SplitBreakdown({ record }: { record: RecordDetail }) {
             </Title>
           </div>
           <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-            这里只读 `ledger_entry_splits`，用于确认每个人承担的金额。
+            这里用于确认每个人承担的金额。
           </p>
         </div>
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
@@ -870,7 +870,7 @@ function ImportSourceBadge({ source }: { source: ImportLedgerSource | null }) {
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#1f7a70]">
             <BadgeCheck aria-hidden="true" size={17} />
-            Import Source
+            对账来源
           </p>
           <div className="mt-2">
             <Title size="small" color="app-teal" style={{ fontSize: 20 }}>
@@ -1202,7 +1202,7 @@ function formatImportSourceName(source: ImportLedgerSource["source"]) {
 }
 
 function formatImportSourceStatus(status: ImportLedgerSource["reviewStatus"]) {
-  return status === "imported" ? "\u5df2\u5165\u8d26 / imported" : status;
+  return status === "imported" ? "\u5df2\u5165\u8d26" : status;
 }
 
 function formatImportSourceTransactionTime(source: ImportLedgerSource) {
@@ -1245,6 +1245,6 @@ const recordImportSourceCopy = {
   statusLabel: "\u5bf9\u8d26\u72b6\u6001",
   transactionIdLabel: "\u6765\u6e90\u6d41\u6c34\u53f7",
   readonly:
-    "\u53ea\u8bfb\u6765\u6e90\u8bf4\u660e\uff1a\u4e0d\u4f1a\u4fee\u6539\u8d26\u5355\uff0c\u4e0d\u4f1a\u6539\u52a8\u7ed3\u7b97\uff0c\u4e0d\u4f1a\u91cd\u65b0\u5bfc\u5165\u3002",
+    "\u8fd9\u91cc\u53ea\u7559\u6765\u6e90\u7ebf\u7d22\uff0c\u65b9\u4fbf\u56de\u770b\u5bf9\u8d26\u5361\u7247\u3002",
   backLink: "\u56de\u5230\u5bf9\u8d26\u5361\u7247"
 } as const;

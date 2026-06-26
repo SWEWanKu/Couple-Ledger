@@ -30,14 +30,14 @@ export function PrivateIslandTrail({ items, className = "" }: PrivateIslandTrail
     <nav
       aria-label="\u5c0f\u5c9b\u8def\u6807"
       data-private-island-trail="true"
-      className={`relative overflow-visible rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-3 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)] ${className}`}
+      className={`relative overflow-visible rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-3 py-2 shadow-[0_4px_0_rgba(121,79,39,0.08)] ${className}`}
     >
       <span
         aria-hidden="true"
-        className="absolute -top-3 left-8 h-6 w-20 -rotate-2 rounded-[9px] bg-[#82d5bb]/60 shadow-[0_4px_0_rgba(121,79,39,0.08)]"
+        className="absolute -top-2 left-8 h-5 w-16 -rotate-2 rounded-[8px] bg-[#82d5bb]/55 shadow-[0_3px_0_rgba(121,79,39,0.08)]"
       />
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="flex shrink-0 items-center gap-2 px-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <p className="hidden shrink-0 items-center gap-2 px-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d] sm:flex">
           <Icon name="icon-map" size={18} bounce />
           <span>{"\u4f60\u5728\u5c0f\u5c9b\u7684\u54ea\u91cc"}</span>
         </p>
@@ -60,7 +60,7 @@ export function PrivateIslandTrail({ items, className = "" }: PrivateIslandTrail
 
 function TrailItem({ item }: { item: PrivateIslandTrailItem }) {
   const className =
-    "inline-flex min-h-9 max-w-full items-center justify-center rounded-full px-3 py-1.5 text-xs font-black shadow-[0_3px_0_rgba(121,79,39,0.1)] transition focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
+    "inline-flex min-h-8 max-w-full items-center justify-center rounded-full px-3 py-1 text-xs font-black shadow-[0_2px_0_rgba(121,79,39,0.1)] transition focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
   const label = <span className="truncate">{item.label}</span>;
 
   if (item.current || !isSafeInternalHref(item.href)) {

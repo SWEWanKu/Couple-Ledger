@@ -227,7 +227,7 @@ export function ImportReviewKeyboardShortcuts({
     <Card
       color="default"
       pattern="app-teal"
-      className="relative overflow-hidden p-3"
+      className="relative overflow-hidden p-2.5"
       data-import-review-shortcuts="true"
     >
       <span
@@ -240,7 +240,7 @@ export function ImportReviewKeyboardShortcuts({
             <Keyboard aria-hidden="true" size={17} />
             {shortcutCopy.title}
           </p>
-          <p className="text-xs font-bold leading-5 text-[#725d42]">
+          <p className="hidden text-xs font-bold leading-5 text-[#725d42] md:block">
             {shortcutCopy.description}
           </p>
         </div>
@@ -264,7 +264,7 @@ export function ImportReviewKeyboardShortcuts({
         </div>
         <p
           aria-live="polite"
-          className="mt-2 flex items-start gap-2 rounded-[16px] bg-white/75 px-3 py-1.5 text-[11px] font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]"
+          className="mt-2 flex items-start gap-2 rounded-[14px] bg-white/75 px-2.5 py-1 text-[11px] font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]"
           data-import-review-shortcut-status="true"
         >
           <Sparkles aria-hidden="true" className="mt-0.5 shrink-0" size={14} />
@@ -306,7 +306,7 @@ function ShortcutHint({
   return (
     <span
       aria-disabled={!enabled}
-      className={`inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-black shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)] ${
+      className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-black shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)] ${
         enabled ? "bg-[#fffdf3] text-[#794f27]" : "bg-white/55 text-[#b2a38e]"
       }`}
       data-import-review-shortcut-key={action}

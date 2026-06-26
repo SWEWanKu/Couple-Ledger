@@ -313,7 +313,6 @@ function ReviewCardPage({
         <EmptyReviewState batch={batch} state={state} />
       )}
       <ReviewFilterPocket batchId={batch.id} state={state} />
-      <ReadonlyPromise />
     </div>
   );
 }
@@ -495,7 +494,7 @@ function ReviewBatchHeader({
                 style={{ width: `${progress.reviewedPercent}%` }}
               />
             </div>
-            <div className="grid grid-cols-5 gap-1.5 text-center">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(82px,1fr))] gap-1.5 text-center">
               <CompactMetric
                 label="当前"
                 value={state.selectedItem ? `${selectedPosition}/${state.totalItems}` : "0/0"}
@@ -812,6 +811,7 @@ function ImportItemCard({
         </section>
 
         <aside className="grid content-start gap-3">
+          <SuggestionPanel batch={batch} canQuickApplyStatus={canUseStatusShortcut} item={item} state={state} />
           <ReviewDecisionControls
             batch={batch}
             categories={householdSummary.categories}
@@ -822,7 +822,6 @@ function ImportItemCard({
             shortcutTargetIds={shortcutTargetIds}
             state={state}
           />
-          <SuggestionPanel batch={batch} canQuickApplyStatus={canUseStatusShortcut} item={item} state={state} />
         </aside>
       </div>
     </Card>

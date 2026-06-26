@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowRight, FileUp, HelpCircle, Inbox, ReceiptText, Sparkles } from "lucide-react";
-import { Card, Divider, Icon, Title } from "animal-island-ui";
+import { Card, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import type { ImportReviewContinueSummary } from "@/lib/import-review/batches";
 
@@ -26,21 +26,21 @@ const entryCopy: Record<
   }
 > = {
   dashboard: {
-    eyebrow: "Import Review",
+    eyebrow: "\u5bf9\u8d26",
     title: "共同对账模式",
     body: "先把微信/支付宝账单放进待对账池，再一条条确认入账。",
     color: "app-yellow",
     icon: <Inbox aria-hidden="true" size={26} />
   },
   records: {
-    eyebrow: "Bill Pocket",
+    eyebrow: "\u5bf9\u8d26",
     title: "有微信/支付宝流水？先去共同对账",
     body: "外部账单可以先变成待确认的小纸条，确认后才会出现在正式流水里。",
     color: "app-teal",
     icon: <ReceiptText aria-hidden="true" size={24} />
   },
   monthly: {
-    eyebrow: "Month Patch",
+    eyebrow: "\u5bf9\u8d26",
     title: "想补齐这个月的流水？去共同对账",
     body: "把遗漏的账单先放进待对账池，确认入账后这张月报会自然更新。",
     color: "app-green",
@@ -63,7 +63,7 @@ export function ImportReviewEntryCard({
     <Card
       color="default"
       pattern={isDashboard ? "app-teal" : "app-yellow"}
-      className={`relative overflow-visible p-5 sm:p-6 ${className}`}
+      className={`relative overflow-visible p-4 sm:p-5 ${className}`}
       data-import-review-entry={context}
     >
       <span
@@ -75,7 +75,7 @@ export function ImportReviewEntryCard({
         className="absolute -bottom-3 right-10 h-7 w-24 rotate-2 rounded-[10px] bg-[#82d5bb]/55 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
 
-      <div className={isDashboard ? "grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center" : "grid gap-4"}>
+      <div className={isDashboard ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center" : "grid gap-3"}>
         <div className="min-w-0">
           <p className="inline-flex items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
             <Icon name="icon-shopping" size={20} bounce />
@@ -86,7 +86,7 @@ export function ImportReviewEntryCard({
               {copy.title}
             </Title>
           </div>
-          <p className="mt-4 max-w-3xl text-sm font-bold leading-7 text-[#725d42]">
+          <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-[#725d42]">
             {copy.body}
             {context === "monthly" && monthLabel ? (
               <span className="ml-1 text-[#1f7a70]">正在整理 {monthLabel}。</span>
@@ -98,9 +98,7 @@ export function ImportReviewEntryCard({
             ) : null}
           </p>
 
-          <Divider type="wave-yellow" className="my-5" />
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {hasContinueTarget && continueHref ? (
               <EntryLink href={continueHref} dataKey="continue">
                 <ArrowRight aria-hidden="true" size={17} />
@@ -177,13 +175,13 @@ function OverviewNote({ overview }: { overview?: ImportReviewEntryOverview | nul
       data-import-review-entry-overview="true"
       data-import-review-entry-continue-state={hasUnfinishedBatch ? "unfinished" : "empty"}
       data-import-review-entry-continue-href={overview.continueHref ?? undefined}
-      className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_7px_0_rgba(121,79,39,0.09)]"
+      className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_5px_0_rgba(121,79,39,0.09)]"
     >
-      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
+      <p className="flex items-center gap-2 text-xs font-black text-[#9f927d]">
         <HelpCircle aria-hidden="true" size={16} />
         对账小便签
       </p>
-      <p className="mt-3 text-base font-black leading-6 text-[#794f27]">
+      <p className="mt-2 text-base font-black leading-6 text-[#794f27]">
         {hasUnfinishedBatch ? "还有一批账单没对完" : "最近没有待处理的导入账单"}
       </p>
       {hasUnfinishedBatch ? (

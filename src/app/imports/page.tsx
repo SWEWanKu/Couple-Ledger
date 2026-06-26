@@ -52,7 +52,7 @@ export default async function ImportsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
-                Import Review
+              待对账
               </p>
               <h2 className="mt-1 text-2xl font-black text-[#794f27]">待对账池</h2>
             </div>
@@ -145,7 +145,7 @@ function ImportHero({ batchCount }: { batchCount: number }) {
           </div>
         </div>
         <div className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-5 text-center shadow-[0_7px_0_rgba(121,79,39,0.09)]">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Pocket Count</p>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">批次</p>
           <p className="mt-3 text-4xl font-black text-[#794f27]">{batchCount}</p>
           <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">当前可查看的待对账批次</p>
         </div>

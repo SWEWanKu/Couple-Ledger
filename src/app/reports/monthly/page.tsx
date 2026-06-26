@@ -587,7 +587,7 @@ function SettlementStatusBoard({
         className="absolute -bottom-3 right-10 h-7 w-24 rotate-2 rounded-[10px] bg-[#fff1ed]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
       <SectionHeader
-        eyebrow="Settlement Status"
+        eyebrow="结算状态"
         icon={<ArrowRightLeft aria-hidden="true" size={23} />}
         title="结算状态"
         body="这里只读展示当月结算便签状态，不会盖章、确认或生成新结算。"

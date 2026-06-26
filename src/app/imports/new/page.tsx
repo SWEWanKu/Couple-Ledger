@@ -77,7 +77,7 @@ export default async function NewImportPage({ searchParams }: NewImportPageProps
             <div className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-5 shadow-[0_7px_0_rgba(121,79,39,0.09)]">
               <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
                 <ShieldCheck aria-hidden="true" size={17} />
-                Safety Note
+                上传说明
               </p>
               <p className="mt-3 text-sm font-bold leading-7 text-[#725d42]">
                 只保存解析后的待对账条目，不保存原始文件；最大 {getMaxImportUploadMegabytes()}MB。

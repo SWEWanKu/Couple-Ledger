@@ -182,7 +182,7 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
               </div>
 
               <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-[#725d42] sm:text-lg">
-                上半页继续用 helper 实时读取支出和分摊行；下半页可以把本月结果盖章成不可变便签，再等两个人各自确认。
+                先看这个月谁该转给谁；确认时会留下一张本月结算便签，等两个人各自盖章。
               </p>
 
               <Divider type="wave-yellow" className="my-6" />
@@ -222,9 +222,9 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
 
               <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-sm font-bold leading-7 text-[#725d42]">
                 <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-                  Read Source
+                  本月结果
                 </p>
-                <p className="mt-1">实时计算来自结算 helper；盖章便签来自 settlement snapshot。</p>
+                <p className="mt-1">当前结果会随账本更新；盖章后会保留当时的结算便签。</p>
               </div>
             </aside>
           </div>
@@ -348,7 +348,7 @@ function MemberBalanceSection({
             </Title>
           </div>
           <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-            每张纸条都来自结算 helper 的 paid / share / net 结果。
+            每张纸条只保留本月已付、应分摊和净额。
           </p>
         </div>
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_5px_0_#5fb89f]">
@@ -526,7 +526,7 @@ function SettlementSnapshotStatusCard({
         <div className="rounded-[30px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-5 py-6 text-sm font-bold leading-7 text-[#725d42]">
           <p className="text-lg font-black text-[#794f27]">结算便签册暂时翻不开</p>
           <p className="mt-2">
-            实时计算仍在正常展示。等 settlement snapshot 表可读后，这里会显示提出、确认和已完成状态。
+            实时计算仍在正常展示。等结算便签可读后，这里会显示提出、确认和已完成状态。
           </p>
         </div>
       ) : statusResult.status === "no_snapshot" ? (
@@ -1576,7 +1576,7 @@ function getNoTransferCopy(status: SettlementCalculationResult["status"]) {
   if (status === "unsupported_member_count") {
     return {
       title: "多人结算先放进待办夹",
-      body: "当前 helper 已算出每个人的净额，但多人转账简化规则需要单独设计。"
+      body: "当前已算出每个人的净额，但多人转账简化规则需要单独设计。"
     };
   }
 
