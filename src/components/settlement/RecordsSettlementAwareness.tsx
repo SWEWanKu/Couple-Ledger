@@ -56,7 +56,7 @@ export function RecordsSettlementAwareness({
           <div className="min-w-0">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
               <Icon name="icon-diy" size={18} bounce />
-              Settlement Memo
+              结算便签
             </p>
             <div className="mt-3">
               <Title size="small" color="app-yellow">

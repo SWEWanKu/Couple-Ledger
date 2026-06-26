@@ -556,7 +556,7 @@ function BlockedSetupState({
           <p className="mt-2">等成员和分类都准备好后，再回来记录第一笔账。</p>
         </>
       }
-      eyebrow="Setup Memo"
+      eyebrow="准备便签"
       iconName="icon-map"
       title="暂时还不能记账"
       tone="yellow"

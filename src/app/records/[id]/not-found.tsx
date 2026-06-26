@@ -14,7 +14,7 @@ export default function RecordNotFoundPage() {
           }}
           dataAttributes={{ "data-record-not-found-state": "true" }}
           description="它可能已经不属于当前小岛，或者这张纸条暂时不可读。这里不会显示任何别人的账本内容。"
-          eyebrow="Missing Receipt"
+          eyebrow="缺失账单"
           iconName="icon-map"
           title="没找到这张账单便签"
           tone="yellow"

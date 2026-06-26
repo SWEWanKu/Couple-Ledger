@@ -1,4 +1,5 @@
 import type { LedgerStat } from "@/types/ledger";
+import { Card } from "animal-island-ui";
 
 const toneClasses: Record<LedgerStat["tone"], string> = {
   teal: "border-l-ledger-teal",
@@ -13,10 +14,10 @@ type StatCardProps = {
 
 export function StatCard({ stat }: StatCardProps) {
   return (
-    <article className={`rounded-md border border-ledger-line border-l-4 bg-ledger-panel p-5 shadow-panel ${toneClasses[stat.tone]}`}>
-      <p className="text-sm font-medium text-ledger-muted">{stat.label}</p>
-      <p className="mt-3 text-2xl font-semibold tracking-normal text-ledger-ink">{stat.value}</p>
-      <p className="mt-2 text-sm text-ledger-muted">{stat.helper}</p>
-    </article>
+    <Card color="default" className={`p-5 ${toneClasses[stat.tone]}`}>
+      <p className="text-sm font-black text-[#9f927d]">{stat.label}</p>
+      <p className="mt-3 text-2xl font-black tracking-normal text-[#794f27]">{stat.value}</p>
+      <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">{stat.helper}</p>
+    </Card>
   );
 }

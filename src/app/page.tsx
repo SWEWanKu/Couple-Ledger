@@ -196,7 +196,7 @@ export default function HomePage() {
                   <div className="rounded-[30px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72),0_8px_0_rgba(121,79,39,0.10)]">
                     <div className="mb-4 flex items-center justify-between gap-3 rounded-[24px] bg-[#82d5bb] px-4 py-3 text-white shadow-[0_5px_0_#5fb89f]">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-[0.14em] opacity-80">Island Memo</p>
+                        <p className="text-xs font-black tracking-[0.14em] opacity-80">小岛便签</p>
                         <p className="text-xl font-black">周末小账单</p>
                       </div>
                       <Icon name="icon-shopping" size={36} bounce />
@@ -230,7 +230,7 @@ export default function HomePage() {
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-[#f7cd67]/55 px-4 py-3 text-sm font-black text-[#794f27]">
                       <span>本页不连接真实账本</span>
-                      <span>Preview only</span>
+                      <span>仅作预览</span>
                     </div>
                   </div>
                 </Card>

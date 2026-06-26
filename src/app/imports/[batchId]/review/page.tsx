@@ -1728,7 +1728,7 @@ function BatchUnavailableState({ reason }: { reason: "not_found" | "read_failed"
           ? "这份待对账账单暂时没有读出来，先回到待对账池再试一次。"
           : "没有找到这份待对账账单，或者它不属于当前共同小岛。"
       }
-      eyebrow="Missing Memo"
+      eyebrow="缺失便签"
       iconName="icon-map"
       title="这张对账便签不在这里"
       tone="yellow"

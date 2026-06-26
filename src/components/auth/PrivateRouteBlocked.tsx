@@ -125,7 +125,7 @@ export function PrivateRouteBlocked() {
                   <div className="rounded-[24px] bg-[#82d5bb] px-4 py-4 text-white shadow-[0_5px_0_#5fb89f]">
                     <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
                       <Icon name="icon-chat" size={18} bounce />
-                      Island Memo
+                      小岛便签
                     </p>
                     <p className="mt-3 text-2xl font-black leading-tight">99岛</p>
                     <p className="mt-1 text-sm font-bold leading-6 text-white/90">正在等待把邮箱写进岛民名册</p>
@@ -151,7 +151,7 @@ export function PrivateRouteBlocked() {
                   </div>
 
                   <div className="mt-4 flex items-center justify-between gap-3 rounded-[22px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-xs font-black text-[#8a7556]">
-                    <span>Private Notebook</span>
+                    <span>私密账本</span>
                     <Sparkles aria-hidden="true" size={16} />
                   </div>
                 </aside>

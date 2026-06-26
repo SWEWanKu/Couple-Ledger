@@ -165,7 +165,7 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
             <div className="min-w-0">
               <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
                 <Icon name="icon-diy" size={22} bounce />
-                <span className="truncate">Settlement Notebook</span>
+                <span className="truncate">结算便签</span>
               </p>
 
               <div className="mt-5">
@@ -418,7 +418,7 @@ function TransferSuggestionCard({ calculation }: { calculation: SettlementCalcul
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
-            Transfer Memo
+            转账便签
           </p>
           <div className="mt-3">
             <Title size="small" color="app-yellow">
@@ -449,7 +449,7 @@ function TransferSuggestionCard({ calculation }: { calculation: SettlementCalcul
             {formatCurrency(suggestion.amount)}
           </p>
           <p className="mx-auto mt-4 max-w-md text-sm font-bold leading-7 text-[#725d42]">
-            算完这笔，这个月的 paid / share / net 就能对齐啦。
+            算完这笔，这个月每个人先付、应分和结余就能对齐啦。
           </p>
         </div>
       ) : (

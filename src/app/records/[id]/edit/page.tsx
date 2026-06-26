@@ -493,7 +493,7 @@ function BlockedEditState({
       className="mt-5"
       dataAttributes={{ "data-record-edit-blocked-state": availability.state }}
       description={setupMessage}
-      eyebrow="Edit Memo"
+      eyebrow="修改便签"
       iconName="icon-diy"
       title={availability.heading}
       tone={availability.tone === "error" ? "red" : "yellow"}

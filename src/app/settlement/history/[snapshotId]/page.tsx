@@ -286,7 +286,7 @@ function SnapshotHero({
           <div className="rounded-[26px] bg-[#82d5bb] px-5 py-5 text-white shadow-[0_6px_0_#5fb89f]">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
               <ReceiptText aria-hidden="true" size={16} />
-              Snapshot Total
+              归档总额
             </p>
             <p className="mt-3 text-4xl font-black leading-tight">
               {formatCentsCurrency(detail.snapshot.total_expense_cents)}
@@ -319,7 +319,7 @@ function MemberArchiveCard({ detail }: { detail: SettlementSnapshotDetail }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
-            Stored Member Notes
+            成员纸条
           </p>
           <div className="mt-3">
             <Title size="small" color="app-yellow">
@@ -327,7 +327,7 @@ function MemberArchiveCard({ detail }: { detail: SettlementSnapshotDetail }) {
             </Title>
           </div>
           <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-            这里读的是 snapshot JSON 中保存的 paid / share / net，不会按当前流水重新计算。
+            这里读的是当时留下的成员金额纸条，不会按当前流水重新计算。
           </p>
         </div>
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#f7cd67] text-[#794f27] shadow-[0_5px_0_#d9a43e]">
@@ -352,7 +352,7 @@ function MemberArchiveCard({ detail }: { detail: SettlementSnapshotDetail }) {
                 <div className="min-w-0">
                   <p className="truncate text-lg font-black text-[#794f27]">{balance.displayName}</p>
                   <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">
-                    Archived Balance
+                    归档结余
                   </p>
                 </div>
                 <span
@@ -494,7 +494,7 @@ function NotFoundState() {
       }}
       dataAttributes={{ "data-settlement-snapshot-not-found-state": "true" }}
       description="它可能不属于当前小岛，或者已经不是可读的归档记录。回到结算归档页再翻一张吧。"
-      eyebrow="Missing Memo"
+      eyebrow="缺失便签"
       iconName="icon-map"
       title="没找到这张结算便签"
       tone="yellow"

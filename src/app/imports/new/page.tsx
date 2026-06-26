@@ -62,7 +62,7 @@ export default async function NewImportPage({ searchParams }: NewImportPageProps
             <div>
               <p className="inline-flex items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
                 <Icon name="icon-shopping" size={22} bounce />
-                Upload Memo
+                导入便签
               </p>
               <div className="mt-5">
                 <Title size="large" color="app-yellow">

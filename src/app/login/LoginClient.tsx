@@ -3,7 +3,7 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, HeartHandshake, LockKeyhole, Mail, Send, Sparkles } from "lucide-react";
-import { Button, Card, Divider, Footer, Icon, Title, Wallet } from "animal-island-ui";
+import { Button, Card, Divider, Footer, Icon, Input, Title, Wallet } from "animal-island-ui";
 import { IslandRitualPending } from "@/components/IslandRitualPending";
 import { IslandLink } from "@/components/IslandLink";
 import { createClient } from "@/lib/supabase/client";
@@ -343,50 +343,40 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                     <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-email">
                       邮箱
                     </label>
-                    <div className="relative">
-                      <Mail
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#9f927d]"
-                        size={18}
-                      />
-                      <input
-                        id="login-email"
-                        type="email"
-                        value={email}
-                        onChange={handleEmailChange}
-                        placeholder="you@example.com"
-                        disabled={isBusy}
-                        aria-invalid={status.type === "error"}
-                        aria-describedby="login-email-status"
-                        className="h-14 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] pl-12 pr-4 text-sm font-bold text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25"
-                      />
-                    </div>
+                    <Input
+                      id="login-email"
+                      type="email"
+                      size="large"
+                      shadow
+                      value={email}
+                      onChange={handleEmailChange}
+                      placeholder="you@example.com"
+                      disabled={isBusy}
+                      aria-invalid={status.type === "error"}
+                      aria-describedby="login-email-status"
+                      prefix={<Mail aria-hidden="true" size={18} />}
+                    />
 
                     {isOtpSent ? (
                       <div className="grid gap-2">
                         <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-otp">
                           邮箱验证码
                         </label>
-                        <div className="relative">
-                          <LockKeyhole
-                            aria-hidden="true"
-                            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#9f927d]"
-                            size={18}
-                          />
-                          <input
-                            id="login-otp"
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="one-time-code"
-                            value={otp}
-                            onChange={(event) => setOtp(event.target.value)}
-                            placeholder="123456"
-                            disabled={isBusy}
-                            aria-invalid={status.type === "error"}
-                            aria-describedby="login-email-status"
-                            className="h-14 w-full rounded-full border-2 border-[#d9c49b] bg-[#fffdf3] pl-12 pr-4 text-center text-lg font-black tracking-[0.24em] text-[#794f27] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.5),0_5px_0_rgba(121,79,39,0.08)] outline-none transition placeholder:text-[#9f927d]/70 focus:border-[#19c8b9] focus:ring-4 focus:ring-[#19c8b9]/25"
-                          />
-                        </div>
+                        <Input
+                          id="login-otp"
+                          type="text"
+                          size="large"
+                          shadow
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          value={otp}
+                          onChange={(event) => setOtp(event.target.value)}
+                          placeholder="123456"
+                          disabled={isBusy}
+                          aria-invalid={status.type === "error"}
+                          aria-describedby="login-email-status"
+                          prefix={<LockKeyhole aria-hidden="true" size={18} />}
+                        />
                       </div>
                     ) : null}
 
@@ -494,7 +484,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                 <Card color="default" pattern="app-yellow" className="relative overflow-hidden p-5 sm:p-6">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <p className="text-xs font-black uppercase tracking-[0.18em] text-[#9f927d]">Private Dock</p>
+                      <p className="text-xs font-black tracking-[0.18em] text-[#9f927d]">私密码头</p>
                       <h2 className="mt-2 text-3xl font-black text-[#794f27]">邮箱验证码</h2>
                       <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
                         像一张放在码头边的便签，只验证邮箱暗号，不展示真实账本。
@@ -508,7 +498,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                   <div className="rounded-[30px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72),0_8px_0_rgba(121,79,39,0.10)]">
                     <div className="flex items-center justify-between gap-3 rounded-[24px] bg-[#82d5bb] px-4 py-3 text-white shadow-[0_5px_0_#5fb89f]">
                       <div>
-                        <p className="text-xs font-black uppercase tracking-[0.14em] opacity-80">Only Us</p>
+                        <p className="text-xs font-black tracking-[0.14em] opacity-80">只给我们</p>
                         <p className="text-xl font-black">只属于两个人</p>
                       </div>
                       <Icon name="icon-helicopter" size={34} bounce />
@@ -536,7 +526,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-[#f7cd67]/55 px-4 py-3 text-sm font-black text-[#794f27]">
                       <span>仅限两个人使用，不开放注册</span>
-                      <span>Preview only</span>
+                      <span>仅作预览</span>
                     </div>
                   </div>
                 </Card>

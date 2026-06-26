@@ -321,7 +321,7 @@ function ReportHero({
           <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-sm font-bold leading-7 text-[#725d42]">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
               <Icon name="icon-chat" size={18} bounce />
-              Island Mood
+              小岛状态
             </p>
             <p className="mt-2 text-base font-black text-[#794f27]">{summary.mood.title}</p>
             <p className="mt-1">{summary.mood.body}</p>
@@ -513,7 +513,7 @@ function RecentRecordBoard({
         className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#f7cd67]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
       <SectionHeader
-        eyebrow="Recent Memos"
+        eyebrow="最近便签"
         icon={<ReceiptText aria-hidden="true" size={23} />}
         title="最近便签"
         body={`从 ${range.monthLabel} 的真实流水里取最近 6 条，点开能回到原始账单详情。`}
@@ -665,7 +665,7 @@ function MiniEmpty({ text }: { text: string }) {
     <div className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-4 text-sm font-bold leading-7 text-[#725d42] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
         <Icon name="icon-chat" size={18} bounce />
-        Empty Memo
+        空白便签
       </p>
       <p className="mt-2">{text}</p>
     </div>

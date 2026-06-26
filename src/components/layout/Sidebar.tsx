@@ -33,7 +33,7 @@ export function Sidebar() {
         className="mb-3 flex gap-2 overflow-x-auto pb-2 lg:sticky lg:top-6 lg:mb-0 lg:-mr-8 lg:flex-col lg:overflow-visible lg:pb-0"
       >
         <p className="hidden px-2 text-xs font-black uppercase tracking-[0.16em] text-[#8a7556] lg:block">
-          Notebook Tabs
+          手账标签
         </p>
         {navItems.map((item, index) => {
           const NavIcon = item.icon;
@@ -57,7 +57,7 @@ export function Sidebar() {
       <div className="hidden rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 text-sm font-bold leading-6 text-[#725d42] shadow-[0_8px_0_rgba(121,79,39,0.08)] lg:block">
         <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
           <Icon name="icon-chat" size={18} bounce />
-          Memo
+          便签
         </p>
         <p className="mt-2">这里像一本只给小岛成员翻看的手账，页面会按当前小岛读取账本数据。</p>
       </div>

@@ -239,14 +239,14 @@ function DashboardMonthHero({
               />
               <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
                 <Icon name="icon-chat" size={18} bounce />
-                Month Memo
+                月份便签
               </p>
               <p className="mt-2 text-base font-black text-[#794f27]">{memoTitle}</p>
               <p className="mt-1">{memoBody}</p>
             </div>
 
             <div className="rounded-[30px] border-2 border-[#d9c49b] bg-[#fff8da] px-4 py-4 text-sm font-bold leading-7 text-[#725d42] shadow-[0_6px_0_rgba(121,79,39,0.08)]">
-              <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">Notebook Status</p>
+              <p className="text-xs font-black tracking-[0.14em] text-[#9f927d]">账本状态</p>
               <p className="mt-2 text-2xl font-black text-[#794f27]">{summary.entryCount} 条</p>
               <p className="mt-1">
                 {hasNoRecords ? "等第一张小票贴上来。" : isLowData ? "低数据月，先轻轻记录。" : "本月资料正在变丰富。"}
@@ -298,11 +298,11 @@ function DashboardMonthHero({
 
           <div className="mt-4 grid gap-3">
             <div className="rounded-[22px] bg-[#f8f8f0] px-4 py-3 shadow-[0_3px_0_rgba(121,79,39,0.08)]">
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">Records</p>
+              <p className="text-xs font-black tracking-[0.12em] text-[#9f927d]">流水张数</p>
               <p className="mt-1 text-lg font-black text-[#794f27]">{summary.entryCount} 条</p>
             </div>
             <div className="rounded-[22px] bg-[#fff8da] px-4 py-3 shadow-[0_3px_0_rgba(121,79,39,0.08)]">
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">Month Range</p>
+              <p className="text-xs font-black tracking-[0.12em] text-[#9f927d]">月份范围</p>
               <p className="mt-1 text-sm font-black leading-6 text-[#794f27]">
                 {summary.monthStart} 至 {summary.nextMonthStart}
               </p>
@@ -424,7 +424,7 @@ function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryRes
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
             <Icon name="icon-diy" size={18} bounce />
-            Monthly Ledger Note
+            本月账本便签
           </p>
           <div className="mt-3">
             <Title size="small" color="app-yellow">
@@ -445,7 +445,7 @@ function MonthlyLedgerNotebookCard({ result }: { result: MonthlyLedgerSummaryRes
           <div className="mt-4 rounded-[28px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-4 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
               <Icon name="icon-chat" size={18} bounce />
-              Island Mood
+              小岛状态
             </p>
             <p className="mt-2 text-lg font-black text-[#794f27]">{summary.mood.title}</p>
             <p className="mt-1 text-sm font-bold leading-7 text-[#725d42]">{summary.mood.body}</p>
@@ -746,7 +746,7 @@ function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
             <div className="rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-sm font-bold leading-7 text-[#725d42] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
               <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
                 <Icon name="icon-chat" size={18} bounce />
-                Low Data Memo
+                新贴便签
               </p>
               <p className="mt-2">
                 本月流水还很少，先把它当成刚贴上的小票墙；继续记账后，这里会自然变成完整的月记。
@@ -756,7 +756,7 @@ function RecentRecordsCard({ records }: { records: DashboardRecentRecord[] }) {
         </div>
       ) : (
         <EmptyLedgerState
-          eyebrow="Empty Memo"
+          eyebrow="空白便签"
           title="这个月还没有记录"
           body="从一笔小小的日常开始，给小岛留下今天的生活痕迹。"
           actionHref="/records/new"
@@ -995,7 +995,7 @@ function SettlementEntryCard({
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
             <Icon name="icon-diy" size={18} bounce />
-            Settlement Notebook
+            结算便签
           </p>
           <div className="mt-3">
             <Title size="small" color="app-yellow">

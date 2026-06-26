@@ -89,7 +89,7 @@ export default async function SettlementHistoryPage() {
             <div className="min-w-0">
               <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
                 <Icon name="icon-diy" size={22} bounce />
-                <span className="truncate">Settlement Archive</span>
+                <span className="truncate">结算归档</span>
               </p>
 
               <div className="mt-5">
@@ -126,7 +126,7 @@ export default async function SettlementHistoryPage() {
               <div className="rounded-[26px] bg-[#82d5bb] px-5 py-5 text-white shadow-[0_6px_0_#5fb89f]">
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
                   <FileText aria-hidden="true" size={16} />
-                  Archive Notes
+                  归档便签
                 </p>
                 <p className="mt-3 text-3xl font-black leading-tight">
                   {getHistoryCount(history)} 张
@@ -338,7 +338,7 @@ function EmptyHistoryState() {
       }}
       dataAttributes={{ "data-settlement-history-empty-state": "true" }}
       description="等某个月在结算页提出过便签后，这里会像手账归档一样，把每个月的总支出、转账建议和盖章进度贴出来。"
-      eyebrow="Archive Memo"
+      eyebrow="归档便签"
       iconName="icon-chat"
       title="还没有留下结算便签"
       tone="teal"
