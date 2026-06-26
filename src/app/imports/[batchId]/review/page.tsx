@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   BadgeCheck,
   CalendarDays,
-  ChevronLeft,
   ChevronRight,
   CheckCircle2,
   CircleDollarSign,
@@ -61,8 +60,11 @@ import type {
   DashboardHouseholdMember,
   DashboardHouseholdSummary
 } from "@/types/dashboard";
-import { ImportReviewKeyboardShortcuts } from "./ImportReviewKeyboardShortcuts";
 import { AnimalFormSelect } from "./AnimalFormSelect";
+import {
+  ImportReviewLocalWorkspace,
+  type ImportReviewLocalWorkspaceItem
+} from "./ImportReviewLocalWorkspace";
 import {
   confirmImportItemToLedgerAction,
   markImportItemPersonalAction,
@@ -135,7 +137,13 @@ const directionFilterLabels: Record<ImportReviewDirectionFilter, string> = {
   unknown: "未知"
 };
 
-const shortcutTargetIds = {
+type ShortcutTargetIds = {
+  confirmForm: string;
+  skipForm: string;
+  needDiscussionForm: string;
+};
+
+const shortcutTargetIdPrefix = {
   confirmForm: "import-review-confirm-common-form",
   skipForm: "import-review-skip-form",
   needDiscussionForm: "import-review-need-discussion-form"
@@ -183,12 +191,17 @@ export default async function ImportReviewPage({ params, searchParams }: ImportR
     itemId: getSingleParam(query.item),
     index: getSingleParam(query.index)
   });
-  const settlementStatus = cardState.selectedItem
-    ? await getSettlementSnapshotStatus(supabase, {
-        householdId: membership.household_id,
-        month: cardState.selectedItem.monthKey
-      })
-    : null;
+  const settlementStatusByMonth = new Map(
+    await Promise.all(
+      Array.from(new Set(cardState.items.map((item) => item.monthKey))).map(async (month) => [
+        month,
+        await getSettlementSnapshotStatus(supabase, {
+          householdId: membership.household_id,
+          month
+        })
+      ] as const)
+    )
+  );
 
   return (
     <ImportReviewShell>
@@ -207,7 +220,7 @@ export default async function ImportReviewPage({ params, searchParams }: ImportR
         batch={result.batch}
         currentUserId={user.id}
         householdSummary={householdSummaryResult.summary}
-        settlementStatus={settlementStatus}
+        settlementStatusByMonth={settlementStatusByMonth}
         state={cardState}
       />
     </ImportReviewShell>
@@ -254,27 +267,48 @@ function ReviewCardPage({
   batch,
   currentUserId,
   householdSummary,
-  settlementStatus,
+  settlementStatusByMonth,
   state
 }: {
   batch: ImportBatchSummary;
   currentUserId: string;
   householdSummary: DashboardHouseholdSummary;
-  settlementStatus: GetSettlementSnapshotStatusResult | null;
+  settlementStatusByMonth: Map<string, GetSettlementSnapshotStatusResult | null>;
   state: ImportReviewCardState;
 }) {
+  const itemStates = state.items.map((item, index) => getItemCardState(state, index));
+  const navigationItems: ImportReviewLocalWorkspaceItem[] = itemStates.map((itemState) =>
+    getLocalNavigationItem({
+      batch,
+      currentUserId,
+      householdSummary,
+      itemState,
+      settlementStatus: itemState.selectedItem
+        ? settlementStatusByMonth.get(itemState.selectedItem.monthKey) ?? null
+        : null
+    })
+  );
+
   return (
-    <div className="grid gap-4">
+    <div id="import-review-workspace" data-import-review-workspace="true" className="grid gap-4">
       <ReviewBatchHeader batch={batch} state={state} />
       {state.selectedItem ? (
-        <ImportItemCard
-          batch={batch}
-          currentUserId={currentUserId}
-          householdSummary={householdSummary}
-          item={state.selectedItem}
-          settlementStatus={settlementStatus}
-          state={state}
-        />
+        <ImportReviewLocalWorkspace initialIndex={state.selectedIndex} items={navigationItems}>
+          {itemStates.map((itemState) =>
+            itemState.selectedItem ? (
+              <ImportItemCard
+                key={itemState.selectedItem.id}
+                batch={batch}
+                currentUserId={currentUserId}
+                householdSummary={householdSummary}
+                item={itemState.selectedItem}
+                settlementStatus={settlementStatusByMonth.get(itemState.selectedItem.monthKey) ?? null}
+                shortcutTargetIds={getShortcutTargetIds(itemState.selectedItem.id)}
+                state={itemState}
+              />
+            ) : null
+          )}
+        </ImportReviewLocalWorkspace>
       ) : (
         <EmptyReviewState batch={batch} state={state} />
       )}
@@ -282,6 +316,95 @@ function ReviewCardPage({
       <ReadonlyPromise />
     </div>
   );
+}
+
+function getItemCardState(state: ImportReviewCardState, selectedIndex: number): ImportReviewCardState {
+  const selectedItem = state.items[selectedIndex] ?? null;
+
+  return {
+    ...state,
+    selectedItem,
+    selectedIndex,
+    previousItem: selectedIndex > 0 ? state.items[selectedIndex - 1] ?? null : null,
+    nextItem: selectedIndex >= 0 ? state.items[selectedIndex + 1] ?? null : null
+  };
+}
+
+function getLocalNavigationItem({
+  batch,
+  currentUserId,
+  householdSummary,
+  itemState,
+  settlementStatus
+}: {
+  batch: ImportBatchSummary;
+  currentUserId: string;
+  householdSummary: DashboardHouseholdSummary;
+  itemState: ImportReviewCardState;
+  settlementStatus: GetSettlementSnapshotStatusResult | null;
+}): ImportReviewLocalWorkspaceItem {
+  const item = itemState.selectedItem;
+
+  if (!item) {
+    return {
+      id: "empty",
+      href: getReviewHref(batch.id, itemState.statusFilter, itemState.suggestionFilter, itemState.directionFilter, null),
+      label: "没有小纸条",
+      canFocusCommonExpense: false,
+      canMarkNeedDiscussion: false,
+      canSkip: false,
+      canSubmitConfirm: false,
+      confirmFormId: shortcutTargetIdPrefix.confirmForm,
+      needDiscussionFormId: shortcutTargetIdPrefix.needDiscussionForm,
+      skipFormId: shortcutTargetIdPrefix.skipForm
+    };
+  }
+
+  const shortcutTargetIds = getShortcutTargetIds(item.id);
+  const canUseStatusShortcut = item.reviewStatus === "pending" && !item.ledgerEntryId;
+  const canConfirmCommonExpense = Boolean(
+    !getConfirmBlockReason({
+      categories: householdSummary.categories,
+      item,
+      members: householdSummary.members,
+      settlementStatus
+    }) &&
+      getDefaultCategoryId(householdSummary.categories, item) &&
+      getDefaultPaidBy(householdSummary.members, currentUserId)
+  );
+
+  return {
+    id: item.id,
+    href: getReviewHref(
+      batch.id,
+      itemState.statusFilter,
+      itemState.suggestionFilter,
+      itemState.directionFilter,
+      item.id
+    ),
+    label: getNavigationItemLabel(item),
+    canFocusCommonExpense: canConfirmCommonExpense,
+    canMarkNeedDiscussion: canUseStatusShortcut,
+    canSkip: canUseStatusShortcut,
+    canSubmitConfirm: canConfirmCommonExpense,
+    confirmFormId: shortcutTargetIds.confirmForm,
+    needDiscussionFormId: shortcutTargetIds.needDiscussionForm,
+    skipFormId: shortcutTargetIds.skipForm
+  };
+}
+
+function getShortcutTargetIds(itemId: string): ShortcutTargetIds {
+  const suffix = itemId.replace(/[^a-z0-9]/gi, "").slice(0, 12) || "item";
+
+  return {
+    confirmForm: `${shortcutTargetIdPrefix.confirmForm}-${suffix}`,
+    skipForm: `${shortcutTargetIdPrefix.skipForm}-${suffix}`,
+    needDiscussionForm: `${shortcutTargetIdPrefix.needDiscussionForm}-${suffix}`
+  };
+}
+
+function getNavigationItemLabel(item: ImportReviewItem) {
+  return item.description ?? item.counterparty ?? formatCents(item.amountCents);
 }
 
 function ReviewFilterPocket({
@@ -614,7 +737,8 @@ function ImportItemCard({
   householdSummary,
   state,
   item,
-  settlementStatus
+  settlementStatus,
+  shortcutTargetIds
 }: {
   batch: ImportBatchSummary;
   currentUserId: string;
@@ -622,6 +746,7 @@ function ImportItemCard({
   state: ImportReviewCardState;
   item: ImportReviewItem;
   settlementStatus: GetSettlementSnapshotStatusResult | null;
+  shortcutTargetIds: ShortcutTargetIds;
 }) {
   const confirmBlockReason = getConfirmBlockReason({
     categories: householdSummary.categories,
@@ -635,12 +760,6 @@ function ImportItemCard({
       getDefaultPaidBy(householdSummary.members, currentUserId)
   );
   const canUseStatusShortcut = item.reviewStatus === "pending" && !item.ledgerEntryId;
-  const previousHref = state.previousItem
-    ? getReviewHref(batch.id, state.statusFilter, state.suggestionFilter, state.directionFilter, state.previousItem.id)
-    : null;
-  const nextHref = state.nextItem
-    ? getReviewHref(batch.id, state.statusFilter, state.suggestionFilter, state.directionFilter, state.nextItem.id)
-    : null;
 
   return (
     <Card
@@ -700,114 +819,13 @@ function ImportItemCard({
             item={item}
             members={householdSummary.members}
             settlementStatus={settlementStatus}
+            shortcutTargetIds={shortcutTargetIds}
             state={state}
           />
           <SuggestionPanel batch={batch} canQuickApplyStatus={canUseStatusShortcut} item={item} state={state} />
         </aside>
       </div>
-      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(420px,0.9fr)]">
-        <CardNavigator batchId={batch.id} state={state} />
-        <ImportReviewKeyboardShortcuts
-          canFocusCommonExpense={canConfirmCommonExpense}
-          canMarkNeedDiscussion={canUseStatusShortcut}
-          canSkip={canUseStatusShortcut}
-          canSubmitConfirm={canConfirmCommonExpense}
-          commonExpenseAreaId={shortcutTargetIds.confirmForm}
-          confirmFormId={shortcutTargetIds.confirmForm}
-          needDiscussionFormId={shortcutTargetIds.needDiscussionForm}
-          nextHref={nextHref}
-          previousHref={previousHref}
-          skipFormId={shortcutTargetIds.skipForm}
-        />
-      </div>
     </Card>
-  );
-}
-
-function CardNavigator({
-  batchId,
-  state
-}: {
-  batchId: string;
-  state: ImportReviewCardState;
-}) {
-  return (
-    <div className="grid gap-2 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-white/80 p-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
-      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-        <ChevronRight aria-hidden="true" size={15} />
-        翻小纸条
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <PagerSlot
-          direction="previous"
-          href={
-            state.previousItem
-              ? getReviewHref(batchId, state.statusFilter, state.suggestionFilter, state.directionFilter, state.previousItem.id)
-              : null
-          }
-          item={state.previousItem}
-        />
-        <PagerSlot
-          direction="next"
-          href={
-            state.nextItem
-              ? getReviewHref(batchId, state.statusFilter, state.suggestionFilter, state.directionFilter, state.nextItem.id)
-              : null
-          }
-          item={state.nextItem}
-        />
-      </div>
-    </div>
-  );
-}
-
-function PagerSlot({
-  direction,
-  href,
-  item
-}: {
-  direction: "previous" | "next";
-  href: string | null;
-  item: ImportReviewItem | null;
-}) {
-  const icon =
-    direction === "previous" ? (
-      <ChevronLeft aria-hidden="true" size={18} />
-    ) : (
-      <ChevronRight aria-hidden="true" size={18} />
-    );
-  const title = direction === "previous" ? "上一条" : "下一条";
-  const dataAttribute =
-    direction === "previous"
-      ? { "data-import-review-previous-link": "true" }
-      : { "data-import-review-next-link": "true" };
-
-  if (!href || !item) {
-    return (
-      <div className="rounded-[20px] border-2 border-dashed border-[#e4d6bd] bg-[#fffdf3] px-3 py-2 text-sm font-black text-[#b2a38e]">
-        <span className="flex items-center gap-2">
-          {icon}
-          {title}
-        </span>
-        <p className="mt-1 text-xs leading-5">这一侧没有更多小纸条了</p>
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      {...dataAttribute}
-      className="group rounded-[20px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-3 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-    >
-      <span className="flex items-center gap-2">
-        {icon}
-        {title}
-      </span>
-      <span className="mt-1 block truncate text-xs leading-5 text-[#725d42]">
-        {item.description ?? item.counterparty ?? formatCents(item.amountCents)}
-      </span>
-    </Link>
   );
 }
 
@@ -992,6 +1010,7 @@ function ReviewDecisionControls({
   item,
   members,
   settlementStatus,
+  shortcutTargetIds,
   state
 }: {
   batch: ImportBatchSummary;
@@ -1000,6 +1019,7 @@ function ReviewDecisionControls({
   item: ImportReviewItem;
   members: DashboardHouseholdMember[];
   settlementStatus: GetSettlementSnapshotStatusResult | null;
+  shortcutTargetIds: ShortcutTargetIds;
   state: ImportReviewCardState;
 }) {
   if (item.reviewStatus === "imported") {
@@ -2037,7 +2057,6 @@ function getSuggestedQuickApplyAction(
   if (suggestedReviewAction === "skip") {
     return {
       reviewStatus: "skipped" as const,
-      formId: shortcutTargetIds.skipForm,
       headline: "系统建议：这笔可能不进入共同账本",
       examples: "常见例子：转账 / 提现 / 充值 / 理财 / 交易关闭。",
       buttonLabel: "按建议忽略并下一条",
@@ -2049,7 +2068,6 @@ function getSuggestedQuickApplyAction(
 
   return {
     reviewStatus: "need_discussion" as const,
-    formId: shortcutTargetIds.needDiscussionForm,
     headline: "系统建议：这笔需要一起确认",
     examples: "常见例子：退款 / 状态不明确 / 看不出用途。",
     buttonLabel: "按建议标记待确认",

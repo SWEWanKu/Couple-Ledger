@@ -16,6 +16,8 @@ type ImportReviewKeyboardShortcutsProps = {
   skipFormId: string;
   needDiscussionFormId: string;
   commonExpenseAreaId: string;
+  onNext?: () => void;
+  onPrevious?: () => void;
 };
 
 const shortcutCopy = {
@@ -52,7 +54,9 @@ export function ImportReviewKeyboardShortcuts({
   confirmFormId,
   skipFormId,
   needDiscussionFormId,
-  commonExpenseAreaId
+  commonExpenseAreaId,
+  onNext,
+  onPrevious
 }: ImportReviewKeyboardShortcutsProps) {
   const router = useRouter();
   const submitLockRef = useRef(false);
@@ -63,14 +67,19 @@ export function ImportReviewKeyboardShortcuts({
       setLastMessage(message);
     }
 
-    function navigate(href: string | null, message: string) {
+    function navigate(href: string | null, message: string, onLocalNavigate?: () => void) {
       if (!href) {
         announce(shortcutCopy.unavailable);
         return;
       }
 
       announce(message);
-      router.push(href);
+      if (onLocalNavigate) {
+        onLocalNavigate();
+        return;
+      }
+
+      router.push(href, { scroll: false });
     }
 
     function submitForm(formId: string, canSubmit: boolean, successMessage: string) {
@@ -142,13 +151,13 @@ export function ImportReviewKeyboardShortcuts({
 
       if (key === "j") {
         event.preventDefault();
-        navigate(nextHref, shortcutCopy.next);
+        navigate(nextHref, shortcutCopy.next, onNext);
         return;
       }
 
       if (key === "k") {
         event.preventDefault();
-        navigate(previousHref, shortcutCopy.previous);
+        navigate(previousHref, shortcutCopy.previous, onPrevious);
         return;
       }
 
@@ -185,6 +194,14 @@ export function ImportReviewKeyboardShortcuts({
       }
     }
 
+    if (!onPrevious && previousHref) {
+      router.prefetch(previousHref);
+    }
+
+    if (!onNext && nextHref) {
+      router.prefetch(nextHref);
+    }
+
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
@@ -199,6 +216,8 @@ export function ImportReviewKeyboardShortcuts({
     confirmFormId,
     needDiscussionFormId,
     nextHref,
+    onNext,
+    onPrevious,
     previousHref,
     router,
     skipFormId
