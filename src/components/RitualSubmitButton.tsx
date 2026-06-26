@@ -13,7 +13,6 @@ import {
   UserRound
 } from "lucide-react";
 import { Button, type ButtonSize, type ButtonType, type IconName } from "animal-island-ui";
-import { IslandRitualPending } from "./IslandRitualPending";
 
 type RitualSubmitIcon =
   | "check"
@@ -58,15 +57,13 @@ const iconMap = {
 
 export function RitualSubmitButton({
   idleLabel,
-  pendingLabel,
   type = "primary",
   size = "middle",
   block = false,
   danger = false,
   disabled = false,
   icon,
-  dataPendingScope,
-  ritual
+  dataPendingScope
 }: RitualSubmitButtonProps) {
   const { pending } = useFormStatus();
   const IconComponent = icon ? iconMap[icon] : null;
@@ -79,21 +76,11 @@ export function RitualSubmitButton({
         disabled={disabled || pending}
         htmlType="submit"
         icon={IconComponent ? <IconComponent aria-hidden="true" size={18} /> : undefined}
-        loading={pending}
         size={size}
         type={type}
       >
-        {pending ? pendingLabel : idleLabel}
+        {idleLabel}
       </Button>
-      {pending && ritual ? (
-        <IslandRitualPending
-          compact={ritual.compact}
-          dataScope={dataPendingScope}
-          description={ritual.description}
-          iconName={ritual.iconName}
-          title={ritual.title}
-        />
-      ) : null}
     </div>
   );
 }

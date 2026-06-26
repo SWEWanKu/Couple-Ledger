@@ -66,7 +66,7 @@ function getSafeErrorMessage(error: unknown, fallback: string, serverErrorMessag
   }
 
   if (code === "signup_disabled" || normalizedMessage.includes("signups not allowed")) {
-    return "这个邮箱还没有创建为可登录用户，请先在 Supabase Auth 用户列表中加入它。";
+    return "\u8fd9\u4e2a\u90ae\u7bb1\u8fd8\u6ca1\u6709\u52a0\u5165\u5c0f\u5c9b\u540d\u518c\uff0c\u8bf7\u5148\u6dfb\u52a0\u4e3a\u53ef\u767b\u5f55\u90ae\u7bb1\u3002";
   }
 
   if (normalizedMessage.includes("rate limit") || normalizedMessage.includes("too many")) {
@@ -134,7 +134,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
     if (devLoginStatus === "partner_failed") {
       setStatus({
         type: "error",
-        message: "第二位本地测试登录失败，请确认该邮箱已存在于 Supabase Auth、密码正确，并且已加入同一个 household。"
+        message: "\u7b2c\u4e8c\u4f4d\u672c\u5730\u6d4b\u8bd5\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u786e\u8ba4\u8fd9\u4e2a\u90ae\u7bb1\u3001\u5bc6\u7801\u548c\u5c0f\u5c9b\u6210\u5458\u5173\u7cfb\u90fd\u5df2\u914d\u7f6e\u597d\u3002"
       });
     }
   }, []);
@@ -200,7 +200,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
         message: getSafeErrorMessage(
           error,
           "验证码寄送失败，请稍后再试。",
-          "邮件服务暂时不可用，请检查 Supabase 的 SMTP、邮件模板或默认邮件额度。"
+          "\u90ae\u4ef6\u670d\u52a1\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5\u6216\u68c0\u67e5\u90ae\u4ef6\u914d\u7f6e\u3002"
         )
       });
     } finally {
@@ -395,17 +395,10 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                       size="large"
                       htmlType="submit"
                       block
-                      loading={isOtpSent ? isVerifyingOtp : isSendingOtp}
                       disabled={isBusy}
                       icon={<Send aria-hidden="true" size={18} />}
                     >
-                      {isOtpSent
-                        ? isVerifyingOtp
-                          ? "正在验证邮箱验证码..."
-                          : "验证并进入小岛"
-                        : isSendingOtp
-                          ? "正在发送邮箱验证码..."
-                          : "发送邮箱验证码"}
+                      {isOtpSent ? "\u9a8c\u8bc1\u5e76\u8fdb\u5165\u5c0f\u5c9b" : "\u53d1\u9001\u90ae\u7bb1\u9a8c\u8bc1\u7801"}
                     </Button>
 
                     {isOtpSent ? (
@@ -414,7 +407,6 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                         size="middle"
                         htmlType="button"
                         block
-                        loading={isSendingOtp}
                         disabled={isBusy}
                         onClick={() => void handleSendOtp()}
                       >
@@ -464,7 +456,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                       </div>
                       <p className="rounded-[18px] bg-white/75 px-3 py-2 text-[11px] font-bold leading-5 text-[#725d42] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
                         {isPartnerDevLoginConfigured ? (
-                          "第二位入口只会登录已存在的 Supabase Auth 用户，仍由 RLS 判断是否属于同一个小岛。"
+                          "\u7b2c\u4e8c\u4f4d\u5165\u53e3\u53ea\u4f1a\u767b\u5f55\u5df2\u52a0\u5165\u5c0f\u5c9b\u540d\u518c\u7684\u90ae\u7bb1\uff0c\u5e76\u786e\u8ba4\u662f\u5426\u5c5e\u4e8e\u540c\u4e00\u4e2a\u5c0f\u5c9b\u3002"
                         ) : (
                           <>
                             第二位本地测试账号未配置：

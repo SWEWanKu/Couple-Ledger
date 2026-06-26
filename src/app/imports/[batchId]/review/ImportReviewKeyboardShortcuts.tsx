@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Keyboard, MousePointerClick, Sparkles } from "lucide-react";
+import { Keyboard, MousePointerClick } from "lucide-react";
 import { Card, Icon } from "animal-island-ui";
 
 type ImportReviewKeyboardShortcutsProps = {
@@ -23,16 +23,7 @@ type ImportReviewKeyboardShortcutsProps = {
 const shortcutCopy = {
   title: "\u5feb\u6377\u952e",
   description:
-    "\u5171\u4eab\u5c4f\u5e55\u5bf9\u8d26\u65f6\u53ef\u7528\uff0c\u5149\u6807\u5728\u8f93\u5165\u6846\u91cc\u65f6\u4e0d\u4f1a\u89e6\u53d1\u3002",
-  idle: "\u5feb\u6377\u952e\u53ea\u4f1a\u64cd\u4f5c\u5f53\u524d\u53ef\u7528\u7684\u6309\u94ae\u548c\u94fe\u63a5\u3002",
-  next: "\u5df2\u6253\u5f00\u4e0b\u4e00\u6761\u5c0f\u7eb8\u6761",
-  previous: "\u5df2\u6253\u5f00\u4e0a\u4e00\u6761\u5c0f\u7eb8\u6761",
-  skip: "\u5df2\u6309\u73b0\u6709\u5ffd\u7565\u8868\u5355\u63d0\u4ea4",
-  needDiscussion: "\u5df2\u6309\u73b0\u6709\u5f85\u786e\u8ba4\u8868\u5355\u63d0\u4ea4",
-  focusCommon: "\u5df2\u805a\u7126\u5230\u5171\u540c\u652f\u51fa\u786e\u8ba4\u533a",
-  confirm: "\u5df2\u6309\u73b0\u6709\u786e\u8ba4\u5165\u8d26\u8868\u5355\u63d0\u4ea4",
-  invalid: "\u8bf7\u5148\u8865\u9f50\u5f53\u524d\u8868\u5355\u9700\u8981\u7684\u5185\u5bb9",
-  unavailable: "\u8fd9\u4e2a\u5feb\u6377\u952e\u5728\u5f53\u524d\u5c0f\u7eb8\u6761\u4e0a\u4e0d\u53ef\u7528"
+    "\u5149\u6807\u5728\u8f93\u5165\u6846\u91cc\u65f6\u4e0d\u4f1a\u89e6\u53d1\u3002"
 } as const;
 
 const shortcutRows = [
@@ -60,20 +51,13 @@ export function ImportReviewKeyboardShortcuts({
 }: ImportReviewKeyboardShortcutsProps) {
   const router = useRouter();
   const submitLockRef = useRef(false);
-  const [lastMessage, setLastMessage] = useState<string>(shortcutCopy.idle);
 
   useEffect(() => {
-    function announce(message: string) {
-      setLastMessage(message);
-    }
-
-    function navigate(href: string | null, message: string, onLocalNavigate?: () => void) {
+    function navigate(href: string | null, onLocalNavigate?: () => void) {
       if (!href) {
-        announce(shortcutCopy.unavailable);
         return;
       }
 
-      announce(message);
       if (onLocalNavigate) {
         onLocalNavigate();
         return;
@@ -82,57 +66,46 @@ export function ImportReviewKeyboardShortcuts({
       router.push(href, { scroll: false });
     }
 
-    function submitForm(formId: string, canSubmit: boolean, successMessage: string) {
+    function submitForm(formId: string, canSubmit: boolean) {
       if (!canSubmit || submitLockRef.current) {
-        announce(shortcutCopy.unavailable);
         return;
       }
 
       const form = document.getElementById(formId);
 
       if (!(form instanceof HTMLFormElement)) {
-        announce(shortcutCopy.unavailable);
         return;
       }
 
       if (!form.checkValidity()) {
         form.reportValidity();
-        announce(shortcutCopy.invalid);
         return;
       }
 
       submitLockRef.current = true;
-      window.setTimeout(() => {
+      window.requestAnimationFrame(() => {
         submitLockRef.current = false;
-      }, 1500);
-      announce(successMessage);
+      });
       form.requestSubmit();
     }
 
     function focusCommonExpenseArea() {
       if (!canFocusCommonExpense) {
-        announce(shortcutCopy.unavailable);
         return;
       }
 
       const area = document.getElementById(commonExpenseAreaId);
 
       if (!area) {
-        announce(shortcutCopy.unavailable);
         return;
       }
 
-      area.scrollIntoView({ behavior: "smooth", block: "center" });
-      area.setAttribute("data-import-review-shortcut-highlight", "true");
-      window.setTimeout(() => {
-        area.removeAttribute("data-import-review-shortcut-highlight");
-      }, 850);
+      area.scrollIntoView({ behavior: "auto", block: "center" });
 
       const focusTarget = area.querySelector<HTMLElement>(
         'input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled), a[href]'
       );
       focusTarget?.focus({ preventScroll: true });
-      announce(shortcutCopy.focusCommon);
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -151,25 +124,25 @@ export function ImportReviewKeyboardShortcuts({
 
       if (key === "j") {
         event.preventDefault();
-        navigate(nextHref, shortcutCopy.next, onNext);
+        navigate(nextHref, onNext);
         return;
       }
 
       if (key === "k") {
         event.preventDefault();
-        navigate(previousHref, shortcutCopy.previous, onPrevious);
+        navigate(previousHref, onPrevious);
         return;
       }
 
       if (event.key === "4") {
         event.preventDefault();
-        submitForm(skipFormId, canSkip, shortcutCopy.skip);
+        submitForm(skipFormId, canSkip);
         return;
       }
 
       if (event.key === "5") {
         event.preventDefault();
-        submitForm(needDiscussionFormId, canMarkNeedDiscussion, shortcutCopy.needDiscussion);
+        submitForm(needDiscussionFormId, canMarkNeedDiscussion);
         return;
       }
 
@@ -185,7 +158,7 @@ export function ImportReviewKeyboardShortcuts({
         }
 
         event.preventDefault();
-        submitForm(confirmFormId, canSubmitConfirm, shortcutCopy.confirm);
+        submitForm(confirmFormId, canSubmitConfirm);
         return;
       }
 
@@ -262,32 +235,7 @@ export function ImportReviewKeyboardShortcuts({
             />
           ))}
         </div>
-        <p
-          aria-live="polite"
-          className="mt-2 flex items-start gap-2 rounded-[14px] bg-white/75 px-2.5 py-1 text-[11px] font-black leading-5 text-[#1f7a70] shadow-[inset_0_0_0_2px_rgba(130,213,187,0.42)]"
-          data-import-review-shortcut-status="true"
-        >
-          <Sparkles aria-hidden="true" className="mt-0.5 shrink-0" size={14} />
-          <span>{lastMessage}</span>
-        </p>
       </div>
-      <style>{`
-        [data-import-review-shortcut-highlight="true"] {
-          animation: import-review-shortcut-pulse 850ms ease-out;
-        }
-
-        @keyframes import-review-shortcut-pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(25, 200, 185, 0.42), 0 5px 0 rgba(121, 79, 39, 0.08);
-          }
-          55% {
-            box-shadow: 0 0 0 10px rgba(25, 200, 185, 0.16), 0 5px 0 rgba(121, 79, 39, 0.08);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(25, 200, 185, 0), 0 5px 0 rgba(121, 79, 39, 0.08);
-          }
-        }
-      `}</style>
     </Card>
   );
 }

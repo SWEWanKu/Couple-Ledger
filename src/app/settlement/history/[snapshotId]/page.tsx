@@ -456,7 +456,6 @@ function ConfirmationArchiveCard({ detail }: { detail: SettlementSnapshotDetail 
 }
 
 function ArchiveReadOnlyNote({ detail }: { detail: SettlementSnapshotDetail }) {
-  const schemaVersion = detail.snapshotJson?.schemaVersion ?? "unknown";
   const calculationVersion = detail.snapshotJson?.calculationVersion ?? detail.snapshot.calculation_version;
 
   return (
@@ -465,7 +464,7 @@ function ArchiveReadOnlyNote({ detail }: { detail: SettlementSnapshotDetail }) {
         <div>
           <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
             <FileText aria-hidden="true" size={16} />
-            Read Only Memo
+            归档便签
           </p>
           <div className="mt-3">
             <Title size="small" color="app-yellow">
@@ -477,8 +476,7 @@ function ArchiveReadOnlyNote({ detail }: { detail: SettlementSnapshotDetail }) {
           </p>
         </div>
         <div className="grid min-w-[230px] gap-2 rounded-[26px] bg-[#fffdf3] px-4 py-4 text-xs font-black leading-6 text-[#8a7556] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)]">
-          <span>schema v{schemaVersion}</span>
-          <span>calculation {calculationVersion}</span>
+          <span>结算版本 {calculationVersion}</span>
           <span>{formatDateOnly(detail.snapshot.month_start)}</span>
         </div>
       </div>
