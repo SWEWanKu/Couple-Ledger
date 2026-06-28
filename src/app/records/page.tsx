@@ -99,25 +99,38 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
       subtitle="看看这个月一起记下的账"
     >
         <div className="mx-auto grid max-w-6xl gap-5">
-          <Card color="default" pattern="app-teal" className="p-4 sm:p-5">
+          <Card color="default" pattern="app-teal" className="relative overflow-visible p-4 sm:p-5">
+            <span
+              aria-hidden="true"
+              className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+            />
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
                   <Icon name="icon-critterpedia" size={18} bounce />
-                  流水列表
+                  账本
                 </p>
-                <p className="mt-1 text-sm font-bold text-[#725d42]">
-                  {filteredRecordCount}/{totalRecordCount} 条匹配，最多显示 50 条
-                </p>
+                <h2 className="mt-1 text-2xl font-black text-[#794f27]">流水记录</h2>
+                <p className="mt-1 text-sm font-bold text-[#725d42]">{range.monthLabel} · {filteredRecordCount}/{totalRecordCount} 条匹配</p>
               </div>
-              <IslandLink
-                href={getMonthlyReportHref(range.month)}
-                data-records-monthly-report-link="true"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-              >
-                <ChartPie aria-hidden="true" size={17} />
-                月报
-              </IslandLink>
+              <div className="flex flex-wrap gap-2">
+                <IslandLink
+                  href={getNewRecordHref(range.month, recordsFilters)}
+                  data-records-new-link="true"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+                >
+                  <Plus aria-hidden="true" size={17} />
+                  记一笔
+                </IslandLink>
+                <IslandLink
+                  href={getMonthlyReportHref(range.month)}
+                  data-records-monthly-report-link="true"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                >
+                  <ChartPie aria-hidden="true" size={17} />
+                  月报
+                </IslandLink>
+              </div>
             </div>
 
             <MonthNavigator filters={recordsFilters} range={range} />

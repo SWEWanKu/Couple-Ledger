@@ -333,6 +333,7 @@ function ImportBatchPager({
       {hasPreviousPage ? (
         <IslandLink
           href={getImportsPageHref(currentPage - 1)}
+          scroll={false}
           className="inline-flex min-h-10 items-center justify-center rounded-full border-2 border-dashed border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
           data-imports-previous-page="true"
         >
@@ -349,6 +350,7 @@ function ImportBatchPager({
       {hasNextPage ? (
         <IslandLink
           href={getImportsPageHref(currentPage + 1)}
+          scroll={false}
           className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#82d5bb] px-4 py-2 text-sm font-black text-white shadow-[0_4px_0_#5fb89f] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
           data-imports-next-page="true"
         >

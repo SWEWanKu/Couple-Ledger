@@ -10,6 +10,7 @@ type IslandLinkProps = Omit<
   href: string;
   children: ReactNode;
   ariaLabel?: string;
+  scroll?: boolean;
 };
 
 export function IslandLink({
@@ -17,12 +18,13 @@ export function IslandLink({
   children,
   className,
   ariaLabel,
+  scroll,
   ...anchorProps
 }: IslandLinkProps) {
   const accessibleLabel = ariaLabel ?? anchorProps["aria-label"];
 
   return (
-    <Link {...anchorProps} href={href} prefetch aria-label={accessibleLabel} className={className}>
+    <Link {...anchorProps} href={href} prefetch scroll={scroll} aria-label={accessibleLabel} className={className}>
       {children}
     </Link>
   );
