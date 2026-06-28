@@ -91,9 +91,10 @@ export default function LoginClient() {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isLoadingSceneMounted, setIsLoadingSceneMounted] = useState(false);
   const [isEnteringIsland, setIsEnteringIsland] = useState(false);
   const [status, setStatus] = useState<FormStatus>(initialStatus);
-  const isBusy = isSendingOtp || isVerifyingOtp || isEnteringIsland;
+  const isBusy = isSendingOtp || isVerifyingOtp || isLoadingSceneMounted;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -210,9 +211,11 @@ export default function LoginClient() {
         throw error;
       }
 
+      setIsLoadingSceneMounted(true);
       setIsEnteringIsland(true);
       setStatus({ type: "success", message: "验证成功，正在进入小岛..." });
-      window.setTimeout(() => router.push("/dashboard"), 1600);
+      window.setTimeout(() => setIsEnteringIsland(false), 1600);
+      window.setTimeout(() => router.push("/dashboard"), 2500);
     } catch (error) {
       setStatus({
         type: "error",
@@ -235,8 +238,10 @@ export default function LoginClient() {
   }
 
   function previewLoading() {
+    setIsLoadingSceneMounted(true);
     setIsEnteringIsland(true);
     window.setTimeout(() => setIsEnteringIsland(false), 1600);
+    window.setTimeout(() => setIsLoadingSceneMounted(false), 2500);
   }
 
   return (
@@ -398,9 +403,9 @@ export default function LoginClient() {
           </Card>
         </section>
 
-      {isEnteringIsland ? (
+      {isLoadingSceneMounted ? (
         <div className="fixed inset-0 z-50" role="status" aria-label="正在进入小岛">
-          <Loading active />
+          <Loading active={isEnteringIsland} />
         </div>
       ) : null}
       <Footer type="sea" seamless className="pointer-events-none absolute bottom-0 left-0 right-0 opacity-80" />
