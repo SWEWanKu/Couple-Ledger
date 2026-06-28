@@ -234,6 +234,11 @@ export default function LoginClient() {
     void handleSendOtp();
   }
 
+  function previewLoading() {
+    setIsEnteringIsland(true);
+    window.setTimeout(() => setIsEnteringIsland(false), 1600);
+  }
+
   return (
     <main
       className="relative min-h-screen overflow-hidden bg-[#7DC395] px-3 py-4 text-[#794f27] sm:px-6 lg:px-8"
@@ -358,6 +363,12 @@ export default function LoginClient() {
                 </Button>
               ) : null}
             </form>
+
+            <div className="relative mt-3">
+              <Button type="dashed" size="middle" htmlType="button" block disabled={isBusy} onClick={previewLoading}>
+                预览加载动画
+              </Button>
+            </div>
 
             {status.type === "idle" && !isOtpSent ? (
               <p id="login-email-status" className="relative mt-4 text-center text-xs font-bold leading-5 text-[#9f927d]">
