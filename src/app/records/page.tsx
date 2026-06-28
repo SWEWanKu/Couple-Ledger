@@ -17,20 +17,14 @@ import {
   XCircle,
   UserRound
 } from "lucide-react";
-import { Button, Card, Icon, Title } from "animal-island-ui";
+import { Button, Card, Icon } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
-import { RecordsSettlementAwareness } from "@/components/settlement/RecordsSettlementAwareness";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
-import {
-  getMonthlyLedgerSummary,
-  type MonthlyLedgerSummaryResult
-} from "@/lib/ledger/get-monthly-ledger-summary";
 import {
   formatMoney,
   getLedgerRecords,
-  getRecordsMonthRange,
   type LedgerRecordFilters,
   type LedgerRecordTypeFilter,
   type LedgerRecord,
@@ -43,7 +37,6 @@ import {
   getRecordDetailHref,
   getRecordsHref
 } from "@/lib/ledger/records-query";
-import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember, DashboardHouseholdSummary } from "@/types/dashboard";
 
@@ -78,31 +71,22 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     await getDashboardHouseholdSummary(supabase, {
       householdId: membership.household_id,
       currentUserId: user.id
-    });
+  });
   const recordsFilters = createRecordsFilters(params, householdSummary);
-  const range = getRecordsMonthRange(selectedMonth);
-  const [recordsResult, monthlyLedgerSummary, settlementStatus] = await Promise.all([
-    getLedgerRecords(supabase, {
-      householdId: membership.household_id,
-      currentUserId: user.id,
-      categories: householdSummary.categories,
-      members: householdSummary.members,
-      month: range.month,
-      filters: recordsFilters
-    }),
-    getMonthlyLedgerSummary(supabase, {
-      householdId: membership.household_id,
-      currentUserId: user.id,
-      categories: householdSummary.categories,
-      members: householdSummary.members,
-      month: range.month
-    }),
-    getSettlementSnapshotStatus(supabase, {
-      householdId: membership.household_id,
-      month: range.month
-    })
-  ]);
-  const { records, totalRecordCount, filteredRecordCount, warning: recordsWarning } = recordsResult;
+  const {
+    records,
+    range,
+    totalRecordCount,
+    filteredRecordCount,
+    warning: recordsWarning
+  } = await getLedgerRecords(supabase, {
+    householdId: membership.household_id,
+    currentUserId: user.id,
+    categories: householdSummary.categories,
+    members: householdSummary.members,
+    month: selectedMonth,
+    filters: recordsFilters
+  });
   const showCreateSuccess = getSingleParam(params.created) === "1";
   const voidFeedback = getRecordsVoidFeedback(getSingleParam(params.voided));
 
@@ -115,12 +99,6 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
     >
         <div className="mx-auto grid max-w-6xl gap-5">
           <RecordsTopNav month={range.month} />
-
-          <RecordsPageSummary
-            filters={recordsFilters}
-            range={range}
-            summary={monthlyLedgerSummary}
-          />
 
           <Card color="default" pattern="app-teal" className="p-4 sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -168,13 +146,8 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
                 feedback={voidFeedback}
               />
             ) : null}
-            <RecordsSettlementAwareness
-              statusResult={settlementStatus}
-              context="list"
-              className="mt-5"
-            />
 
-            <div className="mt-6">
+            <div className="mt-4">
               {records.length > 0 ? (
                 <RecordsList filters={recordsFilters} records={records} returnMonth={range.month} />
               ) : (
@@ -233,69 +206,6 @@ function RecordsTopNav({ month }: { month: string }) {
           ))}
         </nav>
       </div>
-    </Card>
-  );
-}
-
-function RecordsPageSummary({
-  filters,
-  range,
-  summary
-}: {
-  filters: LedgerRecordFilters;
-  range: RecordsMonthRange;
-  summary: MonthlyLedgerSummaryResult;
-}) {
-  const data = summary.summary;
-
-  return (
-    <Card color="default" pattern="app-teal" className="relative overflow-visible p-4 sm:p-5">
-      <span
-        aria-hidden="true"
-        className="absolute -top-3 left-8 h-7 w-24 -rotate-2 rounded-[10px] bg-[#f7cd67]/75 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-      />
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div>
-          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-            <ReceiptText aria-hidden="true" size={17} />
-            当前月份
-          </p>
-          <div className="mt-3">
-            <Title size="small" color="app-yellow">
-              流水记录
-            </Title>
-          </div>
-          <p className="mt-3 text-sm font-bold text-[#725d42]">{range.monthLabel}</p>
-        </div>
-
-        <IslandLink
-          href={getNewRecordHref(range.month, filters)}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-        >
-          <Plus aria-hidden="true" size={18} />
-          记一笔
-        </IslandLink>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryNotePill
-          href={getRecordsHref(range.month, { ...filters, type: "expense" })}
-          label="本月支出"
-          value={formatMoney(data.expenseTotal)}
-          helper={`${data.expenseCount} 笔`}
-        />
-        <SummaryNotePill
-          href={getRecordsHref(range.month, { ...filters, type: "income" })}
-          label="本月收入"
-          value={formatMoney(data.incomeTotal)}
-          helper={`${data.incomeCount} 笔`}
-        />
-        <SummaryNotePill label="净额" value={formatSignedMoney(data.netAmount)} helper="收入减支出" />
-        <SummaryNotePill label="流水" value={`${data.entryCount} 条`} helper="本月记录" />
-      </div>
-
-      {summary.warning ? <PageNotice message={summary.warning} /> : null}
     </Card>
   );
 }
@@ -586,42 +496,6 @@ function RecordsQueryLink({
   );
 }
 
-function SummaryNotePill({
-  href,
-  label,
-  value,
-  helper
-}: {
-  href?: string;
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  const className =
-    "block rounded-[22px] bg-white px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.68)] transition hover:-translate-y-0.5 hover:bg-[#fff8da] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25";
-  const content = (
-    <>
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9f927d]">{label}</p>
-      <p className="mt-1 break-words text-base font-black text-[#794f27]">{value}</p>
-      <p className="mt-0.5 text-xs font-bold text-[#9f927d]">{helper}</p>
-    </>
-  );
-
-  if (href) {
-    return (
-      <RecordsQueryLink href={href} className={className} ariaLabel={`${label} records filter`}>
-        {content}
-      </RecordsQueryLink>
-    );
-  }
-
-  return (
-    <div className={className}>
-      {content}
-    </div>
-  );
-}
-
 async function requireHouseholdAccess() {
   const supabase = await createClient();
   const currentUserId = (await headers()).get("x-couple-ledger-user-id");
@@ -669,25 +543,25 @@ function RecordsList({
   const dayGroups = groupRecordsByDate(records);
 
   return (
-    <div data-records-day-timeline="true" className="grid gap-4">
+    <div data-records-day-timeline="true" className="grid gap-3">
       {dayGroups.map((group) => (
         <section
           key={group.date}
           data-record-day-group="true"
           data-record-day={group.date}
-          className="relative grid gap-2 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3]/80 p-3 shadow-[0_4px_0_rgba(121,79,39,0.06)]"
+          className="relative grid gap-2 rounded-[20px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3]/80 p-2 shadow-[0_3px_0_rgba(121,79,39,0.06)]"
         >
           <span
             aria-hidden="true"
-            className="absolute -top-2 left-8 h-5 w-20 -rotate-2 rounded-[8px] bg-[#82d5bb]/65 shadow-[0_4px_0_rgba(121,79,39,0.08)]"
+            className="absolute -top-2 left-7 h-4 w-16 -rotate-2 rounded-[7px] bg-[#82d5bb]/65 shadow-[0_3px_0_rgba(121,79,39,0.08)]"
           />
-          <div className="rounded-[20px] bg-white/85 px-4 py-3 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <h2 className="flex min-w-0 items-center gap-2 truncate text-base font-black text-[#794f27]">
-                <CalendarDays aria-hidden="true" size={18} className="shrink-0 text-[#9f927d]" />
+          <div className="rounded-[18px] bg-white/85 px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]">
+            <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+              <h2 className="flex min-w-0 items-center gap-2 truncate text-sm font-black text-[#794f27]">
+                <CalendarDays aria-hidden="true" size={16} className="shrink-0 text-[#9f927d]" />
                 {formatLongDate(group.date)}
               </h2>
-              <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[520px]">
+              <div className="grid gap-1.5 sm:grid-cols-4 xl:min-w-[480px]">
                 <DaySummaryPill metric="expense" label="支出" value={formatMoney(group.expenseTotal)} tone="coral" />
                 <DaySummaryPill metric="income" label="收入" value={formatMoney(group.incomeTotal)} tone="teal" />
                 <DaySummaryPill metric="net" label="净额" value={formatSignedMoney(group.netAmount)} tone="amber" />
@@ -696,41 +570,41 @@ function RecordsList({
             </div>
           </div>
 
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             {group.records.map((record) => (
               <IslandLink
                 key={record.id}
                 href={getRecordDetailHref(record.id, returnMonth, filters)}
                 ariaLabel={`查看账单 ${record.note?.trim() || record.categoryName}`}
-                className="group block rounded-[22px] border-2 border-[#ead9b8] bg-[#fffdf3] px-4 py-3 shadow-[0_4px_0_rgba(121,79,39,0.07)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                className="group block rounded-[18px] border-2 border-[#ead9b8] bg-[#fffdf3] px-3 py-2 shadow-[0_3px_0_rgba(121,79,39,0.07)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
               >
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                   <div className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72)] transition group-hover:-translate-y-0.5">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[#794f27] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72)] transition group-hover:-translate-y-0.5">
                         {record.entryType === "income" ? (
-                          <CircleDollarSign aria-hidden="true" size={18} />
+                          <CircleDollarSign aria-hidden="true" size={16} />
                         ) : (
-                          <ReceiptText aria-hidden="true" size={18} />
+                          <ReceiptText aria-hidden="true" size={16} />
                         )}
                       </span>
                       <div className="min-w-0">
-                        <h2 className="truncate text-base font-black text-[#794f27]">
+                        <h2 className="truncate text-sm font-black text-[#794f27]">
                           {record.note?.trim() || record.categoryName || "未命名账单"}
                         </h2>
-                        <p className="mt-1 truncate text-xs font-bold text-[#9f927d]">
+                        <p className="truncate text-xs font-bold text-[#9f927d]">
                           {formatEntryType(record.entryType)} · {record.paidByLabel} · {record.splitModeLabel}
                         </p>
                       </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                       <CategoryPill record={record} />
                       <MetaPill icon={<UserRound aria-hidden="true" size={14} />} label={record.paidByLabel} />
                     </div>
                   </div>
 
                   <p
-                    className={`text-left text-lg font-black sm:text-right ${
+                    className={`text-left text-base font-black sm:text-right ${
                       record.entryType === "income" ? "text-[#1f7a70]" : "text-[#d46a5b]"
                     }`}
                   >
@@ -767,10 +641,10 @@ function DaySummaryPill({
   return (
     <div
       data-record-day-metric={metric}
-      className={`rounded-[20px] px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.58)] ${toneClasses[tone]}`}
+      className={`rounded-[16px] px-2.5 py-1.5 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.58)] ${toneClasses[tone]}`}
     >
-      <p className="text-[11px] font-black uppercase tracking-[0.12em] opacity-75">{label}</p>
-      <p className="mt-1 break-words text-sm font-black tracking-normal">{value}</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.1em] opacity-75">{label}</p>
+      <p className="break-words text-xs font-black tracking-normal">{value}</p>
     </div>
   );
 }
