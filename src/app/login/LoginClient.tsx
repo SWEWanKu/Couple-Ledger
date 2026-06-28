@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Divider, Footer, Icon, Input, Title } from "animal-island-ui";
+import { Button, Card, Divider, Footer, Icon, Input, Loading, Title } from "animal-island-ui";
 import { createClient } from "@/lib/supabase/client";
 
 const leaves = [
@@ -91,8 +91,9 @@ export default function LoginClient() {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isEnteringIsland, setIsEnteringIsland] = useState(false);
   const [status, setStatus] = useState<FormStatus>(initialStatus);
-  const isBusy = isSendingOtp || isVerifyingOtp;
+  const isBusy = isSendingOtp || isVerifyingOtp || isEnteringIsland;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -209,8 +210,9 @@ export default function LoginClient() {
         throw error;
       }
 
+      setIsEnteringIsland(true);
       setStatus({ type: "success", message: "验证成功，正在进入小岛..." });
-      router.push("/dashboard");
+      window.setTimeout(() => router.push("/dashboard"), 650);
     } catch (error) {
       setStatus({
         type: "error",
@@ -385,6 +387,11 @@ export default function LoginClient() {
           </Card>
         </section>
 
+      {isEnteringIsland ? (
+        <div className="fixed inset-0 z-50 bg-[#7DC395]" role="status" aria-label="正在进入小岛">
+          <Loading />
+        </div>
+      ) : null}
       <Footer type="sea" seamless className="pointer-events-none absolute bottom-0 left-0 right-0 opacity-80" />
     </main>
   );
