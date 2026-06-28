@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { HeartHandshake, Home, LayoutDashboard, LogIn, PlusCircle, ReceiptText } from "lucide-react";
+import { HeartHandshake, LayoutDashboard, LogIn, PlusCircle, ReceiptText } from "lucide-react";
 import { Icon } from "animal-island-ui";
 
 const navItems = [
-  { href: "/", label: "首页", icon: Home, paper: "bg-[#fffdf3]" },
   { href: "/dashboard", label: "共同看板", icon: LayoutDashboard, paper: "bg-[#e9fbf4]" },
   { href: "/records", label: "流水记录", icon: ReceiptText, paper: "bg-[#fff8da]" },
   { href: "/records/new", label: "记一笔账", icon: PlusCircle, paper: "bg-[#ffe9df]" },

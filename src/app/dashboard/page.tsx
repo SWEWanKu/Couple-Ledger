@@ -4,19 +4,14 @@ import {
   ArrowRight,
   ArrowRightLeft,
   BadgeCheck,
-  ChartPie,
   CheckCircle2,
   FileUp,
   Hourglass,
-  PlusCircle,
-  ReceiptText,
-  WalletCards,
   type LucideIcon
 } from "lucide-react";
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
-import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   getDashboardRecentActivity,
@@ -51,7 +46,6 @@ export default async function DashboardPage() {
   }
 
   const currentUserId = user.id;
-
   const { data: membership, error: membershipError } = await supabase
     .from("household_members")
     .select("household_id, role")
@@ -106,35 +100,18 @@ export default async function DashboardPage() {
   return (
     <AppShell
       compact
+      hideTopbar
       title="小岛首页"
       subtitle="今天先看看本月账本、继续对账，或记一笔新账。"
     >
       <div className="mx-auto grid max-w-6xl gap-5">
+        <DashboardTopNav currentMonth={currentMonth} reportHref={reportHref} settlementHref={settlementHref} />
+
         {readWarning ? <WarningNotice message={readWarning} /> : null}
 
-        <DashboardIntroCard
-          currentMonth={currentMonth}
-          householdName={householdSummary.householdName}
-          recordsHref={recordsHref}
-          reportHref={reportHref}
-          settlementHref={settlementHref}
-        />
-
-        <PrivateIslandTrail
-          className="py-2"
-          items={[
-            { label: islandTrailLabels.home, current: true },
-            { label: islandTrailLabels.records, href: recordsHref },
-            { label: "共同对账", href: "/imports" },
-            { label: islandTrailLabels.settlement, href: settlementHref },
-            { label: islandTrailLabels.monthlyReport, href: reportHref }
-          ]}
-        />
-
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px] xl:items-start">
-          <section className="grid min-w-0 gap-5 xl:order-1">
+          <section className="min-w-0 xl:order-1">
             <MonthSummaryCard ledgerSummary={ledgerSummary} monthlySummary={monthlyLedgerSummary} />
-            <RecentActivityCard activity={recentActivity} recordsHref={recordsHref} />
           </section>
 
           <aside className={`grid min-w-0 gap-5 xl:order-2 ${importReviewHasTodo ? "order-first" : ""}`}>
@@ -147,105 +124,63 @@ export default async function DashboardPage() {
             />
           </aside>
         </div>
+
+        <RecentActivityCard activity={recentActivity} recordsHref={recordsHref} />
       </div>
     </AppShell>
   );
 }
 
-function DashboardIntroCard({
+function DashboardTopNav({
   currentMonth,
-  householdName,
-  recordsHref,
   reportHref,
   settlementHref
 }: {
   currentMonth: string;
-  householdName: string;
-  recordsHref: string;
   reportHref: string;
   settlementHref: string;
 }) {
+  const navItems = [
+    { key: "home", href: "/dashboard", label: "小岛首页", iconName: "icon-map" },
+    { key: "records", href: "/records", label: "账本", iconName: "icon-critterpedia" },
+    { key: "imports", href: "/imports", label: "共同对账", iconName: "icon-chat" },
+    { key: "settlement", href: settlementHref, label: "结算", iconName: "icon-diy" },
+    { key: "monthly", href: reportHref, label: "月报", iconName: "icon-camera" }
+  ] as const;
+
   return (
-    <Card color="default" pattern="app-yellow" className="relative overflow-visible p-4 sm:p-5">
+    <Card color="default" pattern="app-yellow" className="relative overflow-visible p-3 sm:p-4">
       <span
         aria-hidden="true"
-        className="absolute -top-3 left-8 h-7 w-24 -rotate-2 rounded-[10px] bg-[#f7cd67]/75 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
+        className="absolute -top-3 left-1/2 h-7 w-28 -translate-x-1/2 -rotate-1 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="min-w-0">
-          <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-            <Icon name="icon-map" size={18} bounce />
-            Next Step
-          </p>
-          <h2 className="mt-2 text-2xl font-black leading-tight text-[#794f27]">
-            下一步做什么
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm font-bold leading-7 text-[#725d42]">
-            {householdName} 的本月手账在这里先摊开：看看花费、接着对账，或者补上一张新的生活小票。
-          </p>
+      <div className="flex flex-col items-center gap-3">
+        <div className="inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
+          <Icon name="icon-map" size={18} bounce />
+          {currentMonth} 小岛手账
         </div>
 
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
-          <WalletCards aria-hidden="true" size={16} />
-          {currentMonth} 账本
-        </div>
-      </div>
-
-      <Divider type="wave-yellow" className="my-4" />
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <DashboardActionLink href={`/records/new?month=${currentMonth}`} tone="primary">
-          <PlusCircle aria-hidden="true" size={18} />
-          记一笔账
-        </DashboardActionLink>
-        <DashboardActionLink href={recordsHref} tone="paper">
-          <ReceiptText aria-hidden="true" size={18} />
-          查看流水
-        </DashboardActionLink>
-        <DashboardActionLink href="/imports" tone="mint">
-          <ArrowRight aria-hidden="true" size={18} />
-          共同对账
-        </DashboardActionLink>
-        <DashboardActionLink href={reportHref} tone="paper" dataMonthlyReport>
-          <ChartPie aria-hidden="true" size={18} />
-          打开月报
-        </DashboardActionLink>
-        <DashboardActionLink href={settlementHref} tone="mint">
-          <ArrowRightLeft aria-hidden="true" size={18} />
-          去结算
-        </DashboardActionLink>
+        <nav aria-label="小岛手账页面导航" className="flex w-full flex-wrap justify-center gap-2 sm:gap-3">
+          {navItems.map((item) => (
+            <IslandLink
+              key={item.key}
+              href={item.href}
+              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-black shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.14)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 sm:px-5 sm:text-base ${
+                item.key === "home"
+                  ? "border-[#5fb89f] bg-[#82d5bb] text-white"
+                  : "border-[#d9c49b] bg-[#fffdf3] text-[#794f27] hover:bg-white"
+              }`}
+              data-dashboard-top-nav={item.key}
+              data-dashboard-monthly-report-link={item.key === "monthly" ? "true" : undefined}
+            >
+              <Icon name={item.iconName} size={18} bounce />
+              {item.label}
+            </IslandLink>
+          ))}
+        </nav>
       </div>
     </Card>
-  );
-}
-
-function DashboardActionLink({
-  children,
-  dataMonthlyReport = false,
-  href,
-  tone
-}: {
-  children: React.ReactNode;
-  dataMonthlyReport?: boolean;
-  href: string;
-  tone: "primary" | "mint" | "paper";
-}) {
-  const toneClassName = {
-    primary: "bg-[#f7cd67] text-[#794f27] shadow-[0_5px_0_#d9a43e] hover:shadow-[0_7px_0_#d9a43e]",
-    mint: "bg-[#82d5bb] text-white shadow-[0_5px_0_#5fb89f] hover:shadow-[0_7px_0_#5fb89f]",
-    paper:
-      "border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] hover:bg-white hover:shadow-[0_7px_0_rgba(121,79,39,0.12)]"
-  }[tone];
-
-  return (
-    <IslandLink
-      href={href}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 ${toneClassName}`}
-      data-dashboard-monthly-report-link={dataMonthlyReport ? "true" : undefined}
-    >
-      {children}
-    </IslandLink>
   );
 }
 

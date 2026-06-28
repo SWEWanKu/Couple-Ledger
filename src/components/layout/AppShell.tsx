@@ -7,9 +7,10 @@ type AppShellProps = {
   subtitle: string;
   children: React.ReactNode;
   compact?: boolean;
+  hideTopbar?: boolean;
 };
 
-export function AppShell({ title, subtitle, children, compact = false }: AppShellProps) {
+export function AppShell({ title, subtitle, children, compact = false, hideTopbar = false }: AppShellProps) {
   return (
     <Cursor>
       <div className="min-h-screen overflow-x-hidden bg-[#e7f7ed] text-[#794f27]">
@@ -34,7 +35,7 @@ export function AppShell({ title, subtitle, children, compact = false }: AppShel
               className="absolute -right-4 top-28 hidden h-20 w-10 rotate-3 rounded-r-[18px] border-2 border-l-0 border-[#d9c49b] bg-[#fff1ed] shadow-[0_8px_0_rgba(121,79,39,0.08)] xl:block"
             />
 
-            <Topbar compact={compact} title={title} subtitle={subtitle} />
+            {hideTopbar ? null : <Topbar compact={compact} title={title} subtitle={subtitle} />}
 
             <main className={`relative z-10 px-4 sm:px-6 lg:px-8 ${compact ? "pb-6 pt-3 lg:pb-7" : "pb-7 pt-4 lg:pb-10"}`}>
               {children}
