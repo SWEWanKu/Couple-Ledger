@@ -28,7 +28,7 @@ import {
   getMonthlyLedgerSummary,
   type MonthlyLedgerSummaryResult
 } from "@/lib/ledger/get-monthly-ledger-summary";
-import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
+import { getRecordsHref } from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
@@ -91,7 +91,6 @@ export default async function DashboardPage() {
       limit: 6
     })
   ]);
-  const reportHref = getMonthlyReportHref(currentMonth);
   const recordsHref = getRecordsHref(currentMonth);
   const settlementHref = `/settlement?month=${currentMonth}`;
   const importReviewHasTodo = hasImportReviewTodo(importReviewOverview);
@@ -105,8 +104,6 @@ export default async function DashboardPage() {
       subtitle="今天先看看本月账本、继续对账，或记一笔新账。"
     >
       <div className="mx-auto grid max-w-6xl gap-5">
-        <DashboardTopNav currentMonth={currentMonth} reportHref={reportHref} settlementHref={settlementHref} />
-
         {readWarning ? <WarningNotice message={readWarning} /> : null}
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px] xl:items-start">
@@ -128,59 +125,6 @@ export default async function DashboardPage() {
         <RecentActivityCard activity={recentActivity} recordsHref={recordsHref} />
       </div>
     </AppShell>
-  );
-}
-
-function DashboardTopNav({
-  currentMonth,
-  reportHref,
-  settlementHref
-}: {
-  currentMonth: string;
-  reportHref: string;
-  settlementHref: string;
-}) {
-  const navItems = [
-    { key: "home", href: "/dashboard", label: "小岛首页", iconName: "icon-map" },
-    { key: "records", href: "/records", label: "账本", iconName: "icon-critterpedia" },
-    { key: "imports", href: "/imports", label: "共同对账", iconName: "icon-chat" },
-    { key: "settlement", href: settlementHref, label: "结算", iconName: "icon-diy" },
-    { key: "monthly", href: reportHref, label: "月报", iconName: "icon-camera" }
-  ] as const;
-
-  return (
-    <Card color="default" pattern="app-yellow" className="relative overflow-visible p-3 sm:p-4">
-      <span
-        aria-hidden="true"
-        className="absolute -top-3 left-1/2 h-7 w-28 -translate-x-1/2 -rotate-1 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-      />
-
-      <div className="flex flex-col items-center gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
-          <Icon name="icon-map" size={18} bounce />
-          {currentMonth} 小岛手账
-        </div>
-
-        <nav aria-label="小岛手账页面导航" className="flex w-full flex-wrap justify-center gap-2 sm:gap-3">
-          {navItems.map((item) => (
-            <IslandLink
-              key={item.key}
-              href={item.href}
-              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-black shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.14)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 sm:px-5 sm:text-base ${
-                item.key === "home"
-                  ? "border-[#5fb89f] bg-[#82d5bb] text-white"
-                  : "border-[#d9c49b] bg-[#fffdf3] text-[#794f27] hover:bg-white"
-              }`}
-              data-dashboard-top-nav={item.key}
-              data-dashboard-monthly-report-link={item.key === "monthly" ? "true" : undefined}
-            >
-              <Icon name={item.iconName} size={18} bounce />
-              {item.label}
-            </IslandLink>
-          ))}
-        </nav>
-      </div>
-    </Card>
   );
 }
 

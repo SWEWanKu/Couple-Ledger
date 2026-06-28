@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PersistentPrivateNav } from "@/components/layout/PersistentPrivateNav";
 import "animal-island-ui/style";
 import "./globals.css";
 
@@ -15,6 +16,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <PersistentPrivateNav />
         {children}
       </body>
     </html>

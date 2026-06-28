@@ -98,8 +98,6 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
       subtitle="看看这个月一起记下的账"
     >
         <div className="mx-auto grid max-w-6xl gap-5">
-          <RecordsTopNav month={range.month} />
-
           <Card color="default" pattern="app-teal" className="p-4 sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -162,51 +160,6 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
           </Card>
         </div>
     </AppShell>
-  );
-}
-
-function RecordsTopNav({ month }: { month: string }) {
-  const navItems = [
-    { key: "home", href: "/dashboard", label: "小岛首页", iconName: "icon-map" },
-    { key: "records", href: "/records", label: "账本", iconName: "icon-critterpedia" },
-    { key: "imports", href: "/imports", label: "共同对账", iconName: "icon-chat" },
-    { key: "settlement", href: `/settlement?month=${month}`, label: "结算", iconName: "icon-diy" },
-    { key: "monthly", href: getMonthlyReportHref(month), label: "月报", iconName: "icon-camera" }
-  ] as const;
-
-  return (
-    <Card color="default" pattern="app-yellow" className="relative overflow-visible p-3 sm:p-4">
-      <span
-        aria-hidden="true"
-        className="absolute -top-3 left-1/2 h-7 w-28 -translate-x-1/2 -rotate-1 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-      />
-
-      <div className="flex flex-col items-center gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
-          <Icon name="icon-critterpedia" size={18} bounce />
-          {month} 流水记录
-        </div>
-
-        <nav aria-label="小岛手账页面导航" className="flex w-full flex-wrap justify-center gap-2 sm:gap-3">
-          {navItems.map((item) => (
-            <IslandLink
-              key={item.key}
-              href={item.href}
-              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 px-4 py-2.5 text-sm font-black shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.14)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 sm:px-5 sm:text-base ${
-                item.key === "records"
-                  ? "border-[#5fb89f] bg-[#82d5bb] text-white"
-                  : "border-[#d9c49b] bg-[#fffdf3] text-[#794f27] hover:bg-white"
-              }`}
-              data-records-top-nav={item.key}
-              data-records-monthly-report-link={item.key === "monthly" ? "true" : undefined}
-            >
-              <Icon name={item.iconName} size={18} bounce />
-              {item.label}
-            </IslandLink>
-          ))}
-        </nav>
-      </div>
-    </Card>
   );
 }
 
