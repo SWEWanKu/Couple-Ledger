@@ -398,16 +398,11 @@ export default function LoginClient() {
           </Card>
         </section>
 
-      <div
-        className={`fixed inset-0 z-50 bg-black transition-opacity duration-200 ${
-          isEnteringIsland ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        role="status"
-        aria-label="正在进入小岛"
-        aria-hidden={!isEnteringIsland}
-      >
-        <Loading active={isEnteringIsland} />
-      </div>
+      {isEnteringIsland ? (
+        <div className="fixed inset-0 z-50" role="status" aria-label="正在进入小岛">
+          <Loading active />
+        </div>
+      ) : null}
       <Footer type="sea" seamless className="pointer-events-none absolute bottom-0 left-0 right-0 opacity-80" />
     </main>
   );
