@@ -5,6 +5,7 @@ import {
   createImportBatchFromFile,
   getImportReviewHouseholdMembership
 } from "@/lib/import-review/batches";
+import { clearShortCache } from "@/lib/server/short-cache";
 import { createClient } from "@/lib/supabase/server";
 
 export async function createImportBatchAction(formData: FormData) {
@@ -36,6 +37,7 @@ export async function createImportBatchAction(formData: FormData) {
   }
 
   const notice = result.duplicate ? "?notice=duplicate" : "";
+  clearShortCache();
   redirect(`/imports/${result.batchId}/review${notice}`);
 }
 

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatMoney, type LedgerRecordEntryType } from "@/lib/ledger/list-records";
 import { getRecordDetailHref } from "@/lib/ledger/records-query";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 
 export type DashboardRecentActivityRecord = {
@@ -49,6 +50,22 @@ const recentActivityWarning = "最近流水便签暂时读不到，先保留其�
 const uncategorizedName = "未分类";
 
 export async function getDashboardRecentActivity(
+  supabase: SupabaseClient,
+  input: RecentActivityInput
+): Promise<DashboardRecentActivityResult> {
+  const { householdId, currentUserId, limit = 6 } = input;
+
+  return getShortCache(
+    createShortCacheKey("dashboard-recent-activity", {
+      householdId,
+      currentUserId,
+      limit: clampRecentLimit(limit)
+    }),
+    () => readDashboardRecentActivity(supabase, input)
+  );
+}
+
+async function readDashboardRecentActivity(
   supabase: SupabaseClient,
   { householdId, currentUserId, categories, members, limit = 6 }: RecentActivityInput
 ): Promise<DashboardRecentActivityResult> {

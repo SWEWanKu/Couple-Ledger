@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { normalizeRecordsMonth, type LedgerRecordTypeFilter } from "@/lib/ledger/list-records";
 import { voidLedgerRecord, type VoidLedgerRecordResult } from "@/lib/ledger/void-ledger-record";
+import { clearShortCache } from "@/lib/server/short-cache";
 import { createClient } from "@/lib/supabase/server";
 
 type VoidReturnContextParams = {
@@ -26,6 +27,7 @@ export async function voidLedgerRecordAction(formData: FormData) {
     redirect("/login");
   }
 
+  clearShortCache();
   redirect(getRecordsFeedbackHref(returnParams, result));
 }
 

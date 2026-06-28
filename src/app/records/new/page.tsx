@@ -26,6 +26,7 @@ import {
 import { normalizeRecordsMonth } from "@/lib/ledger/list-records";
 import { getMonthlyReportHref } from "@/lib/ledger/records-query";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
+import { clearShortCache } from "@/lib/server/short-cache";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 
@@ -381,6 +382,7 @@ async function saveRecordAction(formData: FormData) {
     redirect(getNewRecordHref(returnParams, result.errorCode));
   }
 
+  clearShortCache();
   redirect(getRecordsReturnHref(returnParams, { created: true }));
 }
 

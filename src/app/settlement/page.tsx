@@ -47,6 +47,7 @@ import {
   type SettlementSnapshotLifecycleSummary
 } from "@/lib/settlement/get-settlement-snapshot-status";
 import { getSettlementSummary } from "@/lib/settlement/get-settlement-summary";
+import { getHouseholdMembership } from "@/lib/server/household-membership";
 import { createClient } from "@/lib/supabase/server";
 import type {
   SettlementCalculationResult,
@@ -276,14 +277,9 @@ async function requireHouseholdAccess() {
     redirect("/login");
   }
 
-  const { data: membership, error } = await supabase
-    .from("household_members")
-    .select("household_id, role")
-    .eq("user_id", currentUserId)
-    .limit(1)
-    .maybeSingle();
+  const membership = await getHouseholdMembership(supabase, currentUserId);
 
-  if (error || !membership) {
+  if (!membership) {
     redirect("/not-invited");
   }
 

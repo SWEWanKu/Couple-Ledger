@@ -19,22 +19,23 @@ import {
   type DashboardRecentActivityRecord,
   type DashboardRecentActivityResult
 } from "@/lib/dashboard/recent-activity";
-import { getDashboardLedgerSummary } from "@/lib/dashboard/ledger-summary";
 import {
   getImportReviewContinueSummary,
   type ImportReviewContinueSummary
 } from "@/lib/import-review/batches";
 import {
   getMonthlyLedgerSummary,
+  type MonthlyLedgerSummary,
   type MonthlyLedgerSummaryResult
 } from "@/lib/ledger/get-monthly-ledger-summary";
+import { getCurrentMonthRange } from "@/lib/ledger/list-records";
 import { getRecordsHref } from "@/lib/ledger/records-query";
 import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
 } from "@/lib/settlement/get-settlement-snapshot-status";
+import { getHouseholdMembership } from "@/lib/server/household-membership";
 import { createClient } from "@/lib/supabase/server";
-import type { DashboardLedgerSummary } from "@/types/dashboard";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -44,14 +45,9 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { data: membership, error: membershipError } = await supabase
-    .from("household_members")
-    .select("household_id, role")
-    .eq("user_id", currentUserId)
-    .limit(1)
-    .maybeSingle();
+  const membership = await getHouseholdMembership(supabase, currentUserId);
 
-  if (membershipError || !membership) {
+  if (!membership) {
     redirect("/not-invited");
   }
 
@@ -66,11 +62,7 @@ export default async function DashboardPage() {
     })
   ]);
   const { summary: householdSummary, warning: householdSummaryWarning } = householdResult;
-  const { summary: ledgerSummary, warning: ledgerSummaryWarning } = await getDashboardLedgerSummary(supabase, {
-    householdId: membership.household_id,
-    categories: householdSummary.categories
-  });
-  const currentMonth = ledgerSummary.monthStart.slice(0, 7);
+  const currentMonth = getCurrentMonthRange().month;
   const [monthlyLedgerSummary, settlementStatus, recentActivity] = await Promise.all([
     getMonthlyLedgerSummary(supabase, {
       householdId: membership.household_id,
@@ -94,7 +86,7 @@ export default async function DashboardPage() {
   const recordsHref = getRecordsHref(currentMonth);
   const settlementHref = `/settlement?month=${currentMonth}`;
   const importReviewHasTodo = hasImportReviewTodo(importReviewOverview);
-  const readWarning = householdSummaryWarning ?? ledgerSummaryWarning;
+  const readWarning = householdSummaryWarning;
 
   return (
     <AppShell
@@ -108,7 +100,7 @@ export default async function DashboardPage() {
 
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_350px] xl:items-start">
           <section className="min-w-0 xl:order-1">
-            <MonthSummaryCard ledgerSummary={ledgerSummary} monthlySummary={monthlyLedgerSummary} />
+            <MonthSummaryCard monthlySummary={monthlyLedgerSummary} />
           </section>
 
           <aside className={`grid min-w-0 gap-5 xl:order-2 ${importReviewHasTodo ? "order-first" : ""}`}>
@@ -117,7 +109,7 @@ export default async function DashboardPage() {
               currentUserId={currentUserId}
               settlementHref={settlementHref}
               status={settlementStatus}
-              summary={ledgerSummary}
+              summary={monthlyLedgerSummary.summary}
             />
           </aside>
         </div>
@@ -129,10 +121,8 @@ export default async function DashboardPage() {
 }
 
 function MonthSummaryCard({
-  ledgerSummary,
   monthlySummary
 }: {
-  ledgerSummary: DashboardLedgerSummary;
   monthlySummary: MonthlyLedgerSummaryResult;
 }) {
   const summary = monthlySummary.summary;
@@ -166,11 +156,11 @@ function MonthSummaryCard({
       {monthlySummary.warning ? <WarningNotice className="mt-4" message={monthlySummary.warning} /> : null}
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <SummaryMetric label="本月支出" value={formatMoney(ledgerSummary.expenseTotal)} helper="真实支出流水" tone="teal" />
-        <SummaryMetric label="流水数" value={`${ledgerSummary.entryCount} 条`} helper="本月已记录" tone="yellow" />
+        <SummaryMetric label="本月支出" value={formatMoney(summary.expenseTotal)} helper="真实支出流水" tone="teal" />
+        <SummaryMetric label="流水数" value={`${summary.entryCount} 条`} helper="本月已记录" tone="yellow" />
         <SummaryMetric
           label="月份范围"
-          value={formatMonthRange(ledgerSummary.monthStart, ledgerSummary.nextMonthStart)}
+          value={formatMonthRange(summary.range.monthStart, summary.range.nextMonthStart)}
           helper="当前账本月份"
           tone="paper"
         />
@@ -339,7 +329,7 @@ function SettlementStatusCard({
   currentUserId: string;
   settlementHref: string;
   status: GetSettlementSnapshotStatusResult;
-  summary: DashboardLedgerSummary;
+  summary: MonthlyLedgerSummary;
 }) {
   const copy = getSettlementStatusCopy(status, currentUserId);
   const StatusIcon = copy.icon;
@@ -370,7 +360,7 @@ function SettlementStatusCard({
       </div>
 
       <p className="mt-3 rounded-[20px] bg-[#fffdf3] px-3 py-2 text-xs font-black leading-5 text-[#8a7556] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.55)]">
-        {summary.monthStart.slice(0, 7)} · 本月支出 {formatMoney(summary.expenseTotal)}
+        {summary.range.month} · 本月支出 {formatMoney(summary.expenseTotal)}
       </p>
 
       <IslandLink

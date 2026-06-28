@@ -16,6 +16,7 @@ import {
   type ReopenImportItemToPendingResult,
   type UpdateImportItemReviewStatusResult
 } from "@/lib/import-review/review-items";
+import { clearShortCache } from "@/lib/server/short-cache";
 import { createClient } from "@/lib/supabase/server";
 
 type ReviewActionReturnContext = {
@@ -70,6 +71,7 @@ export async function updateImportItemReviewStatusAction(formData: FormData) {
     redirect("/not-invited");
   }
 
+  clearShortCache();
   redirect(getReviewActionRedirectHref(returnContext, result));
 }
 
@@ -119,6 +121,7 @@ export async function markImportItemPersonalAction(formData: FormData) {
     redirect("/not-invited");
   }
 
+  clearShortCache();
   redirect(getPersonalActionRedirectHref(returnContext, result));
 }
 
@@ -166,6 +169,7 @@ export async function reopenImportItemToPendingAction(formData: FormData) {
     redirect("/not-invited");
   }
 
+  clearShortCache();
   redirect(getReopenActionRedirectHref(returnContext, result));
 }
 
@@ -221,6 +225,7 @@ export async function confirmImportItemToLedgerAction(formData: FormData) {
     redirect("/not-invited");
   }
 
+  clearShortCache();
   redirect(getConfirmActionRedirectHref(returnContext, result));
 }
 

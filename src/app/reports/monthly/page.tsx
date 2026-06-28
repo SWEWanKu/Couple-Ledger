@@ -49,6 +49,7 @@ import {
   getSettlementSnapshotStatus,
   type GetSettlementSnapshotStatusResult
 } from "@/lib/settlement/get-settlement-snapshot-status";
+import { getHouseholdMembership } from "@/lib/server/household-membership";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -172,14 +173,9 @@ async function requireHouseholdAccess() {
     redirect("/login");
   }
 
-  const { data: membership, error } = await supabase
-    .from("household_members")
-    .select("household_id, role")
-    .eq("user_id", currentUserId)
-    .limit(1)
-    .maybeSingle();
+  const membership = await getHouseholdMembership(supabase, currentUserId);
 
-  if (error || !membership) {
+  if (!membership) {
     redirect("/not-invited");
   }
 

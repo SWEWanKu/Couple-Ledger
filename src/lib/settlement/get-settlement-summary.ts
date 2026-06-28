@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 import { calculateSettlement } from "@/lib/settlement/calculate-settlement";
 import type {
   SettlementCalculationResult,
@@ -54,9 +55,26 @@ const islandMemberLabel = "\u5c0f\u5c9b\u6210\u5458";
 
 export async function getSettlementSummary(
   supabase: SupabaseClient,
-  { householdId, currentUserId = null, month, now = new Date() }: SettlementSummaryInput
+  input: SettlementSummaryInput
 ): Promise<SettlementSummaryResult> {
+  const { householdId, currentUserId = null, month, now = new Date() } = input;
   const monthMetadata = getSettlementMonthRange(month, now);
+
+  return getShortCache(
+    createShortCacheKey("settlement-summary", {
+      householdId,
+      currentUserId,
+      month: monthMetadata.month
+    }),
+    () => readSettlementSummary(supabase, input, monthMetadata)
+  );
+}
+
+async function readSettlementSummary(
+  supabase: SupabaseClient,
+  { householdId, currentUserId = null }: SettlementSummaryInput,
+  monthMetadata: SettlementMonthMetadata
+): Promise<SettlementSummaryResult> {
   const { data: memberData, error: memberError } = await supabase
     .from("household_members")
     .select("user_id, role, joined_at")

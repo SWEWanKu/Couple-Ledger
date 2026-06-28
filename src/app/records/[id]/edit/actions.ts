@@ -6,6 +6,7 @@ import {
   updateLedgerRecord,
   type UpdateLedgerRecordResult
 } from "@/lib/ledger/update-ledger-record";
+import { clearShortCache } from "@/lib/server/short-cache";
 import { createClient } from "@/lib/supabase/server";
 
 type EditReturnContextParams = {
@@ -29,6 +30,7 @@ export async function updateLedgerRecordAction(formData: FormData) {
     redirect("/login");
   }
 
+  clearShortCache();
   if (result.status === "updated") {
     redirect(getRecordUpdatedHref(recordId, returnParams, result));
   }

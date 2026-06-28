@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 import type { SettlementConfirmationRow } from "@/lib/settlement/confirm-settlement-snapshot";
 import type { SettlementSnapshotRow } from "@/lib/settlement/create-settlement-snapshot";
 import { getSettlementMonthRange } from "@/lib/settlement/get-settlement-summary";
@@ -95,9 +96,25 @@ const settlementConfirmationSelect = [
 
 export async function getSettlementSnapshotStatus(
   supabase: SupabaseClient,
-  { householdId, month, now = new Date() }: GetSettlementSnapshotStatusInput
+  input: GetSettlementSnapshotStatusInput
 ): Promise<GetSettlementSnapshotStatusResult> {
+  const { householdId, month, now = new Date() } = input;
   const monthMetadata = getSettlementMonthRange(month, now);
+
+  return getShortCache(
+    createShortCacheKey("settlement-snapshot-status", {
+      householdId,
+      month: monthMetadata.month
+    }),
+    () => readSettlementSnapshotStatus(supabase, input, monthMetadata)
+  );
+}
+
+async function readSettlementSnapshotStatus(
+  supabase: SupabaseClient,
+  { householdId }: GetSettlementSnapshotStatusInput,
+  monthMetadata: SettlementMonthMetadata
+): Promise<GetSettlementSnapshotStatusResult> {
   const [memberResult, activeSnapshotResult, pendingReplacementResult] = await Promise.all([
     supabase
       .from("household_members")

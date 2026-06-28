@@ -8,6 +8,7 @@ import { createSettlementReplacementSnapshot } from "@/lib/settlement/create-set
 import { createSettlementSnapshot } from "@/lib/settlement/create-settlement-snapshot";
 import { getSettlementSnapshotStatus } from "@/lib/settlement/get-settlement-snapshot-status";
 import { normalizeSettlementMonth } from "@/lib/settlement/get-settlement-summary";
+import { clearShortCache } from "@/lib/server/short-cache";
 import { createClient } from "@/lib/supabase/server";
 
 type HouseholdMembershipRow = {
@@ -26,6 +27,7 @@ export async function proposeSettlementSnapshotAction(formData: FormData) {
     now: new Date()
   });
 
+  clearShortCache();
   revalidatePath("/settlement");
   redirect(
     getSettlementRedirectHref({
@@ -44,6 +46,7 @@ export async function confirmSettlementSnapshotAction(formData: FormData) {
   const normalizedMonth = normalizeSettlementMonth(month);
 
   if (!snapshotId) {
+    clearShortCache();
     revalidatePath("/settlement");
     redirect(
       getSettlementRedirectHref({
@@ -61,6 +64,7 @@ export async function confirmSettlementSnapshotAction(formData: FormData) {
   });
 
   if (snapshotStatus.status === "error") {
+    clearShortCache();
     revalidatePath("/settlement");
     redirect(
       getSettlementRedirectHref({
@@ -73,6 +77,7 @@ export async function confirmSettlementSnapshotAction(formData: FormData) {
   }
 
   if (!snapshotStatus.snapshot || snapshotStatus.snapshot.id !== snapshotId) {
+    clearShortCache();
     revalidatePath("/settlement");
     redirect(
       getSettlementRedirectHref({
@@ -87,6 +92,7 @@ export async function confirmSettlementSnapshotAction(formData: FormData) {
     settlementSnapshotId: snapshotId
   });
 
+  clearShortCache();
   revalidatePath("/settlement");
   redirect(
     getSettlementRedirectHref({
@@ -237,6 +243,7 @@ function getSettlementRedirectHref({
 }
 
 function revalidateSettlementRoutes() {
+  clearShortCache();
   revalidatePath("/settlement");
   revalidatePath("/settlement/history");
   revalidatePath("/dashboard");

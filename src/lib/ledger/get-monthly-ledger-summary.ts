@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 import { getRecordsMonthRange, type LedgerRecordEntryType, type RecordsMonthRange } from "@/lib/ledger/list-records";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 
 export type MonthlyLedgerCategoryBreakdownItem = {
   categoryId: string | null;
@@ -80,16 +81,33 @@ const uncategorizedName = "未分类";
 
 export async function getMonthlyLedgerSummary(
   supabase: SupabaseClient,
+  input: MonthlyLedgerSummaryInput
+): Promise<MonthlyLedgerSummaryResult> {
+  const { householdId, currentUserId, month, now = new Date() } = input;
+  const range = getRecordsMonthRange(month, now);
+
+  return getShortCache(
+    createShortCacheKey("monthly-ledger-summary", {
+      householdId,
+      currentUserId,
+      month: range.month
+    }),
+    () => readMonthlyLedgerSummary(supabase, input, range)
+  );
+}
+
+async function readMonthlyLedgerSummary(
+  supabase: SupabaseClient,
   {
     householdId,
     currentUserId,
     categories,
     members,
-    month,
-    now = new Date()
-  }: MonthlyLedgerSummaryInput
+    month: _month,
+    now: _now = new Date()
+  }: MonthlyLedgerSummaryInput,
+  range: RecordsMonthRange
 ): Promise<MonthlyLedgerSummaryResult> {
-  const range = getRecordsMonthRange(month, now);
   const { data, error } = await supabase
     .from("ledger_entries")
     .select("id, amount, entry_type, category_id, paid_by, occurred_on, created_at")

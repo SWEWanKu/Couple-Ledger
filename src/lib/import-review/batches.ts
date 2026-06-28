@@ -8,6 +8,8 @@ import {
   type ImportSource,
   type NormalizedImportItemDraft
 } from "@/lib/import-review";
+import { getHouseholdMembership } from "@/lib/server/household-membership";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 
 export type ImportReviewHouseholdMembership = {
   household_id: string;
@@ -119,21 +121,28 @@ export async function getImportReviewHouseholdMembership(
   supabase: SupabaseClient,
   userId: string
 ): Promise<ImportReviewHouseholdMembership | null> {
-  const { data, error } = await supabase
-    .from("household_members")
-    .select("household_id, role")
-    .eq("user_id", userId)
-    .limit(1)
-    .maybeSingle();
-
-  if (error || !data) {
-    return null;
-  }
-
-  return data as ImportReviewHouseholdMembership;
+  return getHouseholdMembership(supabase, userId);
 }
 
 export async function listImportBatches(
+  supabase: SupabaseClient,
+  input: {
+    householdId: string;
+    limit?: number;
+  }
+): Promise<ImportBatchListResult> {
+  const { householdId, limit = 20 } = input;
+
+  return getShortCache(
+    createShortCacheKey("import-batches", {
+      householdId,
+      limit
+    }),
+    () => readImportBatches(supabase, input)
+  );
+}
+
+async function readImportBatches(
   supabase: SupabaseClient,
   {
     householdId,

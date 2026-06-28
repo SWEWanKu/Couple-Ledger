@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 import type { DashboardCategory, DashboardHouseholdMember } from "@/types/dashboard";
 
 export type LedgerRecordEntryType = "expense" | "income";
@@ -75,6 +76,25 @@ const uncategorizedName = "未分类";
 
 export async function getLedgerRecords(
   supabase: SupabaseClient,
+  input: LedgerRecordsInput
+): Promise<LedgerRecordsResult> {
+  const { householdId, currentUserId, month, filters, limit, now = new Date() } = input;
+  const range = getRecordsMonthRange(month, now);
+
+  return getShortCache(
+    createShortCacheKey("ledger-records", {
+      householdId,
+      currentUserId,
+      month: range.month,
+      filters: normalizeCacheFilters(filters),
+      limit: limit ?? null
+    }),
+    () => readLedgerRecords(supabase, input, range)
+  );
+}
+
+async function readLedgerRecords(
+  supabase: SupabaseClient,
   {
     householdId,
     currentUserId,
@@ -83,13 +103,16 @@ export async function getLedgerRecords(
     month,
     filters,
     limit,
-    now = new Date()
-  }: LedgerRecordsInput
+    now: _now = new Date()
+  }: LedgerRecordsInput,
+  range: RecordsMonthRange
 ): Promise<LedgerRecordsResult> {
-  const range = getRecordsMonthRange(month, now);
+  const hasKeywordFilter = Boolean(normalizeSearchText(filters?.keyword));
   let query = supabase
     .from("ledger_entries")
-    .select("id, amount, entry_type, category_id, paid_by, split_mode, occurred_on, note, created_at")
+    .select("id, amount, entry_type, category_id, paid_by, split_mode, occurred_on, note, created_at", {
+      count: "exact"
+    })
     .eq("household_id", householdId)
     .is("voided_at", null)
     .gte("occurred_on", range.monthStart)
@@ -97,11 +120,35 @@ export async function getLedgerRecords(
     .order("occurred_on", { ascending: false })
     .order("created_at", { ascending: false });
 
-  if (limit) {
+  if (filters?.type && filters.type !== "all") {
+    query = query.eq("entry_type", filters.type);
+  }
+
+  if (filters?.categoryId) {
+    query = query.eq("category_id", filters.categoryId);
+  }
+
+  if (filters?.paidBy) {
+    query = query.eq("paid_by", filters.paidBy);
+  }
+
+  if (limit && !hasKeywordFilter) {
     query = query.limit(clampRecordLimit(limit));
   }
 
-  const { data, error } = await query;
+  if (!hasKeywordFilter && !limit) {
+    query = query.limit(50);
+  }
+
+  const countQuery = supabase
+    .from("ledger_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("household_id", householdId)
+    .is("voided_at", null)
+    .gte("occurred_on", range.monthStart)
+    .lt("occurred_on", range.nextMonthStart);
+
+  const [{ data, error, count: filteredCount }, { count: totalCount }] = await Promise.all([query, countQuery]);
 
   if (error) {
     return {
@@ -123,8 +170,8 @@ export async function getLedgerRecords(
   return {
     records: filteredRecords.slice(0, 50),
     range,
-    totalRecordCount: allRecords.length,
-    filteredRecordCount: filteredRecords.length,
+    totalRecordCount: totalCount ?? allRecords.length,
+    filteredRecordCount: hasKeywordFilter ? filteredRecords.length : (filteredCount ?? filteredRecords.length),
     warning: null
   };
 }
@@ -135,6 +182,15 @@ function clampRecordLimit(limit: number) {
   }
 
   return Math.min(Math.max(Math.trunc(limit), 1), 50);
+}
+
+function normalizeCacheFilters(filters: LedgerRecordFilters | undefined) {
+  return {
+    type: filters?.type ?? null,
+    categoryId: filters?.categoryId ?? null,
+    paidBy: filters?.paidBy ?? null,
+    keyword: normalizeSearchText(filters?.keyword) || null
+  };
 }
 
 export function getCurrentMonthRange(now: Date = new Date()): RecordsMonthRange {

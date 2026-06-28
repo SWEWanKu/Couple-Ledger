@@ -37,6 +37,7 @@ import {
   getRecordDetailHref,
   getRecordsHref
 } from "@/lib/ledger/records-query";
+import { getHouseholdMembership } from "@/lib/server/household-membership";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardCategory, DashboardHouseholdMember, DashboardHouseholdSummary } from "@/types/dashboard";
 
@@ -457,14 +458,9 @@ async function requireHouseholdAccess() {
     redirect("/login");
   }
 
-  const { data: membership, error } = await supabase
-    .from("household_members")
-    .select("household_id, role")
-    .eq("user_id", currentUserId)
-    .limit(1)
-    .maybeSingle();
+  const membership = await getHouseholdMembership(supabase, currentUserId);
 
-  if (error || !membership) {
+  if (!membership) {
     redirect("/not-invited");
   }
 

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createShortCacheKey, getShortCache } from "@/lib/server/short-cache";
 import type {
   DashboardCategory,
   DashboardHouseholdMember,
@@ -33,6 +34,16 @@ type HouseholdSummaryInput = {
 const summaryWarning = "小岛资料读取不完整，正在显示已取得的资料。";
 
 export async function getDashboardHouseholdSummary(
+  supabase: SupabaseClient,
+  { householdId, currentUserId }: HouseholdSummaryInput
+): Promise<DashboardHouseholdSummaryResult> {
+  return getShortCache(
+    createShortCacheKey("dashboard-household-summary", { householdId, currentUserId }),
+    () => readDashboardHouseholdSummary(supabase, { householdId, currentUserId })
+  );
+}
+
+async function readDashboardHouseholdSummary(
   supabase: SupabaseClient,
   { householdId, currentUserId }: HouseholdSummaryInput
 ): Promise<DashboardHouseholdSummaryResult> {
