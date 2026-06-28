@@ -388,8 +388,8 @@ export default function LoginClient() {
         </section>
 
       {isEnteringIsland ? (
-        <div className="fixed inset-0 z-50 bg-[#7DC395]" role="status" aria-label="正在进入小岛">
-          <Loading />
+        <div className="fixed inset-0 z-50 bg-black" role="status" aria-label="正在进入小岛">
+          <Loading active />
         </div>
       ) : null}
       <Footer type="sea" seamless className="pointer-events-none absolute bottom-0 left-0 right-0 opacity-80" />
