@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   AlertCircle,
-  ArrowLeft,
   ArrowRightLeft,
   BadgeCheck,
   ChartPie,
@@ -25,7 +24,6 @@ import { ImportReviewEntryCard } from "@/components/ImportReviewEntryCard";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
-import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
 import {
   getMonthlyLedgerSummary,
@@ -103,19 +101,10 @@ export default async function MonthlyReportPage({ searchParams }: MonthlyReportP
     <AppShell
       title={`${householdSummary.householdName} 小岛月报`}
       subtitle={`${range.monthLabel} 的只读手账页，只整理真实账本和结算便签。`}
+      hideTopbar
+      compact
     >
       <div className="mx-auto grid max-w-6xl gap-6" data-monthly-report="true" data-monthly-report-month={range.month}>
-        <PrivateIslandTrail
-          items={[
-            { label: islandTrailLabels.home, href: "/dashboard" },
-            { label: islandTrailLabels.records, href: getRecordsHref(range.month) },
-            { label: islandTrailLabels.settlement, href: getSettlementHref(range.month) },
-            { label: islandTrailLabels.monthlyReport, current: true }
-          ]}
-        />
-
-        <ReportNav range={range} />
-
         <ReportHero
           householdName={householdSummary.householdName}
           range={range}
@@ -186,53 +175,6 @@ async function requireHouseholdAccess() {
   };
 }
 
-function ReportNav({ range }: { range: RecordsMonthRange }) {
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <IslandLink
-        href="/dashboard"
-        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-      >
-        <ArrowLeft aria-hidden="true" size={17} />
-        回到看板
-      </IslandLink>
-
-      <div
-        data-monthly-report-month-navigation="true"
-        className="flex flex-wrap items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-2 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-      >
-        <IslandLink
-          href={getMonthlyReportHref(range.previousMonth)}
-          data-monthly-report-previous-link="true"
-          data-monthly-report-month-nav="previous"
-          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-        >
-          <ChevronLeft aria-hidden="true" size={15} />
-          上个月
-        </IslandLink>
-        <IslandLink
-          href={getCurrentMonthlyReportHref()}
-          data-monthly-report-current-link="true"
-          data-monthly-report-month-nav="current"
-          data-monthly-report-month-selected="true"
-          className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_#d9a43e] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-        >
-          {"\u672c\u6708"}
-        </IslandLink>
-        <IslandLink
-          href={getMonthlyReportHref(range.nextMonth)}
-          data-monthly-report-next-link="true"
-          data-monthly-report-month-nav="next"
-          className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-        >
-          下个月
-          <ChevronRight aria-hidden="true" size={15} />
-        </IslandLink>
-      </div>
-    </div>
-  );
-}
-
 function ReportHero({
   householdName,
   range,
@@ -245,26 +187,21 @@ function ReportHero({
   const summary = result.summary;
 
   return (
-    <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">
+    <Card color="default" pattern="app-teal" className="relative overflow-visible p-4 sm:p-5">
       <span
         aria-hidden="true"
         className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
       />
-      <span
-        aria-hidden="true"
-        className="absolute -bottom-3 right-10 h-7 w-24 rotate-2 rounded-[10px] bg-[#fff1a8]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-      />
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-stretch">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
         <div className="min-w-0">
           <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
             <Icon name="icon-map" size={22} bounce />
             <span className="truncate">Monthly Island Report</span>
           </p>
 
-          <div className="mt-5">
+          <div className="mt-4">
             <span className="hidden sm:inline-block">
-              <Title size="large" color="app-yellow">
+              <Title size="middle" color="app-yellow">
                 本月小岛月报
               </Title>
             </span>
@@ -275,16 +212,49 @@ function ReportHero({
             </span>
           </div>
 
-          <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-[#725d42] sm:text-lg">
+          <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-[#725d42]">
             {householdName} 在 {range.monthLabel} 的只读手账页。这里汇总真实流水、分类贴纸、成员经手和结算便签，不会改写账本。
           </p>
 
-          <Divider type="wave-yellow" className="my-6" />
+          <div
+            data-monthly-report-month-navigation="true"
+            className="mt-4 flex flex-wrap items-center gap-2 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-2 shadow-[0_4px_0_rgba(121,79,39,0.08)]"
+          >
+            <IslandLink
+              href={getMonthlyReportHref(range.previousMonth)}
+              data-monthly-report-previous-link="true"
+              data-monthly-report-month-nav="previous"
+              className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              <ChevronLeft aria-hidden="true" size={15} />
+              上个月
+            </IslandLink>
+            <IslandLink
+              href={getCurrentMonthlyReportHref()}
+              data-monthly-report-current-link="true"
+              data-monthly-report-month-nav="current"
+              data-monthly-report-month-selected="true"
+              className="inline-flex min-h-9 items-center justify-center rounded-full bg-[#f7cd67] px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_#d9a43e] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+            >
+              本月
+            </IslandLink>
+            <IslandLink
+              href={getMonthlyReportHref(range.nextMonth)}
+              data-monthly-report-next-link="true"
+              data-monthly-report-month-nav="next"
+              className="inline-flex min-h-9 items-center justify-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#794f27] shadow-[0_3px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+            >
+              下个月
+              <ChevronRight aria-hidden="true" size={15} />
+            </IslandLink>
+          </div>
+
+          <Divider type="wave-yellow" className="my-4" />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <IslandLink
               href={getRecordsHref(range.month)}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
               data-monthly-report-records-link="true"
             >
               <ReceiptText aria-hidden="true" size={18} />
@@ -292,7 +262,7 @@ function ReportHero({
             </IslandLink>
             <IslandLink
               href={getSettlementHref(range.month)}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-5 py-3 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
               data-monthly-report-settlement-link="true"
             >
               <ArrowRightLeft aria-hidden="true" size={18} />
@@ -301,15 +271,15 @@ function ReportHero({
           </div>
         </div>
 
-        <aside className="relative rounded-[32px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_8px_0_rgba(121,79,39,0.1)]">
+        <aside className="relative rounded-[28px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_6px_0_rgba(121,79,39,0.1)]">
           <span className="absolute -top-3 right-8 rotate-3 rounded-full border-2 border-[#d9c49b] bg-[#fff1ed] px-4 py-1 text-xs font-black text-[#9b6c48] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
             只读
           </span>
 
-          <div className="rounded-[26px] bg-[#82d5bb] px-5 py-5 text-white shadow-[0_6px_0_#5fb89f]">
+          <div className="rounded-[24px] bg-[#82d5bb] px-5 py-4 text-white shadow-[0_5px_0_#5fb89f]">
             <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
               <WalletCards aria-hidden="true" size={16} />
-              Month Total
+              本月支出
             </p>
             <p className="mt-3 text-3xl font-black leading-tight">{formatMoney(summary.expenseTotal)}</p>
             <p className="mt-2 text-sm font-bold leading-6 text-white/90">本月真实支出</p>
