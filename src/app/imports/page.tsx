@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { ArrowRight, CheckCircle2, FileUp, History, ReceiptText, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, FileUp } from "lucide-react";
 import { Card, Divider, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
-import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import {
   getImportBatchStatusLabel,
   getImportBatchContinueHref,
@@ -24,25 +23,26 @@ export const metadata: Metadata = {
   title: "待对账账单 | 小岛账本"
 };
 
-export default async function ImportsPage() {
+type ImportsPageProps = {
+  searchParams?: Promise<{
+    page?: string | string[];
+  }>;
+};
+
+const importBatchPageSize = 3;
+
+export default async function ImportsPage({ searchParams }: ImportsPageProps) {
+  const params = searchParams ? await searchParams : {};
   const { supabase, membership } = await requireImportsAccess();
   const { batches, warning } = await listImportBatches(supabase, {
     householdId: membership.household_id
   });
   const continueSummary = getContinueSummaryFromBatches(batches, warning);
+  const pagination = getImportBatchPagination(batches, getSingleParam(params.page));
 
   return (
-    <AppShell title="待对账账单" subtitle="先把微信 / 支付宝流水放进小岛待对账池">
+    <AppShell title="待对账账单" subtitle="先把微信 / 支付宝流水放进小岛待对账池" hideTopbar compact>
       <div className="mx-auto grid max-w-6xl gap-6">
-        <PrivateIslandTrail
-          items={[
-            { label: islandTrailLabels.home, href: "/dashboard" },
-            { label: "待对账账单", current: true }
-          ]}
-        />
-
-        <ImportHero batchCount={batches.length} />
-
         {warning ? <PageNotice message={warning} /> : null}
 
         {continueSummary.latestUnfinishedBatch && continueSummary.continueHref ? (
@@ -53,9 +53,14 @@ export default async function ImportsPage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
-              待对账
+                共同对账
               </p>
               <h2 className="mt-1 text-2xl font-black text-[#794f27]">待对账池</h2>
+              {batches.length > 0 ? (
+                <p className="mt-1 text-sm font-bold text-[#725d42]">
+                  第 {pagination.currentPage} / {pagination.totalPages} 页 · 共 {batches.length} 批
+                </p>
+              ) : null}
             </div>
             <IslandLink
               href="/imports/new"
@@ -67,11 +72,19 @@ export default async function ImportsPage() {
           </div>
 
           {batches.length > 0 ? (
-            <div className="grid gap-4">
-              {batches.map((batch) => (
-                <ImportBatchCard key={batch.id} batch={batch} />
-              ))}
-            </div>
+            <>
+              <div className="grid gap-4">
+                {pagination.pageBatches.map((batch) => (
+                  <ImportBatchCard key={batch.id} batch={batch} />
+                ))}
+              </div>
+              <ImportBatchPager
+                currentPage={pagination.currentPage}
+                hasNextPage={pagination.hasNextPage}
+                hasPreviousPage={pagination.hasPreviousPage}
+                totalPages={pagination.totalPages}
+              />
+            </>
           ) : (
             <NotebookEmptyState
               action={{
@@ -96,6 +109,10 @@ export default async function ImportsPage() {
       </div>
     </AppShell>
   );
+}
+
+function getSingleParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 async function requireImportsAccess() {
@@ -139,44 +156,6 @@ function getContinueSummaryFromBatches(
     continueHref: latestUnfinishedBatch ? getImportBatchContinueHref(latestUnfinishedBatch) : null,
     warning
   };
-}
-
-function ImportHero({ batchCount }: { batchCount: number }) {
-  return (
-    <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">
-      <span
-        aria-hidden="true"
-        className="absolute -top-4 left-8 h-8 w-28 -rotate-2 rounded-[10px] bg-[#f7cd67]/75 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-      />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px] lg:items-center">
-        <div>
-          <p className="inline-flex items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
-            <Icon name="icon-shopping" size={22} bounce />
-            Bill Pocket
-          </p>
-          <div className="mt-5">
-            <Title size="large" color="app-yellow">
-              共同对账模式
-            </Title>
-          </div>
-          <p className="mt-5 max-w-3xl text-sm font-bold leading-7 text-[#725d42] sm:text-base">
-            把外部账单先贴进待对账池，之后再一条条确认。这个入口只做解析和排队，不会创建正式账本流水。
-          </p>
-          <Divider type="wave-yellow" className="my-5" />
-          <div className="flex flex-wrap gap-3">
-            <InfoPill icon={<ShieldCheck aria-hidden="true" size={17} />} label="只读回顾 + 上传排队" />
-            <InfoPill icon={<ReceiptText aria-hidden="true" size={17} />} label="不直接入账" />
-            <InfoPill icon={<History aria-hidden="true" size={17} />} label="保留待对账进度" />
-          </div>
-        </div>
-        <div className="rounded-[30px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] p-5 text-center shadow-[0_7px_0_rgba(121,79,39,0.09)]">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">批次</p>
-          <p className="mt-3 text-4xl font-black text-[#794f27]">{batchCount}</p>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#725d42]">当前可查看的待对账批次</p>
-        </div>
-      </div>
-    </Card>
-  );
 }
 
 function ImportContinueCard({ summary }: { summary: ImportReviewContinueSummary }) {
@@ -334,21 +313,62 @@ function ImportBatchCard({ batch }: { batch: ImportBatchSummary }) {
   );
 }
 
+function ImportBatchPager({
+  currentPage,
+  hasNextPage,
+  hasPreviousPage,
+  totalPages
+}: {
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-3 shadow-[0_5px_0_rgba(121,79,39,0.08)]">
+      {hasPreviousPage ? (
+        <IslandLink
+          href={getImportsPageHref(currentPage - 1)}
+          className="inline-flex min-h-10 items-center justify-center rounded-full border-2 border-dashed border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+          data-imports-previous-page="true"
+        >
+          上一页
+        </IslandLink>
+      ) : (
+        <span className="inline-flex min-h-10 items-center justify-center rounded-full border-2 border-dashed border-[#d9c49b] bg-white/60 px-4 py-2 text-sm font-black text-[#b4a58b]">
+          上一页
+        </span>
+      )}
+      <span className="text-sm font-black text-[#725d42]">
+        {currentPage} / {totalPages}
+      </span>
+      {hasNextPage ? (
+        <IslandLink
+          href={getImportsPageHref(currentPage + 1)}
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#82d5bb] px-4 py-2 text-sm font-black text-white shadow-[0_4px_0_#5fb89f] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+          data-imports-next-page="true"
+        >
+          下一页
+        </IslandLink>
+      ) : (
+        <span className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#82d5bb]/45 px-4 py-2 text-sm font-black text-white">
+          下一页
+        </span>
+      )}
+    </div>
+  );
+}
+
 function PageNotice({ message }: { message: string }) {
   return (
     <div className="flex items-start gap-3 rounded-[24px] border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-3 text-sm font-black leading-6 text-[#8a6420]">
       <Icon name="icon-chat" size={18} bounce />
       <span>{message}</span>
     </div>
-  );
-}
-
-function InfoPill({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.1)]">
-      {icon}
-      {label}
-    </span>
   );
 }
 
@@ -387,6 +407,25 @@ function getBatchProgress(batch: ImportBatchSummary) {
     stateLabel,
     stateTone
   };
+}
+
+function getImportBatchPagination(batches: ImportBatchSummary[], pageParam: string | undefined) {
+  const totalPages = Math.max(1, Math.ceil(batches.length / importBatchPageSize));
+  const requestedPage = Number.parseInt(pageParam ?? "1", 10);
+  const currentPage = Math.min(Math.max(Number.isFinite(requestedPage) ? requestedPage : 1, 1), totalPages);
+  const start = (currentPage - 1) * importBatchPageSize;
+
+  return {
+    currentPage,
+    hasNextPage: currentPage < totalPages,
+    hasPreviousPage: currentPage > 1,
+    pageBatches: batches.slice(start, start + importBatchPageSize),
+    totalPages
+  };
+}
+
+function getImportsPageHref(page: number) {
+  return page <= 1 ? "/imports" : `/imports?page=${page}`;
 }
 
 function formatImportPeriod(batch: ImportBatchSummary) {
