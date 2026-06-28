@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
@@ -69,11 +70,10 @@ export default async function MonthlyReportPage({ searchParams }: MonthlyReportP
   const params = searchParams ? await searchParams : {};
   const requestedMonth = getSingleParam(params.month);
   const { supabase, user, membership } = await requireHouseholdAccess();
-  const { summary: householdSummary, warning: householdWarning } =
-    await getDashboardHouseholdSummary(supabase, {
-      householdId: membership.household_id,
-      currentUserId: user.id
-    });
+  const { summary: householdSummary, warning: householdWarning } = await getDashboardHouseholdSummary(supabase, {
+    householdId: membership.household_id,
+    currentUserId: user.id
+  });
   const monthlySummary = await getMonthlyLedgerSummary(supabase, {
     householdId: membership.household_id,
     currentUserId: user.id,
@@ -82,17 +82,20 @@ export default async function MonthlyReportPage({ searchParams }: MonthlyReportP
     month: requestedMonth
   });
   const range = monthlySummary.summary.range;
-  const recordsResult = await getLedgerRecords(supabase, {
-    householdId: membership.household_id,
-    currentUserId: user.id,
-    categories: householdSummary.categories,
-    members: householdSummary.members,
-    month: range.month
-  });
-  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
-    householdId: membership.household_id,
-    month: range.month
-  });
+  const [recordsResult, settlementStatus] = await Promise.all([
+    getLedgerRecords(supabase, {
+      householdId: membership.household_id,
+      currentUserId: user.id,
+      categories: householdSummary.categories,
+      members: householdSummary.members,
+      month: range.month,
+      limit: 6
+    }),
+    getSettlementSnapshotStatus(supabase, {
+      householdId: membership.household_id,
+      month: range.month
+    })
+  ]);
   const recentRecords = recordsResult.records.slice(0, 6);
 
   return (
@@ -163,18 +166,16 @@ export default async function MonthlyReportPage({ searchParams }: MonthlyReportP
 
 async function requireHouseholdAccess() {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const currentUserId = (await headers()).get("x-couple-ledger-user-id");
 
-  if (!user) {
+  if (!currentUserId) {
     redirect("/login");
   }
 
   const { data: membership, error } = await supabase
     .from("household_members")
     .select("household_id, role")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUserId)
     .limit(1)
     .maybeSingle();
 
@@ -184,7 +185,7 @@ async function requireHouseholdAccess() {
 
   return {
     supabase,
-    user,
+    user: { id: currentUserId },
     membership: membership as HouseholdMembershipRow
   };
 }

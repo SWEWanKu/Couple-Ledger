@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   AlertCircle,
@@ -81,21 +82,23 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
     error: getSingleParam(params.settlement_error)
   });
   const { supabase, user, membership } = await requireHouseholdAccess();
-  const { summary: householdSummary, warning: householdWarning } =
-    await getDashboardHouseholdSummary(supabase, {
+  const [householdResult, settlementResult, snapshotStatus] = await Promise.all([
+    getDashboardHouseholdSummary(supabase, {
       householdId: membership.household_id,
       currentUserId: user.id
-    });
-  const settlementResult = await getSettlementSummary(supabase, {
-    householdId: membership.household_id,
-    currentUserId: user.id,
-    month: selectedMonth
-  });
+    }),
+    getSettlementSummary(supabase, {
+      householdId: membership.household_id,
+      currentUserId: user.id,
+      month: selectedMonth
+    }),
+    getSettlementSnapshotStatus(supabase, {
+      householdId: membership.household_id,
+      month: selectedMonth
+    })
+  ]);
+  const { summary: householdSummary, warning: householdWarning } = householdResult;
   const { summary: settlementSummary, warning: settlementWarning } = settlementResult;
-  const snapshotStatus = await getSettlementSnapshotStatus(supabase, {
-    householdId: membership.household_id,
-    month: selectedMonth
-  });
   const outdatedSnapshotWarning = getOutdatedSnapshotWarning({
     householdId: membership.household_id,
     currentUserId: user.id,
@@ -267,18 +270,16 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
 
 async function requireHouseholdAccess() {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const currentUserId = (await headers()).get("x-couple-ledger-user-id");
 
-  if (!user) {
+  if (!currentUserId) {
     redirect("/login");
   }
 
   const { data: membership, error } = await supabase
     .from("household_members")
     .select("household_id, role")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUserId)
     .limit(1)
     .maybeSingle();
 
@@ -288,7 +289,7 @@ async function requireHouseholdAccess() {
 
   return {
     supabase,
-    user,
+    user: { id: currentUserId },
     membership: membership as HouseholdMembershipRow
   };
 }

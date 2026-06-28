@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArrowRight, CheckCircle2, FileUp, History, ReceiptText, ShieldCheck } from "lucide-react";
 import { Card, Divider, Icon, Title } from "animal-island-ui";
@@ -8,9 +9,11 @@ import { NotebookEmptyState } from "@/components/NotebookEmptyState";
 import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import {
   getImportBatchStatusLabel,
-  getImportReviewContinueSummary,
+  getImportBatchContinueHref,
+  getImportBatchReviewedPercent,
   getImportReviewHouseholdMembership,
   getImportSourceLabel,
+  isImportBatchUnfinished,
   listImportBatches,
   type ImportBatchSummary,
   type ImportReviewContinueSummary
@@ -26,9 +29,7 @@ export default async function ImportsPage() {
   const { batches, warning } = await listImportBatches(supabase, {
     householdId: membership.household_id
   });
-  const continueSummary = await getImportReviewContinueSummary(supabase, {
-    householdId: membership.household_id
-  });
+  const continueSummary = getContinueSummaryFromBatches(batches, warning);
 
   return (
     <AppShell title="待对账账单" subtitle="先把微信 / 支付宝流水放进小岛待对账池">
@@ -99,21 +100,45 @@ export default async function ImportsPage() {
 
 async function requireImportsAccess() {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const currentUserId = (await headers()).get("x-couple-ledger-user-id");
 
-  if (!user) {
+  if (!currentUserId) {
     redirect("/login");
   }
 
-  const membership = await getImportReviewHouseholdMembership(supabase, user.id);
+  const membership = await getImportReviewHouseholdMembership(supabase, currentUserId);
 
   if (!membership) {
     redirect("/not-invited");
   }
 
-  return { supabase, user, membership };
+  return { supabase, membership };
+}
+
+function getContinueSummaryFromBatches(
+  batches: ImportBatchSummary[],
+  warning: string | null
+): ImportReviewContinueSummary {
+  const unfinishedBatches = batches.filter(isImportBatchUnfinished);
+  const latestUnfinishedBatch = unfinishedBatches[0] ?? null;
+
+  return {
+    recentBatchCount: batches.length,
+    unfinishedBatchCount: unfinishedBatches.length,
+    totalPendingItemCount: unfinishedBatches.reduce((sum, batch) => sum + batch.pendingCount, 0),
+    totalNeedDiscussionCount: unfinishedBatches.reduce((sum, batch) => sum + batch.needDiscussionCount, 0),
+    latestUnfinishedBatch,
+    latestUnfinishedBatchId: latestUnfinishedBatch?.id ?? null,
+    latestUnfinishedBatchFileName: latestUnfinishedBatch?.fileName ?? null,
+    latestUnfinishedBatchSource: latestUnfinishedBatch?.source ?? null,
+    latestUnfinishedBatchPendingCount: latestUnfinishedBatch?.pendingCount ?? 0,
+    latestUnfinishedBatchNeedDiscussionCount: latestUnfinishedBatch?.needDiscussionCount ?? 0,
+    latestUnfinishedBatchReviewedPercent: latestUnfinishedBatch
+      ? getImportBatchReviewedPercent(latestUnfinishedBatch)
+      : 0,
+    continueHref: latestUnfinishedBatch ? getImportBatchContinueHref(latestUnfinishedBatch) : null,
+    warning
+  };
 }
 
 function ImportHero({ batchCount }: { batchCount: number }) {

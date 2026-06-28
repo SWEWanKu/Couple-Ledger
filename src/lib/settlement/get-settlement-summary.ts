@@ -74,24 +74,28 @@ export async function getSettlementSummary(
   }
 
   const memberRows = (memberData ?? []) as HouseholdMemberRow[];
-  const { data: profileData, error: profileError } = memberRows.length
-    ? await supabase.from("profiles").select("id, display_name").in("id", getMemberIds(memberRows))
-    : { data: [], error: null };
+  const [profileResult, entryResult] = await Promise.all([
+    memberRows.length
+      ? supabase.from("profiles").select("id, display_name").in("id", getMemberIds(memberRows))
+      : Promise.resolve({ data: [], error: null }),
+    supabase
+      .from("ledger_entries")
+      .select("id, amount, entry_type, paid_by, occurred_on, created_at")
+      .eq("household_id", householdId)
+      .eq("entry_type", "expense")
+      .is("voided_at", null)
+      .gte("occurred_on", monthMetadata.monthStart)
+      .lt("occurred_on", monthMetadata.nextMonthStart)
+      .order("occurred_on", { ascending: false })
+      .order("created_at", { ascending: false })
+  ]);
+  const { data: profileData, error: profileError } = profileResult;
+  const { data: entryData, error: entryError } = entryResult;
   const members = mapSettlementMembers({
     memberRows,
     profiles: (profileData ?? []) as ProfileRow[],
     currentUserId
   });
-  const { data: entryData, error: entryError } = await supabase
-    .from("ledger_entries")
-    .select("id, amount, entry_type, paid_by, occurred_on, created_at")
-    .eq("household_id", householdId)
-    .eq("entry_type", "expense")
-    .is("voided_at", null)
-    .gte("occurred_on", monthMetadata.monthStart)
-    .lt("occurred_on", monthMetadata.nextMonthStart)
-    .order("occurred_on", { ascending: false })
-    .order("created_at", { ascending: false });
 
   if (entryError) {
     return createSettlementSummaryResult({

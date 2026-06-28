@@ -55,40 +55,42 @@ export default async function DashboardPage() {
     redirect("/not-invited");
   }
 
-  const { summary: householdSummary, warning: householdSummaryWarning } =
-    await getDashboardHouseholdSummary(supabase, {
+  const [householdResult, importReviewOverview] = await Promise.all([
+    getDashboardHouseholdSummary(supabase, {
       householdId: membership.household_id,
       currentUserId
-    });
-  const { summary: ledgerSummary, warning: ledgerSummaryWarning } =
-    await getDashboardLedgerSummary(supabase, {
+    }),
+    getImportReviewContinueSummary(supabase, {
       householdId: membership.household_id,
-      categories: householdSummary.categories
-    });
-  const monthlyLedgerSummary = await getMonthlyLedgerSummary(supabase, {
+      limit: 50
+    })
+  ]);
+  const { summary: householdSummary, warning: householdSummaryWarning } = householdResult;
+  const { summary: ledgerSummary, warning: ledgerSummaryWarning } = await getDashboardLedgerSummary(supabase, {
     householdId: membership.household_id,
-    currentUserId,
-    categories: householdSummary.categories,
-    members: householdSummary.members,
-    month: ledgerSummary.monthStart.slice(0, 7)
+    categories: householdSummary.categories
   });
-  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
-    householdId: membership.household_id,
-    month: ledgerSummary.monthStart.slice(0, 7)
-  });
-  const recentActivity = await getDashboardRecentActivity(supabase, {
-    householdId: membership.household_id,
-    currentUserId,
-    categories: householdSummary.categories,
-    members: householdSummary.members,
-    limit: 6
-  });
-  const importReviewOverview = await getImportReviewContinueSummary(supabase, {
-    householdId: membership.household_id,
-    limit: 50
-  });
-
   const currentMonth = ledgerSummary.monthStart.slice(0, 7);
+  const [monthlyLedgerSummary, settlementStatus, recentActivity] = await Promise.all([
+    getMonthlyLedgerSummary(supabase, {
+      householdId: membership.household_id,
+      currentUserId,
+      categories: householdSummary.categories,
+      members: householdSummary.members,
+      month: currentMonth
+    }),
+    getSettlementSnapshotStatus(supabase, {
+      householdId: membership.household_id,
+      month: currentMonth
+    }),
+    getDashboardRecentActivity(supabase, {
+      householdId: membership.household_id,
+      currentUserId,
+      categories: householdSummary.categories,
+      members: householdSummary.members,
+      limit: 6
+    })
+  ]);
   const reportHref = getMonthlyReportHref(currentMonth);
   const recordsHref = getRecordsHref(currentMonth);
   const settlementHref = `/settlement?month=${currentMonth}`;

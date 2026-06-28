@@ -54,6 +54,7 @@ type LedgerRecordsInput = {
   members: DashboardHouseholdMember[];
   month?: string | null;
   filters?: LedgerRecordFilters;
+  limit?: number;
   now?: Date;
 };
 
@@ -81,11 +82,12 @@ export async function getLedgerRecords(
     members,
     month,
     filters,
+    limit,
     now = new Date()
   }: LedgerRecordsInput
 ): Promise<LedgerRecordsResult> {
   const range = getRecordsMonthRange(month, now);
-  const { data, error } = await supabase
+  let query = supabase
     .from("ledger_entries")
     .select("id, amount, entry_type, category_id, paid_by, split_mode, occurred_on, note, created_at")
     .eq("household_id", householdId)
@@ -94,6 +96,12 @@ export async function getLedgerRecords(
     .lt("occurred_on", range.nextMonthStart)
     .order("occurred_on", { ascending: false })
     .order("created_at", { ascending: false });
+
+  if (limit) {
+    query = query.limit(clampRecordLimit(limit));
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     return {
@@ -119,6 +127,14 @@ export async function getLedgerRecords(
     filteredRecordCount: filteredRecords.length,
     warning: null
   };
+}
+
+function clampRecordLimit(limit: number) {
+  if (!Number.isFinite(limit)) {
+    return 50;
+  }
+
+  return Math.min(Math.max(Math.trunc(limit), 1), 50);
 }
 
 export function getCurrentMonthRange(now: Date = new Date()): RecordsMonthRange {
