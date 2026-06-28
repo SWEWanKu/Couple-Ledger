@@ -3,7 +3,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   AlertCircle,
-  ArrowLeft,
   ArrowRightLeft,
   BadgeCheck,
   CalendarDays,
@@ -15,7 +14,6 @@ import {
   Hourglass,
   NotebookTabs,
   ReceiptText,
-  ShieldCheck,
   Stamp,
   UsersRound,
   WalletCards
@@ -30,10 +28,9 @@ import {
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
-import { PrivateIslandTrail, islandTrailLabels } from "@/components/PrivateIslandTrail";
 import { RitualSubmitButton } from "@/components/RitualSubmitButton";
 import { getDashboardHouseholdSummary } from "@/lib/dashboard/household-summary";
-import { getMonthlyReportHref, getRecordsHref } from "@/lib/ledger/records-query";
+import { getMonthlyReportHref } from "@/lib/ledger/records-query";
 import {
   buildSettlementSnapshotPayload,
   createSettlementSnapshotSourceFingerprint,
@@ -112,69 +109,25 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
     <AppShell
       title={`${householdSummary.householdName} 小岛结算`}
       subtitle="实时计算保持只读，结算便签可以盖章存档并等待两个人确认。"
+      hideTopbar
+      compact
     >
       <div className="mx-auto grid max-w-6xl gap-6">
-        <PrivateIslandTrail
-          items={[
-            { label: islandTrailLabels.home, href: "/dashboard" },
-            { label: islandTrailLabels.records, href: getRecordsHref(range.month) },
-            { label: islandTrailLabels.settlement, current: true },
-            { label: islandTrailLabels.settlementHistory, href: "/settlement/history" },
-            { label: islandTrailLabels.monthlyReport, href: getMonthlyReportHref(range.month) }
-          ]}
-        />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <IslandLink
-            href="/dashboard"
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-          >
-            <ArrowLeft aria-hidden="true" size={17} />
-            回到看板
-          </IslandLink>
-          <div className="flex flex-wrap items-center gap-3">
-            <IslandLink
-              href="/settlement/history"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-            >
-              <NotebookTabs aria-hidden="true" size={17} />
-              翻翻结算手账
-            </IslandLink>
-            <IslandLink
-              href={getMonthlyReportHref(range.month)}
-              data-settlement-monthly-report-link="true"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#e9fbf4] px-4 py-2 text-sm font-black text-[#1f7a70] shadow-[0_5px_0_rgba(31,122,112,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(31,122,112,0.14)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-            >
-              <ChartPie aria-hidden="true" size={17} />
-              {"\u67e5\u770b\u5c0f\u5c9b\u6708\u62a5"}
-            </IslandLink>
-            <span className="inline-flex min-h-10 items-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-xs font-black text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
-              <ShieldCheck aria-hidden="true" size={16} />
-              双人确认 · 不转钱
-            </span>
-          </div>
-        </div>
-
-        <Card color="default" pattern="app-teal" className="relative overflow-visible p-5 sm:p-7">
+        <Card color="default" pattern="app-teal" className="relative overflow-visible p-4 sm:p-5">
           <span
             aria-hidden="true"
             className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
           />
-          <span
-            aria-hidden="true"
-            className="absolute -bottom-3 right-10 h-7 w-24 rotate-2 rounded-[10px] bg-[#fff1a8]/80 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
-          />
-
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-stretch">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
             <div className="min-w-0">
               <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
                 <Icon name="icon-diy" size={22} bounce />
                 <span className="truncate">结算便签</span>
               </p>
 
-              <div className="mt-5">
+              <div className="mt-4">
                 <span className="hidden sm:inline-block">
-                  <Title size="large" color="app-yellow">
+                  <Title size="middle" color="app-yellow">
                     本月小岛结算
                   </Title>
                 </span>
@@ -185,15 +138,33 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
                 </span>
               </div>
 
-              <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-[#725d42] sm:text-lg">
+              <p className="mt-3 max-w-3xl text-sm font-bold leading-6 text-[#725d42]">
                 先看这个月谁该转给谁；确认时会留下一张本月结算便签，等两个人各自盖章。
               </p>
 
-              <Divider type="wave-yellow" className="my-6" />
+              <div className="mt-4 flex flex-wrap gap-2">
+                <IslandLink
+                  href="/settlement/history"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                >
+                  <NotebookTabs aria-hidden="true" size={17} />
+                  结算手账
+                </IslandLink>
+                <IslandLink
+                  href={getMonthlyReportHref(range.month)}
+                  data-settlement-monthly-report-link="true"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#82d5bb] px-4 py-2 text-sm font-black text-white shadow-[0_4px_0_#5fb89f] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                >
+                  <ChartPie aria-hidden="true" size={17} />
+                  月报
+                </IslandLink>
+              </div>
+
+              <Divider type="wave-yellow" className="my-4" />
 
               <MonthNavigator range={range} />
 
-              <div className="mt-5 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap gap-3">
                 <InfoPill icon={<CalendarDays aria-hidden="true" size={16} />} label={formatRangeLabel(range)} />
                 <InfoPill
                   icon={<ReceiptText aria-hidden="true" size={16} />}
@@ -206,29 +177,22 @@ export default async function SettlementPage({ searchParams }: SettlementPagePro
               </div>
             </div>
 
-            <aside className="relative rounded-[32px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_8px_0_rgba(121,79,39,0.1)]">
+            <aside className="relative rounded-[28px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_6px_0_rgba(121,79,39,0.1)]">
               <span className="absolute -top-3 right-8 rotate-3 rounded-full border-2 border-[#d9c49b] bg-[#fff1ed] px-4 py-1 text-xs font-black text-[#9b6c48] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
                 {range.monthLabel}
               </span>
 
-              <div className="rounded-[26px] bg-[#82d5bb] px-5 py-5 text-white shadow-[0_6px_0_#5fb89f]">
+              <div className="rounded-[24px] bg-[#82d5bb] px-5 py-4 text-white shadow-[0_5px_0_#5fb89f]">
                 <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] opacity-90">
                   <WalletCards aria-hidden="true" size={16} />
-                  Monthly Total
+                  本月支出
                 </p>
-                <p className="mt-3 text-4xl font-black leading-tight">
+                <p className="mt-3 text-3xl font-black leading-tight">
                   {formatCurrency(settlementSummary.totalExpense)}
                 </p>
                 <p className="mt-2 text-sm font-bold leading-6 text-white/90">
-                  本月纳入结算的真实支出总额
+                  {settlementSummary.includedExpenseCount} 笔纳入结算
                 </p>
-              </div>
-
-              <div className="mt-4 rounded-[24px] border-2 border-dashed border-[#d9c49b] bg-[#fff8da] px-4 py-3 text-sm font-bold leading-7 text-[#725d42]">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-                  本月结果
-                </p>
-                <p className="mt-1">当前结果会随账本更新；盖章后会保留当时的结算便签。</p>
               </div>
             </aside>
           </div>
