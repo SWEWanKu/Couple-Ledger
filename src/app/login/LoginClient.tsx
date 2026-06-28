@@ -212,7 +212,7 @@ export default function LoginClient() {
 
       setIsEnteringIsland(true);
       setStatus({ type: "success", message: "验证成功，正在进入小岛..." });
-      window.setTimeout(() => router.push("/dashboard"), 650);
+      window.setTimeout(() => router.push("/dashboard"), 1600);
     } catch (error) {
       setStatus({
         type: "error",
@@ -387,11 +387,16 @@ export default function LoginClient() {
           </Card>
         </section>
 
-      {isEnteringIsland ? (
-        <div className="fixed inset-0 z-50 bg-black" role="status" aria-label="正在进入小岛">
-          <Loading active />
-        </div>
-      ) : null}
+      <div
+        className={`fixed inset-0 z-50 bg-black transition-opacity duration-200 ${
+          isEnteringIsland ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        role="status"
+        aria-label="正在进入小岛"
+        aria-hidden={!isEnteringIsland}
+      >
+        <Loading active={isEnteringIsland} />
+      </div>
       <Footer type="sea" seamless className="pointer-events-none absolute bottom-0 left-0 right-0 opacity-80" />
     </main>
   );
