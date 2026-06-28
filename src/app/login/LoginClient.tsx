@@ -2,9 +2,7 @@
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, HeartHandshake, LockKeyhole, Mail, Send, Sparkles } from "lucide-react";
-import { Button, Card, Divider, Footer, Icon, Input, Title, Wallet } from "animal-island-ui";
-import { IslandRitualPending } from "@/components/IslandRitualPending";
+import { Button, Card, Divider, Footer, Icon, Input, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,8 +12,6 @@ const leaves = [
   "right-[8%] top-[22%] rotate-[30deg] bg-[#6fba2c]/40",
   "right-[13%] bottom-[15%] rotate-[-18deg] bg-[#f8f8f0]/45"
 ] as const;
-
-const accessNotes = ["约定邮箱", "双人小岛", "不开放注册"] as const;
 
 type FormStatus = {
   type: "idle" | "success" | "error";
@@ -126,8 +122,7 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
     if (devLoginStatus === "partner_missing") {
       setStatus({
         type: "error",
-        message:
-          "第二位本地测试账号还没配置。请在 .env.local 设置 DEV_LOGIN_PARTNER_EMAIL 和 DEV_LOGIN_PARTNER_PASSWORD；系统不会自动创建用户或成员。"
+        message: "第二位本地测试账号未配置。"
       });
     }
 
@@ -293,246 +288,159 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
           />
         ))}
 
-        <section className="relative z-10 mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-5xl items-center py-4 sm:py-6">
-          <div className="relative w-full rounded-[34px] border-[7px] border-[#e3bd74] bg-[#f8f8f0] p-3 shadow-[0_16px_0_rgba(93,112,67,0.32),0_30px_70px_rgba(55,86,54,0.26)] sm:rounded-[48px] sm:p-5">
-            <div aria-hidden="true" className="absolute -left-3 top-20 h-8 w-8 rounded-full bg-[#f7cd67] shadow-[0_5px_0_rgba(121,79,39,0.16)] sm:-left-5 sm:h-12 sm:w-12" />
-            <div aria-hidden="true" className="absolute -right-3 bottom-24 h-10 w-10 rounded-full bg-[#82d5bb] shadow-[0_5px_0_rgba(121,79,39,0.12)] sm:-right-6 sm:h-14 sm:w-14" />
+        <section className="relative z-10 mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-lg items-center py-4 sm:py-6">
+          <Card color="default" pattern="app-teal" className="relative w-full overflow-hidden p-5 shadow-[0_14px_0_rgba(93,112,67,0.24),0_26px_54px_rgba(55,86,54,0.22)] sm:p-6">
+            <div aria-hidden="true" className="absolute -right-10 -top-12 h-28 w-28 rounded-full bg-[#f7cd67]/25" />
+            <div aria-hidden="true" className="absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-[#82d5bb]/25" />
 
-            <div className="rounded-[26px] border-2 border-dashed border-[#d9c49b] bg-[rgb(247,243,223)] px-4 py-6 shadow-[inset_0_0_0_6px_rgba(255,255,255,0.42)] sm:rounded-[38px] sm:px-7 lg:px-10">
-              <IslandLink
-                href="/"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-white/80 px-4 py-2 text-sm font-black text-[#9f927d] shadow-[0_5px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:text-[#794f27] hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-              >
-                <ArrowLeft aria-hidden="true" size={17} />
-                返回首页
-              </IslandLink>
-
-              <div className="mt-5 flex flex-col items-center gap-3 text-center">
-                <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#9f927d] shadow-[0_5px_0_rgba(121,79,39,0.12)]">
-                  <Icon name="icon-map" size={22} bounce />
-                  Island Pass
-                  <Icon name="icon-chat" size={22} bounce />
-                </div>
-                <h1 className="sr-only">进入小岛</h1>
-                <Title size="large" color="app-yellow" style={{ fontSize: 36 }}>
-                  进入小岛
-                </Title>
-                <p className="text-xl font-black leading-tight text-[#794f27] sm:text-2xl">小岛账本</p>
-                <p className="max-w-2xl text-sm font-bold leading-7 text-[#725d42] sm:text-base">
-                  输入邮箱验证码，回到只属于两个人的小岛
-                </p>
+            <div className="relative text-center">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/75 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#9f927d] shadow-[0_5px_0_rgba(121,79,39,0.10)]">
+                <Icon name="icon-map" size={21} bounce />
+                Island Pass
               </div>
-
-              <div className="mt-7 grid items-stretch gap-5 lg:grid-cols-[1.02fr_0.98fr]">
-                <Card color="default" pattern="app-teal" className="p-5 sm:p-6">
-                  <div className="flex items-start gap-4">
-                    <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_6px_0_#5fb89f]">
-                      <LockKeyhole aria-hidden="true" size={27} />
-                    </span>
-                    <div>
-                      <p className="text-lg font-black text-[#794f27]">仅限两个人使用，不开放注册</p>
-                      <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-                        QQ 邮箱可能会在不同页面打开链接，复制邮件里的验证码回来填写会更稳。
-                      </p>
-                    </div>
-                  </div>
-
-                  <Divider type="wave-yellow" className="my-5" />
-
-                  <form className="grid gap-4" aria-label="小岛账本登录表单" onSubmit={handleSubmit} noValidate>
-                    <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-email">
-                      邮箱
-                    </label>
-                    <Input
-                      id="login-email"
-                      type="email"
-                      size="large"
-                      shadow
-                      value={email}
-                      onChange={handleEmailChange}
-                      placeholder="you@example.com"
-                      disabled={isBusy}
-                      aria-invalid={status.type === "error"}
-                      aria-describedby="login-email-status"
-                      prefix={<Mail aria-hidden="true" size={18} />}
-                    />
-
-                    {isOtpSent ? (
-                      <div className="grid gap-2">
-                        <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-otp">
-                          邮箱验证码
-                        </label>
-                        <Input
-                          id="login-otp"
-                          type="text"
-                          size="large"
-                          shadow
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          value={otp}
-                          onChange={(event) => setOtp(event.target.value)}
-                          placeholder="123456"
-                          disabled={isBusy}
-                          aria-invalid={status.type === "error"}
-                          aria-describedby="login-email-status"
-                          prefix={<LockKeyhole aria-hidden="true" size={18} />}
-                        />
-                      </div>
-                    ) : null}
-
-                    <Button
-                      type="primary"
-                      size="large"
-                      htmlType="submit"
-                      block
-                      disabled={isBusy}
-                      icon={<Send aria-hidden="true" size={18} />}
-                    >
-                      {isOtpSent ? "\u9a8c\u8bc1\u5e76\u8fdb\u5165\u5c0f\u5c9b" : "\u53d1\u9001\u90ae\u7bb1\u9a8c\u8bc1\u7801"}
-                    </Button>
-
-                    {isOtpSent ? (
-                      <Button
-                        type="dashed"
-                        size="middle"
-                        htmlType="button"
-                        block
-                        disabled={isBusy}
-                        onClick={() => void handleSendOtp()}
-                      >
-                        重新发送验证码
-                      </Button>
-                    ) : null}
-
-                    {isVerifyingOtp ? (
-                      <IslandRitualPending
-                        compact
-                        dataScope="login-entry"
-                        description="通行信已经对上，正在把你送回两个人的私密账本。"
-                        iconName="icon-map"
-                        title="正在打开两个人的小岛..."
-                      />
-                    ) : isSendingOtp ? (
-                      <IslandRitualPending
-                        compact
-                        dataScope="login-send-otp"
-                        description="验证码只用于这次登岛，不会公开任何账本内容。"
-                        iconName="icon-chat"
-                        title="正在寄出小岛通行信..."
-                      />
-                    ) : null}
-                  </form>
-
-                  {isDevLoginEnabled ? (
-                    <div className="mt-4 grid gap-3 rounded-[24px] border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee]/80 p-3 shadow-[0_5px_0_rgba(47,122,90,0.14)]">
-                      <p className="text-xs font-black leading-5 text-[#2f7a5a]">本地双人烟测入口</p>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <IslandLink
-                          href="/dev-login"
-                          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee] px-4 py-2 text-center text-sm font-black leading-5 text-[#2f7a5a] shadow-[0_5px_0_rgba(47,122,90,0.16)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(47,122,90,0.16)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-                        >
-                          <Sparkles aria-hidden="true" size={18} />
-                          本地测试登录 · 我
-                        </IslandLink>
-                        {isPartnerDevLoginConfigured ? (
-                          <IslandLink
-                            href="/dev-login?persona=partner"
-                            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#f7cd67] bg-[#fff8da] px-4 py-2 text-center text-sm font-black leading-5 text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.14)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.14)] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-                          >
-                            <Sparkles aria-hidden="true" size={18} />
-                            本地测试登录 · 对方
-                          </IslandLink>
-                        ) : null}
-                      </div>
-                      <p className="rounded-[18px] bg-white/75 px-3 py-2 text-[11px] font-bold leading-5 text-[#725d42] shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
-                        {isPartnerDevLoginConfigured ? (
-                          "\u7b2c\u4e8c\u4f4d\u5165\u53e3\u53ea\u4f1a\u767b\u5f55\u5df2\u52a0\u5165\u5c0f\u5c9b\u540d\u518c\u7684\u90ae\u7bb1\uff0c\u5e76\u786e\u8ba4\u662f\u5426\u5c5e\u4e8e\u540c\u4e00\u4e2a\u5c0f\u5c9b\u3002"
-                        ) : (
-                          <>
-                            第二位本地测试账号未配置：
-                            <code className="font-black">DEV_LOGIN_PARTNER_EMAIL</code>
-                            {" / "}
-                            <code className="font-black">DEV_LOGIN_PARTNER_PASSWORD</code>
-                            。不会自动创建用户或成员。
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  <div
-                    id="login-email-status"
-                    role={status.type === "error" ? "alert" : "status"}
-                    aria-live="polite"
-                    className={`mt-5 rounded-[24px] border-2 border-dashed px-4 py-3 text-xs font-black leading-6 ${
-                      status.type === "success"
-                        ? "border-[#82d5bb] bg-[#e6f6ee] text-[#2f7a5a]"
-                        : status.type === "error"
-                          ? "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
-                          : "border-[#d9c49b] bg-white/75 text-[#9f927d]"
-                    }`}
-                  >
-                    {status.message}
-                    {isOtpSent ? (
-                      <span className="mt-2 block text-[#725d42]">
-                        如果 QQ 邮箱没有自动跳回浏览器，请复制验证码回到这里填写。
-                      </span>
-                    ) : null}
-                  </div>
-                </Card>
-
-                <Card color="default" pattern="app-yellow" className="relative overflow-hidden p-5 sm:p-6">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <p className="text-xs font-black tracking-[0.18em] text-[#9f927d]">私密码头</p>
-                      <h2 className="mt-2 text-3xl font-black text-[#794f27]">邮箱验证码</h2>
-                      <p className="mt-2 text-sm font-bold leading-7 text-[#725d42]">
-                        像一张放在码头边的便签，只验证邮箱暗号，不展示真实账本。
-                      </p>
-                    </div>
-                    <Wallet value="2 人" size="small" />
-                  </div>
-
-                  <Divider type="dashed-brown" className="my-5" />
-
-                  <div className="rounded-[30px] bg-[#fffdf3] p-4 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.72),0_8px_0_rgba(121,79,39,0.10)]">
-                    <div className="flex items-center justify-between gap-3 rounded-[24px] bg-[#82d5bb] px-4 py-3 text-white shadow-[0_5px_0_#5fb89f]">
-                      <div>
-                        <p className="text-xs font-black tracking-[0.14em] opacity-80">只给我们</p>
-                        <p className="text-xl font-black">只属于两个人</p>
-                      </div>
-                      <Icon name="icon-helicopter" size={34} bounce />
-                    </div>
-
-                    <div className="mt-4 grid gap-3">
-                      {accessNotes.map((note, index) => (
-                        <div
-                          key={note}
-                          className="grid grid-cols-[auto_1fr] items-center gap-3 rounded-[22px] bg-[#f8f8f0] px-4 py-3 text-[#725d42] shadow-[0_3px_0_rgba(121,79,39,0.08)]"
-                        >
-                          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f7cd67] text-[#794f27]">
-                            {index === 0 ? (
-                              <Mail aria-hidden="true" size={18} />
-                            ) : index === 1 ? (
-                              <HeartHandshake aria-hidden="true" size={18} />
-                            ) : (
-                              <Sparkles aria-hidden="true" size={18} />
-                            )}
-                          </span>
-                          <span className="min-w-0 text-sm font-black text-[#794f27]">{note}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[22px] bg-[#f7cd67]/55 px-4 py-3 text-sm font-black text-[#794f27]">
-                      <span>仅限两个人使用，不开放注册</span>
-                      <span>仅作预览</span>
-                    </div>
-                  </div>
-                </Card>
+              <h1 className="sr-only">小岛账本</h1>
+              <div className="mt-3">
+                <Title size="large" color="app-yellow" style={{ fontSize: 32 }}>
+                  小岛账本
+                </Title>
+              </div>
+              <p className="mt-3 text-lg font-black text-[#794f27]">两个人的小账本入口</p>
+              <p className="mx-auto mt-2 max-w-sm text-sm font-bold leading-6 text-[#725d42]">
+                输入邮箱验证码，回到只属于两个人的小岛。
+              </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2 text-xs font-black text-[#725d42]">
+                <span className="rounded-full bg-white/75 px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
+                  仅限两个人使用
+                </span>
+                <span className="rounded-full bg-white/75 px-3 py-2 shadow-[inset_0_0_0_2px_rgba(217,196,155,0.45)]">
+                  不开放注册
+                </span>
               </div>
             </div>
-          </div>
+
+            <Divider type="wave-yellow" className="my-5" />
+
+            <form className="relative grid gap-4" aria-label="小岛账本登录表单" onSubmit={handleSubmit} noValidate>
+              <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-email">
+                邮箱
+              </label>
+              <Input
+                id="login-email"
+                type="email"
+                size="middle"
+                shadow
+                value={email}
+                onChange={handleEmailChange}
+                placeholder="you@example.com"
+                disabled={isBusy}
+                aria-invalid={status.type === "error"}
+                aria-describedby="login-email-status"
+                prefix={<Icon name="icon-chat" size={18} />}
+              />
+
+              {isOtpSent ? (
+                <div className="grid gap-2">
+                  <label className="grid gap-2 text-sm font-black text-[#794f27]" htmlFor="login-otp">
+                    邮箱验证码
+                  </label>
+                  <Input
+                    id="login-otp"
+                    type="text"
+                    size="middle"
+                    shadow
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={otp}
+                    onChange={(event) => setOtp(event.target.value)}
+                    placeholder="123456"
+                    disabled={isBusy}
+                    aria-invalid={status.type === "error"}
+                    aria-describedby="login-email-status"
+                    prefix={<Icon name="icon-design" size={18} />}
+                  />
+                </div>
+              ) : null}
+
+              <Button
+                type="primary"
+                size="middle"
+                htmlType="submit"
+                block
+                disabled={isBusy}
+                icon={<Icon name="icon-helicopter" size={18} />}
+              >
+                {isOtpSent ? "\u9a8c\u8bc1\u5e76\u8fdb\u5165\u5c0f\u5c9b" : "\u53d1\u9001\u90ae\u7bb1\u9a8c\u8bc1\u7801"}
+              </Button>
+
+              {isOtpSent ? (
+                <Button
+                  type="dashed"
+                  size="middle"
+                  htmlType="button"
+                  block
+                  disabled={isBusy}
+                  onClick={() => void handleSendOtp()}
+                >
+                  重新发送验证码
+                </Button>
+              ) : null}
+            </form>
+
+            {isDevLoginEnabled ? (
+              <div className="relative mt-4 rounded-[22px] border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee]/70 p-3">
+                <p className="text-center text-xs font-black leading-5 text-[#2f7a5a]">本地测试入口</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <IslandLink
+                    href="/dev-login"
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[#e6f6ee] px-4 py-2 text-center text-sm font-black leading-5 text-[#2f7a5a] shadow-[0_4px_0_rgba(47,122,90,0.14)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                  >
+                    <Icon name="icon-map" size={17} />
+                    我
+                  </IslandLink>
+                  {isPartnerDevLoginConfigured ? (
+                    <IslandLink
+                      href="/dev-login?persona=partner"
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[#fff8da] px-4 py-2 text-center text-sm font-black leading-5 text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+                    >
+                      <Icon name="icon-chat" size={17} />
+                      对方
+                    </IslandLink>
+                  ) : null}
+                </div>
+                {!isPartnerDevLoginConfigured ? (
+                  <p className="mt-2 text-center text-[11px] font-bold leading-5 text-[#725d42]">
+                    第二位本地测试账号未配置。
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {status.type === "idle" && !isOtpSent ? (
+              <p id="login-email-status" className="relative mt-4 text-center text-xs font-bold leading-5 text-[#9f927d]">
+                {status.message}
+              </p>
+            ) : (
+              <div
+                id="login-email-status"
+                role={status.type === "error" ? "alert" : "status"}
+                aria-live="polite"
+                className={`relative mt-4 rounded-[20px] border-2 border-dashed px-4 py-3 text-xs font-black leading-6 ${
+                  status.type === "success"
+                    ? "border-[#82d5bb] bg-[#e6f6ee] text-[#2f7a5a]"
+                    : status.type === "error"
+                      ? "border-[#fc736d] bg-[#fff1ed] text-[#b14c46]"
+                      : "border-[#d9c49b] bg-white/75 text-[#9f927d]"
+                }`}
+              >
+                {status.message}
+                {isOtpSent ? (
+                  <span className="mt-2 block text-[#725d42]">
+                    如果 QQ 邮箱没有自动跳回浏览器，请复制验证码回到这里填写。
+                  </span>
+                ) : null}
+              </div>
+            )}
+          </Card>
         </section>
 
       <Footer type="sea" seamless className="pointer-events-none absolute bottom-0 left-0 right-0 opacity-80" />
