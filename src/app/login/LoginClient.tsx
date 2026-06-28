@@ -3,7 +3,6 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Divider, Footer, Icon, Input, Title } from "animal-island-ui";
-import { IslandLink } from "@/components/IslandLink";
 import { createClient } from "@/lib/supabase/client";
 
 const leaves = [
@@ -84,12 +83,7 @@ function getSafeErrorMessage(error: unknown, fallback: string, serverErrorMessag
   return fallback;
 }
 
-type LoginClientProps = {
-  isDevLoginEnabled: boolean;
-  isPartnerDevLoginConfigured: boolean;
-};
-
-export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfigured }: LoginClientProps) {
+export default function LoginClient() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -107,29 +101,6 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
       setStatus({
         type: "error",
         message: "验证码验证失败，请重新发送一封新的验证码。"
-      });
-    }
-
-    const devLoginStatus = params.get("devLogin");
-
-    if (devLoginStatus === "failed") {
-      setStatus({
-        type: "error",
-        message: "本地测试登录失败，请检查本机测试账号配置。"
-      });
-    }
-
-    if (devLoginStatus === "partner_missing") {
-      setStatus({
-        type: "error",
-        message: "第二位本地测试账号未配置。"
-      });
-    }
-
-    if (devLoginStatus === "partner_failed") {
-      setStatus({
-        type: "error",
-        message: "\u7b2c\u4e8c\u4f4d\u672c\u5730\u6d4b\u8bd5\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u786e\u8ba4\u8fd9\u4e2a\u90ae\u7bb1\u3001\u5bc6\u7801\u548c\u5c0f\u5c9b\u6210\u5458\u5173\u7cfb\u90fd\u5df2\u914d\u7f6e\u597d\u3002"
       });
     }
   }, []);
@@ -385,35 +356,6 @@ export default function LoginClient({ isDevLoginEnabled, isPartnerDevLoginConfig
                 </Button>
               ) : null}
             </form>
-
-            {isDevLoginEnabled ? (
-              <div className="relative mt-4 rounded-[22px] border-2 border-dashed border-[#19c8b9] bg-[#e6f6ee]/70 p-3">
-                <p className="text-center text-xs font-black leading-5 text-[#2f7a5a]">本地测试入口</p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  <IslandLink
-                    href="/dev-login"
-                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[#e6f6ee] px-4 py-2 text-center text-sm font-black leading-5 text-[#2f7a5a] shadow-[0_4px_0_rgba(47,122,90,0.14)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-                  >
-                    <Icon name="icon-map" size={17} />
-                    我
-                  </IslandLink>
-                  {isPartnerDevLoginConfigured ? (
-                    <IslandLink
-                      href="/dev-login?persona=partner"
-                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[#fff8da] px-4 py-2 text-center text-sm font-black leading-5 text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-                    >
-                      <Icon name="icon-chat" size={17} />
-                      对方
-                    </IslandLink>
-                  ) : null}
-                </div>
-                {!isPartnerDevLoginConfigured ? (
-                  <p className="mt-2 text-center text-[11px] font-bold leading-5 text-[#725d42]">
-                    第二位本地测试账号未配置。
-                  </p>
-                ) : null}
-              </div>
-            ) : null}
 
             {status.type === "idle" && !isOtpSent ? (
               <p id="login-email-status" className="relative mt-4 text-center text-xs font-bold leading-5 text-[#9f927d]">
