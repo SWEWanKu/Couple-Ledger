@@ -17,7 +17,7 @@ import {
   XCircle,
   UserRound
 } from "lucide-react";
-import { Button, Card, Icon } from "animal-island-ui";
+import { Button, Card, Icon, Title } from "animal-island-ui";
 import { IslandLink } from "@/components/IslandLink";
 import { AppShell } from "@/components/layout/AppShell";
 import { NotebookEmptyState } from "@/components/NotebookEmptyState";
@@ -104,33 +104,53 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
               aria-hidden="true"
               className="absolute -top-3 left-10 h-7 w-24 -rotate-2 rounded-[10px] bg-[#82d5bb]/70 shadow-[0_5px_0_rgba(121,79,39,0.08)]"
             />
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.14em] text-[#9f927d]">
-                  <Icon name="icon-critterpedia" size={18} bounce />
-                  账本
+            <div className="mb-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+              <div className="min-w-0">
+                <p className="inline-flex max-w-full items-center gap-2 rounded-full border-2 border-[#d9c49b] bg-white/85 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#8a7556] shadow-[0_5px_0_rgba(121,79,39,0.1)]">
+                  <Icon name="icon-critterpedia" size={20} bounce />
+                  <span className="truncate">账本</span>
                 </p>
-                <h2 className="mt-1 text-2xl font-black text-[#794f27]">流水记录</h2>
-                <p className="mt-1 text-sm font-bold text-[#725d42]">{range.monthLabel} · {filteredRecordCount}/{totalRecordCount} 条匹配</p>
+                <div className="mt-3">
+                  <Title size="small" color="app-yellow">
+                    流水记录
+                  </Title>
+                </div>
+                <p className="mt-3 text-sm font-bold leading-6 text-[#725d42]">
+                  {range.monthLabel} · 当前显示 {filteredRecordCount}/{totalRecordCount} 条账单。
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <IslandLink
+                    href={getNewRecordHref(range.month, recordsFilters)}
+                    data-records-new-link="true"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
+                  >
+                    <Plus aria-hidden="true" size={17} />
+                    记一笔
+                  </IslandLink>
+                  <IslandLink
+                    href={getMonthlyReportHref(range.month)}
+                    data-records-monthly-report-link="true"
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
+                  >
+                    <ChartPie aria-hidden="true" size={17} />
+                    月报
+                  </IslandLink>
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <IslandLink
-                  href={getNewRecordHref(range.month, recordsFilters)}
-                  data-records-new-link="true"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-[#f7cd67] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_#d9a43e] transition hover:-translate-y-0.5 hover:shadow-[0_6px_0_#d9a43e] focus:outline-none focus:ring-4 focus:ring-[#f7cd67]/35"
-                >
-                  <Plus aria-hidden="true" size={17} />
-                  记一笔
-                </IslandLink>
-                <IslandLink
-                  href={getMonthlyReportHref(range.month)}
-                  data-records-monthly-report-link="true"
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border-2 border-dashed border-[#d9c49b] bg-[#fffdf3] px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
-                >
-                  <ChartPie aria-hidden="true" size={17} />
-                  月报
-                </IslandLink>
-              </div>
+              <aside className="relative rounded-[26px] border-2 border-[#d9c49b] bg-[#fffdf3] p-4 shadow-[0_6px_0_rgba(121,79,39,0.1)]">
+                <span className="absolute -top-3 right-8 rotate-3 rounded-full border-2 border-[#d9c49b] bg-[#fff1ed] px-4 py-1 text-xs font-black text-[#9b6c48] shadow-[0_4px_0_rgba(121,79,39,0.08)]">
+                  {range.monthLabel}
+                </span>
+                <div className="rounded-[22px] bg-[#82d5bb] px-4 py-3 text-white shadow-[0_5px_0_#5fb89f]">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] opacity-90">本月账单</p>
+                  <p className="mt-2 text-3xl font-black leading-tight">{filteredRecordCount}</p>
+                  <p className="mt-1 text-xs font-bold text-white/90">共 {totalRecordCount} 条记录</p>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <MiniRecordStat label="支出" value={formatMoney(sumRecords(records, "expense"))} />
+                  <MiniRecordStat label="收入" value={formatMoney(sumRecords(records, "income"))} />
+                </div>
+              </aside>
             </div>
 
             <MonthNavigator filters={recordsFilters} range={range} />
@@ -202,6 +222,19 @@ function CompactImportReviewEntry() {
       </div>
     </div>
   );
+}
+
+function MiniRecordStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[18px] bg-white px-3 py-2 text-center shadow-[inset_0_0_0_2px_rgba(217,196,155,0.6)]">
+      <p className="text-[10px] font-black uppercase tracking-[0.1em] text-[#9f927d]">{label}</p>
+      <p className="mt-1 break-words text-xs font-black text-[#794f27]">{value}</p>
+    </div>
+  );
+}
+
+function sumRecords(records: LedgerRecord[], type: LedgerRecord["entryType"]) {
+  return records.reduce((sum, record) => (record.entryType === type ? sum + record.amount : sum), 0);
 }
 
 function MonthNavigator({ filters, range }: { filters: LedgerRecordFilters; range: RecordsMonthRange }) {

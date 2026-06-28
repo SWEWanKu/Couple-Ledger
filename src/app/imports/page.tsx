@@ -49,7 +49,7 @@ export default async function ImportsPage({ searchParams }: ImportsPageProps) {
           <ImportContinueCard summary={continueSummary} />
         ) : null}
 
-        <section className="grid gap-5">
+        <section id="imports-batches" className="scroll-mt-32 grid gap-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[#9f927d]">
@@ -333,7 +333,6 @@ function ImportBatchPager({
       {hasPreviousPage ? (
         <IslandLink
           href={getImportsPageHref(currentPage - 1)}
-          scroll={false}
           className="inline-flex min-h-10 items-center justify-center rounded-full border-2 border-dashed border-[#d9c49b] bg-white px-4 py-2 text-sm font-black text-[#794f27] shadow-[0_4px_0_rgba(121,79,39,0.12)] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
           data-imports-previous-page="true"
         >
@@ -350,7 +349,6 @@ function ImportBatchPager({
       {hasNextPage ? (
         <IslandLink
           href={getImportsPageHref(currentPage + 1)}
-          scroll={false}
           className="inline-flex min-h-10 items-center justify-center rounded-full bg-[#82d5bb] px-4 py-2 text-sm font-black text-white shadow-[0_4px_0_#5fb89f] transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25"
           data-imports-next-page="true"
         >
@@ -427,7 +425,7 @@ function getImportBatchPagination(batches: ImportBatchSummary[], pageParam: stri
 }
 
 function getImportsPageHref(page: number) {
-  return page <= 1 ? "/imports" : `/imports?page=${page}`;
+  return page <= 1 ? "/imports#imports-batches" : `/imports?page=${page}#imports-batches`;
 }
 
 function formatImportPeriod(batch: ImportBatchSummary) {
