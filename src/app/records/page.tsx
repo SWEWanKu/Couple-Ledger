@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
@@ -29,6 +30,7 @@ import {
 import {
   formatMoney,
   getLedgerRecords,
+  getRecordsMonthRange,
   type LedgerRecordFilters,
   type LedgerRecordTypeFilter,
   type LedgerRecord,
@@ -78,31 +80,29 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
       currentUserId: user.id
     });
   const recordsFilters = createRecordsFilters(params, householdSummary);
-  const {
-    records,
-    range,
-    totalRecordCount,
-    filteredRecordCount,
-    warning: recordsWarning
-  } = await getLedgerRecords(supabase, {
-    householdId: membership.household_id,
-    currentUserId: user.id,
-    categories: householdSummary.categories,
-    members: householdSummary.members,
-    month: selectedMonth,
-    filters: recordsFilters
-  });
-  const monthlyLedgerSummary = await getMonthlyLedgerSummary(supabase, {
-    householdId: membership.household_id,
-    currentUserId: user.id,
-    categories: householdSummary.categories,
-    members: householdSummary.members,
-    month: range.month
-  });
-  const settlementStatus = await getSettlementSnapshotStatus(supabase, {
-    householdId: membership.household_id,
-    month: range.month
-  });
+  const range = getRecordsMonthRange(selectedMonth);
+  const [recordsResult, monthlyLedgerSummary, settlementStatus] = await Promise.all([
+    getLedgerRecords(supabase, {
+      householdId: membership.household_id,
+      currentUserId: user.id,
+      categories: householdSummary.categories,
+      members: householdSummary.members,
+      month: range.month,
+      filters: recordsFilters
+    }),
+    getMonthlyLedgerSummary(supabase, {
+      householdId: membership.household_id,
+      currentUserId: user.id,
+      categories: householdSummary.categories,
+      members: householdSummary.members,
+      month: range.month
+    }),
+    getSettlementSnapshotStatus(supabase, {
+      householdId: membership.household_id,
+      month: range.month
+    })
+  ]);
+  const { records, totalRecordCount, filteredRecordCount, warning: recordsWarning } = recordsResult;
   const showCreateSuccess = getSingleParam(params.created) === "1";
   const voidFeedback = getRecordsVoidFeedback(getSingleParam(params.voided));
 
@@ -624,18 +624,16 @@ function SummaryNotePill({
 
 async function requireHouseholdAccess() {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const currentUserId = (await headers()).get("x-couple-ledger-user-id");
 
-  if (!user) {
+  if (!currentUserId) {
     redirect("/login");
   }
 
   const { data: membership, error } = await supabase
     .from("household_members")
     .select("household_id, role")
-    .eq("user_id", user.id)
+    .eq("user_id", currentUserId)
     .limit(1)
     .maybeSingle();
 
@@ -645,7 +643,7 @@ async function requireHouseholdAccess() {
 
   return {
     supabase,
-    user,
+    user: { id: currentUserId },
     membership: membership as HouseholdMembershipRow
   };
 }

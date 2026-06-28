@@ -13,7 +13,7 @@ export function Sidebar() {
   return (
     <aside className="relative z-20 lg:pt-16">
       <div className="mb-3 flex items-center justify-between gap-3 rounded-[28px] border-2 border-[#d9c49b] bg-[#fffdf3] px-4 py-3 shadow-[0_8px_0_rgba(121,79,39,0.09)] lg:hidden">
-        <Link href="/" className="flex min-w-0 items-center gap-3">
+        <Link href="/" prefetch className="flex min-w-0 items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#82d5bb] text-white shadow-[0_5px_0_#5fb89f]">
             <HeartHandshake aria-hidden="true" size={21} />
           </span>
@@ -41,6 +41,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch
               className={`${item.paper} group relative flex min-h-11 shrink-0 items-center gap-2 rounded-[22px] border-2 border-[#d9c49b] px-3 py-2 text-sm font-black text-[#794f27] shadow-[0_5px_0_rgba(121,79,39,0.1)] transition hover:-translate-y-0.5 hover:shadow-[0_7px_0_rgba(121,79,39,0.12)] focus:outline-none focus:ring-4 focus:ring-[#19c8b9]/25 lg:min-h-[58px] lg:w-[150px] lg:rounded-l-[26px] lg:rounded-r-[14px] lg:pr-8 lg:hover:translate-x-1 lg:hover:translate-y-0`}
               style={{ transform: `rotate(${index % 2 === 0 ? "-1.4deg" : "1.2deg"})` }}
             >

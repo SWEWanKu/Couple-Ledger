@@ -98,33 +98,34 @@ export async function getSettlementSnapshotStatus(
   { householdId, month, now = new Date() }: GetSettlementSnapshotStatusInput
 ): Promise<GetSettlementSnapshotStatusResult> {
   const monthMetadata = getSettlementMonthRange(month, now);
-  const { data: memberData, error: memberError } = await supabase
-    .from("household_members")
-    .select("user_id")
-    .eq("household_id", householdId);
+  const [memberResult, activeSnapshotResult, pendingReplacementResult] = await Promise.all([
+    supabase
+      .from("household_members")
+      .select("user_id")
+      .eq("household_id", householdId),
+    readSnapshotByLifecycle(supabase, {
+      householdId,
+      monthStart: monthMetadata.monthStart,
+      lifecycleStatus: "active"
+    }),
+    readSnapshotByLifecycle(supabase, {
+      householdId,
+      monthStart: monthMetadata.monthStart,
+      lifecycleStatus: "pending_replacement"
+    })
+  ]);
 
-  if (memberError) {
+  if (memberResult.error) {
     return createErrorResult(monthMetadata, "members_read_failed");
   }
 
   const requiredConfirmationCount = new Set(
-    ((memberData ?? []) as unknown as HouseholdMemberRow[]).map((member) => member.user_id)
+    ((memberResult.data ?? []) as unknown as HouseholdMemberRow[]).map((member) => member.user_id)
   ).size;
-  const activeSnapshotResult = await readSnapshotByLifecycle(supabase, {
-    householdId,
-    monthStart: monthMetadata.monthStart,
-    lifecycleStatus: "active"
-  });
 
   if (activeSnapshotResult.error) {
     return createErrorResult(monthMetadata, "snapshot_read_failed");
   }
-
-  const pendingReplacementResult = await readSnapshotByLifecycle(supabase, {
-    householdId,
-    monthStart: monthMetadata.monthStart,
-    lifecycleStatus: "pending_replacement"
-  });
 
   if (pendingReplacementResult.error) {
     return createErrorResult(monthMetadata, "snapshot_read_failed");

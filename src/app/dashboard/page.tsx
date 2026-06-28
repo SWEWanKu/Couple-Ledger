@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   AlertCircle,
@@ -37,15 +38,12 @@ import type { DashboardLedgerSummary } from "@/types/dashboard";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user }
-  } = await supabase.auth.getUser();
+  const currentUserId = (await headers()).get("x-couple-ledger-user-id");
 
-  if (!user) {
+  if (!currentUserId) {
     redirect("/login");
   }
 
-  const currentUserId = user.id;
   const { data: membership, error: membershipError } = await supabase
     .from("household_members")
     .select("household_id, role")

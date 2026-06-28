@@ -22,7 +22,7 @@ export function IslandLink({
   const accessibleLabel = ariaLabel ?? anchorProps["aria-label"];
 
   return (
-    <Link {...anchorProps} href={href} aria-label={accessibleLabel} className={className}>
+    <Link {...anchorProps} href={href} prefetch aria-label={accessibleLabel} className={className}>
       {children}
     </Link>
   );
