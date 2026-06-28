@@ -1,5 +1,5 @@
 import { Cursor } from "animal-island-ui";
-import { InteractionFeedback } from "@/components/layout/InteractionFeedback";
+import { RouteWarmup } from "@/components/layout/RouteWarmup";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 
@@ -14,7 +14,7 @@ type AppShellProps = {
 export function AppShell({ title, subtitle, children, compact = false, hideTopbar = false }: AppShellProps) {
   return (
     <Cursor>
-      <InteractionFeedback />
+      <RouteWarmup />
       <div className="min-h-screen overflow-x-hidden bg-[#e7f7ed] text-[#794f27]">
         <div
           aria-hidden="true"
